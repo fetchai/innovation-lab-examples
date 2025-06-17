@@ -1,0 +1,27 @@
+Metadata-Version: 2.3
+Name: uagents-core
+Version: 0.3.2
+Summary: Core components for agent based systems
+License: Apache 2.0
+Author: Ed FitzGerald
+Author-email: edward.fitzgerald@fetch.ai
+Requires-Python: >=3.10,<4.0
+Classifier: License :: Other/Proprietary License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Requires-Dist: bech32 (>=1.2.0,<2.0)
+Requires-Dist: ecdsa (>=0.19.0,<1.0)
+Requires-Dist: pydantic (>=2.8,<3.0)
+Requires-Dist: requests (>=2.32.3,<3.0)
+Project-URL: Documentation, https://fetch.ai/docs
+Project-URL: Homepage, https://fetch.ai
+Project-URL: Repository, https://github.com/fetchai/uAgents
+Description-Content-Type: text/markdown
+
+# uAgents-Core
+
+Core definitions and functionalities to build agent which can interact and integrate with Fetch.ai ecosystem and agent marketplace.
+
