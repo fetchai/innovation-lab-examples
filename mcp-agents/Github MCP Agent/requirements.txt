@@ -1,0 +1,11 @@
+# Core uAgent dependencies
+uagents
+anthropic
+
+# MCP client for GitHub server communication
+mcp
+
+# Utilities
+python-dotenv
+httpx
+cryptography
