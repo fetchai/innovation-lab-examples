@@ -604,7 +604,7 @@ The key insight is that we're not converting MCP clients into uAgents, but rathe
 
 ## 📚 Additional Resources
 
-- [uAgents Documentation](https://docs.fetch.ai/uAgents)
+- [uAgents Documentation](https://innovationlab.fetch.ai/resources/docs/agent-creation/uagent-creation)
 - [Model Context Protocol Specification](https://modelcontextprotocol.io/)
 - [Anthropic API Documentation](https://docs.anthropic.com/)
 - [Docker Documentation](https://docs.docker.com/)
