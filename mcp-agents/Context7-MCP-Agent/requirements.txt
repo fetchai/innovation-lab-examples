@@ -1,0 +1,17 @@
+uagents==0.21.2
+uagents-core==0.4.1
+
+# MCP (Model Context Protocol) client
+mcp==1.1.0
+
+# Anthropic Claude API
+anthropic==0.42.0
+
+# HTTP client for API calls
+httpx==0.28.1
+
+# Environment variable management
+python-dotenv==1.0.1
+
+# Standard library utilities (usually included with Python)
+asyncio-mqtt==0.16.2
