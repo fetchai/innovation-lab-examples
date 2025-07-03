@@ -836,10 +836,10 @@ alternatives_map = {
 
 ### Key Documentation Links
 
-- **uAgents Framework**: [https://docs.fetch.ai/uAgents](https://innovationlab.fetch.ai/resources/docs/agent-creation/uagent-creation)
+- **uAgents Framework**: [uAgents](https://innovationlab.fetch.ai/resources/docs/agent-creation/uagent-creation)
 - **MCP Specification**: [https://modelcontextprotocol.io](https://modelcontextprotocol.io)
 - **Context7 MCP Server**: [https://github.com/upstash/context7-mcp](https://github.com/upstash/context7-mcp)
-- **ASI:One Platform**: [https://asi.one](https://asi1.ai)
+- **ASI:One Platform**: [ASI:One](https://asi1.ai)
 - **Agentverse Console**: [https://agentverse.ai](https://agentverse.ai)
 - **Anthropic Claude API**: [https://docs.anthropic.com](https://docs.anthropic.com)
 
