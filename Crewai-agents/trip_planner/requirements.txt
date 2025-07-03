@@ -1,0 +1,6 @@
+uagents==0.22.3
+uagents-adapter==0.2.1
+crewai
+langchain-openai
+python-dotenv
+langchain

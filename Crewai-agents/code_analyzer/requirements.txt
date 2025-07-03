@@ -1,0 +1,10 @@
+uagents==0.22.3
+uagents-adapter==0.2.1
+crewai
+langchain-openai
+python-dotenv
+langchain
+requests
+crewai-tools
+flake8==6.0.0  # For code analysis
+pytest==7.4.0  # For running tests and debugging
