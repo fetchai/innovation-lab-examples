@@ -1,0 +1,4 @@
+uagents
+uagents-adapter[a2a]
+
+"a2a-sdk[all]"

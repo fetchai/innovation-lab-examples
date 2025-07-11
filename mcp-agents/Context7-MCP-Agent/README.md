@@ -836,18 +836,18 @@ alternatives_map = {
 
 ### Key Documentation Links
 
-- **uAgents Framework**: [https://docs.fetch.ai/uAgents](https://docs.fetch.ai/uAgents)
+- **uAgents Framework**: [uAgents](https://innovationlab.fetch.ai/resources/docs/agent-creation/uagent-creation)
 - **MCP Specification**: [https://modelcontextprotocol.io](https://modelcontextprotocol.io)
 - **Context7 MCP Server**: [https://github.com/upstash/context7-mcp](https://github.com/upstash/context7-mcp)
-- **ASI:One Platform**: [https://asi.one](https://asi.one)
+- **ASI:One Platform**: [ASI:One](https://asi1.ai)
 - **Agentverse Console**: [https://agentverse.ai](https://agentverse.ai)
 - **Anthropic Claude API**: [https://docs.anthropic.com](https://docs.anthropic.com)
 
 ### Related Projects & Examples
 
 - **Other MCP Servers**: [https://github.com/modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers)
-- **uAgent Examples**: [https://github.com/fetchai/uAgents/tree/main/examples](https://github.com/fetchai/uAgents/tree/main/examples)
-- **Chat Protocol Examples**: [https://docs.fetch.ai/uAgents/intermediate/chat-protocol](https://docs.fetch.ai/uAgents/intermediate/chat-protocol)
+- **uAgent Examples**: [https://github.com/fetchai/uAgents/tree/main/examples](https://github.com/fetchai/innovation-lab-examples)
+- **Chat Protocol Examples**: [https://docs.fetch.ai/uAgents/intermediate/chat-protocol](https://innovationlab.fetch.ai/resources/docs/agent-communication/agent-chat-protocol)
 
 
 
@@ -867,6 +867,6 @@ The architecture demonstrates how to **wrap MCP clients inside uAgents** to crea
 
 **Use this as a template** for integrating any MCP server with the uAgent ecosystem, adapting the search strategies, evaluation logic, and enhancement processes for your specific domain and use case.
 
-**Built with ❤️ using uAgents, MCP, and Claude AI**
+**Built using uAgents, MCP, and Claude AI**
 
 *Ready to bring more MCP servers to the Agentverse? Follow this guide and contribute to the growing ecosystem of intelligent, interconnected agents!*

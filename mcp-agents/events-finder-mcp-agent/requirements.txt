@@ -1,0 +1,5 @@
+mcp
+httpx
+uagents
+uagents-adapter
+python-dotenv

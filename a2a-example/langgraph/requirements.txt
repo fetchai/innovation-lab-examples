@@ -1,0 +1,9 @@
+uagents
+uagents-adapter[a2a]
+langchain-core 
+langchain-google-genai
+langchain-openai
+httpx 
+pydantic 
+python-dotenv
+"a2a-sdk[all]"

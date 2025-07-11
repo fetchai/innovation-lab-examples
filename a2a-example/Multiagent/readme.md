@@ -19,7 +19,7 @@ This directory contains specialized agent executors for use with the uAgent A2A 
 1. **Clone the repository:**
    ```bash
    git clone <repo-url>
-   cd a2a-example/multiagent
+   cd a2a-examples
    ```
 
 2. **Install dependencies:**

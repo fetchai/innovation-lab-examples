@@ -14,7 +14,7 @@ This directory contains the **Brave Search Agent** for the uAgent A2A Adapter fr
 1. **Clone the repository:**
    ```bash
    git clone <repo-url>
-   cd uAgent-Adapter-examples
+   cd a2a-examples
    ```
 
 2. **Install dependencies:**

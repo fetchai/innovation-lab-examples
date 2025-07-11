@@ -18,7 +18,7 @@ This directory contains the **Currency Agent** for the uAgent A2A Adapter framew
 1. **Clone the repository:**
    ```bash
    git clone <repo-url>
-   cd uAgent-Adapter-examples
+   cd a2a-examples
    ```
 
 2. **Install dependencies:**
