@@ -1,5 +1,5 @@
 from typing import Dict, List
-from uagent_a2a_adapter import MultiA2AAdapter, A2AAgentConfig, a2a_servers
+from uagents_adapter import MultiA2AAdapter, A2AAgentConfig, a2a_servers
 from agents.research_agent import ResearchAgentExecutor
 from agents.coding_agent import CodingAgentExecutor
 from agents.analysis_agent import AnalysisAgentExecutor
@@ -58,9 +58,11 @@ class MultiAgentOrchestrator:
     def create_coordinator(self):
         print("🤖 Creating Coordinator...")
         self.coordinator = MultiA2AAdapter(
-            name="coordinator---",
+            name="coordinator-TEST-GAUTAM",
             description="Routes queries to AI specialists",
-            asi_api_key= os.getenv("ASI1_API_KEY"),
+            llm_api_key= os.getenv("ASI1_API_KEY"),
+            model= os.getenv("MODEL"),
+            base_url= os.getenv("BASE_URL"),
             port=8200,
             mailbox=True,
             agent_configs=self.agent_configs,

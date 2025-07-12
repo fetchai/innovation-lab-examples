@@ -1,0 +1,5 @@
+uagents-adapter
+a2a-sdk
+python-dotenv
+uvicorn
+youtube-transcript-api

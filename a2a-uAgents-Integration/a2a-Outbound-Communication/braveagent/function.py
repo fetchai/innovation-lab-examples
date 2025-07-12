@@ -1,5 +1,5 @@
 from typing import Dict, List
-from uagent_a2a_adapter import SingleA2AAdapter, A2AAgentConfig, a2a_servers
+from uagents_adapter import SingleA2AAdapter, A2AAgentConfig, a2a_servers
 from brave.agent import BraveSearchAgentExecutor  
 
 class BraveSearchAgent:
@@ -43,7 +43,6 @@ class BraveSearchAgent:
             description="Coordinator for routing Brave Search queries",
             port=8200,
             mailbox=True
-        )
         )
         print("✅ Brave Coordinator created!")
         return self.coordinator

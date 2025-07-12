@@ -3,7 +3,7 @@ import logging
 from typing import Dict, List
 from dotenv import load_dotenv
 
-from uagent_a2a_adapter import SingleA2AAdapter, A2AAgentConfig, a2a_servers
+from uagents_adapter import SingleA2AAdapter, A2AAgentConfig, a2a_servers
 from currency_agent_system.agent_executor import CurrencyAgentExecutor
 
 # Load environment variables
