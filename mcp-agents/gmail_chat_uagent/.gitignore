@@ -1,0 +1,25 @@
+# Python artefacts
+__pycache__/
+*.pyc
+
+# Env & secrets
+.env
+# ignore other .env variants but keep sample
+.env.*
+!env.sample
+client_secret*.json
+oauth_tokens*.json
+.tokens/
+
+# Logs
+*.log
+
+# Runtime data
+agent*_data.json
+
+# IDEs
+.vscode/
+.idea/
+
+# macOS
+.DS_Store 
