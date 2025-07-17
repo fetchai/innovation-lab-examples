@@ -65,9 +65,23 @@ Send messages to the agent (e.g. via uAgents desktop client, webhook or test scr
 
 The Gmail tools need a **desktop** OAuth 2.0 client secret JSON downloaded from your Google Cloud Console:
 
+> **Filename tip** – when Google downloads the file it is often called
+> `client_secret_XXXXXXXXXXXX-abcdefg.apps.googleusercontent.com.json`.  You
+> can keep this name or rename it to something shorter (e.g.
+> `gmail_client_secret.json`).  The important part is that the file lives
+> **inside** `gmail_chat_uagent/` and is **not** committed because
+> `.gitignore` excludes `client_secret*.json`.
+
 1. Open **Google Cloud → APIs & Services → Credentials**.
 2. Create (or download) an *OAuth Client ID* of type **Desktop app**.
-3. Rename the downloaded file to `client_secret_<client-id>.json` and place it inside `gmail_chat_uagent/`.
+3. Place the JSON file inside `gmail_chat_uagent/`.  If you renamed it you must
+   also update the constant `CREDENTIALS_PATH` in `gmail_chat_uagent/server.py`
+   **or** export an environment variable:
+
+   ```bash
+   export GMAIL_CREDENTIALS_FILE="gmail_chat_uagent/gmail_client_secret.json"
+   ```
+   (The server falls back to this variable if set.)
 
 The file is git-ignored by the pattern `client_secret*.json`; never commit it to Git.
 
