@@ -1,4 +1,4 @@
-# Deploy a uAgent on Agentverse via Render
+# Deploy Agent on Agentverse via Render
 
 [Render](https://render.com/) is a cloud platform that simplifies deploying Python-based web services and agents. It supports Docker, making it ideal for deploying uAgents that require public internet access, health checks, and mailbox integration with Agentverse.
 
