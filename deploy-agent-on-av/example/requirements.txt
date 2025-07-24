@@ -1,0 +1,4 @@
+uagents
+requests
+openai
+fastapi
