@@ -1,0 +1,50 @@
+{
+  "name": "Fetch IC Dev Environment",
+  "image": "ghcr.io/dfinity/icp-dev-env-azle:latest",
+  "forwardPorts": [4943, 5173, 11434],
+  "portsAttributes": {
+    "4943": {
+      "label": "dfx",
+      "onAutoForward": "ignore"
+    }
+  },
+  "onCreateCommand": "chmod +x scripts/devcontainer-setup.sh",
+  "postCreateCommand": "./scripts/devcontainer-setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "chat.promptFiles": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "github.copilot.chat.codeGeneration.instructions": [
+          {
+            "file": "general.instructions.md"
+          },
+          {
+            "file": "python.instructions.md"
+          },
+          {
+            "file": "typescript.instructions.md"
+          }
+        ],
+        "github.copilot.chat.testGeneration.instructions": [
+          {
+            "file": "test.instructions.md"
+          }
+        ],
+        "settingsSync.ignoredExtensions": ["*"],
+        "settingsSync.ignoredSettings": [
+          "github.copilot.chat.codeGeneration.instructions",
+          "github.copilot.chat.testGeneration.instructions"
+        ]
+      }
+    }
+  },
+  "features": {},
+  "mounts": []
+}
