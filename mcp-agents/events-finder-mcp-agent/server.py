@@ -35,7 +35,6 @@ async def ticketmaster_get(path: str, params: Dict[str, Any]) -> Optional[Dict[s
 async def search_events(
     keyword: Optional[str] = None,
     countryCode: Optional[str] = None,
-    dmaId: Optional[str] = None,
     startDateTime: Optional[str] = None,
     endDateTime: Optional[str] = None,
     size: Optional[int] = 10,
@@ -46,7 +45,6 @@ async def search_events(
     params = {
         "keyword": keyword,
         "countryCode": countryCode,
-        "dmaId": dmaId,
         "startDateTime": startDateTime,
         "endDateTime": endDateTime,
         "size": size,
