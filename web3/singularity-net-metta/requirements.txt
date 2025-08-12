@@ -1,0 +1,5 @@
+openai>=1.0.0
+hyperon>=0.2.6
+uagents>=0.22.5
+uagents-core>=0.3.5
+python-dotenv>=1.0.0 
