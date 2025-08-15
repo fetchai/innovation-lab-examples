@@ -15,6 +15,9 @@ fetch-icp-integration/
             └── index.ts     # Dummy Bitcoin HTTP server
 ```
 
+## Code Template for Visual Code
+[Motoko Template](https://github.com/ICP-HUBS-DevRels-Syndicate/fetch-icp-motoko)
+
 ## ICP Component
 
 The ICP component (`ic/src/backend/index.ts`) implements a dummy HTTP server with the following endpoints:
