@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "esModuleInterop": true,
+    "outDir": "dist",
+    "strict": false
+  },
+  "include": ["compute.ts"]
+}
