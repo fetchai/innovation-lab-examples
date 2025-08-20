@@ -1,0 +1,18 @@
+services:
+  book-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8033:8033"   
+      - "10022:10022" 
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    networks:
+      - book-agent-network
+
+networks:
+  book-agent-network:
+    driver: bridge

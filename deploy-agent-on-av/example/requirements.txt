@@ -1,4 +1,5 @@
 uagents
-requests
+uagents-core
 openai
-fastapi
+python-dotenv
+httpx
