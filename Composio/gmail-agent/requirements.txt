@@ -1,0 +1,4 @@
+openai>=1.99.6,<2
+composio-openai
+uagents==0.22.7
+python-dotenv>=1.0.0
