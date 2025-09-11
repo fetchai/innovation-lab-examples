@@ -1,0 +1,17 @@
+services:
+  linkedin-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8048:8048"   
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    networks:
+      - linkedin-agent-network
+
+networks:
+  linkedin-agent-network:
+    driver: bridge
