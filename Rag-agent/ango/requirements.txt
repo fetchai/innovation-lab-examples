@@ -1,0 +1,20 @@
+# Core dependencies for RAG Chat Agent
+agno>=0.1.0
+uagents
+# OpenAI integration
+openai>=1.0.0
+
+# Database and vector storage
+sqlalchemy>=2.0.0
+psycopg[binary]>=3.0.0
+pgvector>=0.2.0
+
+# Environment and utilities
+python-dotenv>=1.0.0
+
+# PDF processing
+pypdf>=3.0.0
+
+# Optional: For enhanced functionality
+requests>=2.31.0
+aiohttp>=3.8.0
