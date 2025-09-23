@@ -9,7 +9,7 @@ from composio_langchain import LangchainProvider
 
 def get_composio_lc() -> Composio:
     return Composio(
-        api_key=os.getenv("COMPOSIO_API_KEY", "ak_AzoffPhpAg169KC69x7a"),
+        api_key=os.getenv("COMPOSIO_API_KEY", ""),
         provider=LangchainProvider(),
     )
 
