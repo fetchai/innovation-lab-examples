@@ -598,7 +598,14 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 if not tool:
                     response = "❌ List drafts tool unavailable. Please reconnect your Gmail."
                 else:
-                    params = {"max_results": max_results, "user_id": "me", "verbose": True}
+                    # Send both snake_case and camelCase to support different wrappers
+                    params = {
+                        "max_results": max_results,
+                        "maxResults": max_results,
+                        "user_id": "me",
+                        "userId": "me",
+                        "verbose": True,
+                    }
                     try:
                         result = tool.invoke(params)
                     except Exception:
@@ -614,15 +621,105 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                             brace_idx = result.find("{")
                             if brace_idx != -1:
                                 data = ast.literal_eval(result[brace_idx:])
+
+                        # Common Composio envelope
                         if isinstance(data, dict):
-                            resp = data.get("data", {}).get("response_data", {})
-                            drafts = resp.get("drafts", [])
-                            next_token = resp.get("nextPageToken")
+                            wrapper = data
+                            # Some wrappers put payload directly
+                            resp = (
+                                wrapper.get("data", {}).get("response_data", {})
+                                or wrapper.get("response_data", {})
+                                or wrapper
+                            )
+
+                            # Drafts might be under different keys
+                            drafts = (
+                                resp.get("drafts")
+                                or resp.get("items")
+                                or resp.get("results")
+                                or resp.get("data")
+                                or []
+                            )
+                            if isinstance(drafts, dict):
+                                # Sometimes nested: { drafts: { items: [...] } }
+                                drafts = (
+                                    drafts.get("drafts")
+                                    or drafts.get("items")
+                                    or drafts.get("results")
+                                    or []
+                                )
+                            next_token = (
+                                resp.get("nextPageToken")
+                                or resp.get("next_page_token")
+                                or resp.get("nextToken")
+                            )
                     except Exception:
                         pass
 
+                    # Normalize drafts to ensure to/subject/time are present
+                    normalized_drafts = []
+                    try:
+
+                        def _find_header_value(headers, header_name):
+                            if not isinstance(headers, list):
+                                return None
+                            target = header_name.lower()
+                            for h in headers:
+                                name = str(h.get("name") or h.get("key") or "").lower()
+                                if name == target:
+                                    return h.get("value") or h.get("val")
+                            return None
+
+                        for d in drafts if isinstance(drafts, list) else []:
+                            nd = {
+                                "id": d.get("id") or d.get("draftId") or d.get("draft_id") or "",
+                                "to": d.get("to") or d.get("recipient") or d.get("toEmail") or "",
+                                "subject": d.get("subject") or d.get("subjectLine") or "",
+                                "messageTimestamp": d.get("messageTimestamp") or d.get("timestamp") or "",
+                            }
+
+                            message = d.get("message") or d.get("email") or d.get("messageData") or {}
+                            if isinstance(message, dict):
+                                payload = message.get("payload") or {}
+                                headers = (
+                                    payload.get("headers")
+                                    or message.get("headers")
+                                    or []
+                                )
+                                if not nd["to"]:
+                                    nd["to"] = _find_header_value(headers, "To") or nd["to"] or ""
+                                if not nd["subject"]:
+                                    nd["subject"] = _find_header_value(headers, "Subject") or nd["subject"] or ""
+
+                                # Time: try internalDate first (ms since epoch), then Date header
+                                if not nd["messageTimestamp"]:
+                                    internal_date = message.get("internalDate") or payload.get("internalDate")
+                                    if internal_date:
+                                        try:
+                                            ts_ms = int(internal_date)
+                                            # If value looks like seconds, upscale to ms
+                                            if ts_ms < 10_000_000_000:
+                                                ts_ms *= 1000
+                                            nd["messageTimestamp"] = datetime.utcfromtimestamp(ts_ms / 1000).isoformat()
+                                        except Exception:
+                                            nd["messageTimestamp"] = str(internal_date)
+                                    else:
+                                        date_header = _find_header_value(headers, "Date")
+                                        if date_header:
+                                            nd["messageTimestamp"] = date_header
+
+                            # Final fallbacks
+                            if not nd["to"]:
+                                nd["to"] = d.get("to_address") or d.get("recipient_email") or ""
+                            if not nd["subject"]:
+                                nd["subject"] = d.get("email_subject") or d.get("title") or ""
+
+                            normalized_drafts.append(nd)
+                    except Exception:
+                        normalized_drafts = drafts if isinstance(drafts, list) else []
+
                     from formatting import format_drafts_list_markdown
-                    response = format_drafts_list_markdown(drafts, next_token)
+                    response = format_drafts_list_markdown(normalized_drafts, next_token)
         except Exception as e:
             response = f"❌ Error listing drafts: {str(e)}"
 
