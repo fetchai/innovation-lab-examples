@@ -84,7 +84,16 @@ def get_gmail_profile_tools_for_user(user_email: str):
 
 def get_gmail_list_drafts_tools_for_user(user_email: str):
     composio_lc = get_composio_lc()
-    return composio_lc.tools.get(user_id=user_email, tools=["GMAIL_LIST_DRAFTS"])
+    # Try multiple possible slugs to maximize compatibility across Composio versions
+    return composio_lc.tools.get(
+        user_id=user_email,
+        tools=[
+            "GMAIL_LIST_DRAFTS",
+            "GMAIL_LIST_EMAIL_DRAFTS",
+            "GMAIL_GET_DRAFTS",
+            "GMAIL_LIST_DRAFT",
+        ],
+    )
 
 
 def get_gmail_message_by_id_tools_for_user(user_email: str):
