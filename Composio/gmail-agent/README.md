@@ -25,7 +25,6 @@ python agent.py
 - **Get Contacts:** `Get contacts`
 - **Fetch Thread:** `Fetch thread, Thread Id: 1995...`
 - **Get Profile:** `Get profile`
-- **List Drafts:** `List drafts, Max: 10`
 - **Create Draft:** `Create draft, To: user@example.com, Subject: Hello, Body: Hi there`
 - **Send Draft:** `Send draft, Draft Id: r123abc`
 - **Delete Draft:** `Delete draft, Draft Id: r123abc`
@@ -174,7 +173,7 @@ python agent.py
   ✅ Replied successfully
 
   Reply Details:
-  - To: user@example.com
+  - To: user@example.comgit status -uno
   - Thread ID: 1995...
   - Message ID: 18c1234567890abc
   - Body: Thanks for your message!
