@@ -21,7 +21,7 @@ def get_gmail_tools_for_user(user_email: str):
 
 def get_gmail_auth_url(user_email: str):
     try:
-        composio = Composio(api_key=os.getenv("COMPOSIO_API_KEY", "ak_AzoffPhpAg169KC69x7a"))
+        composio = Composio(api_key=os.getenv("COMPOSIO_API_KEY", ""))
         auth_config_id = os.getenv("GMAIL_AUTH_CONFIG_ID")
         if not auth_config_id:
             return {"success": False, "error": "Gmail Auth Config ID not found. Please set GMAIL_AUTH_CONFIG_ID in your .env file"}
