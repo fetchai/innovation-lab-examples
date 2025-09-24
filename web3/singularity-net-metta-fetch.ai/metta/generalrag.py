@@ -47,3 +47,10 @@ class GeneralRAG:
             object_value = ValueAtom(object_value)
         self.metta.space().add_atom(E(S(relation_type), S(subject), object_value))
         return f"Added {relation_type}: {subject} → {object_value}"
+    
+    def get_specific_models(self, model: str):
+        """get specific instances of models from the knowldege graphs"""
+        query_str = f'!(match &self (specificInstance {model} $specific_model) $specific_model)'
+        results = self.metta.run(query_str)
+        
+        return [r[0].get_object().value for r in results if r and len(r) > 0] if results else []
