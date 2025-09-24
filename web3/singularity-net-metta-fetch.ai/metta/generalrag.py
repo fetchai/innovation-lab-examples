@@ -52,5 +52,12 @@ class GeneralRAG:
         """get specific instances of models from the knowldege graphs"""
         query_str = f'!(match &self (specificInstance {model} $specific_model) $specific_model)'
         results = self.metta.run(query_str)
-        
-        return [r[0].get_object().value for r in results if r and len(r) > 0] if results else []
+        return results.pop()
+    
+    def query_all_specific_capabilities(self, model:str):
+        """query the capabilities of all specific_instances of a model"""
+        query_str = f'!(match &self (, (specificInstance {model} $specificInstance) (capability $specificInstance $specificCapability)) ($specificInstance $specificCapability))'
+        results = self.metta.run(query_str)
+        return results.pop()
+
+
