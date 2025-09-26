@@ -55,7 +55,15 @@ def initialize_knowledge_graph(metta: MeTTa):
     metta.space().add_atom(E(S("capability"), S("Agentverse"), S("integrated IDE")))
     metta.space().add_atom(E(S("capability"), S("Agentverse"), S("agent search")))
     metta.space().add_atom(E(S("capability"), S("Agentverse"), S("agent registration")))
-    
+    # ASI:One Specific Models
+    metta.space().add_atom(E(S("specificInstance"), S("ASI:One"), S("asi1-mini")))
+    metta.space().add_atom(E(S("specificInstance"),S("ASI:One"), S("asi1-fast")))
+
+    metta.space().add_atom(E(S("specificInstance"),S("ASI:One"), S("asi1-extended")))
+
+    metta.space().add_atom(E(S("specificInstance"),S("ASI:One"), S("asi1-agentic")))
+
+    metta.space().add_atom(E(S("specificInstance"),S("ASI:One"), S("asi1-graph")))
     # ASI:One Models → Features
     metta.space().add_atom(E(S("capability"), S("asi1-mini"), S("balanced performance")))
     metta.space().add_atom(E(S("capability"), S("asi1-mini"), S("speed optimization")))

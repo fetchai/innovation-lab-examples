@@ -47,3 +47,17 @@ class GeneralRAG:
             object_value = ValueAtom(object_value)
         self.metta.space().add_atom(E(S(relation_type), S(subject), object_value))
         return f"Added {relation_type}: {subject} → {object_value}"
+    
+    def get_specific_models(self, model: str):
+        """get specific instances of models from the knowldege graphs"""
+        query_str = f'!(match &self (specificInstance {model} $specific_model) $specific_model)'
+        results = self.metta.run(query_str)
+        return results.pop()
+    
+    def query_all_specific_capabilities(self, model:str):
+        """query the capabilities of all specific_instances of a model"""
+        query_str = f'!(match &self (, (specificInstance {model} $specificInstance) (capability $specificInstance $specificCapability)) ($specificInstance $specificCapability))'
+        results = self.metta.run(query_str)
+        return results.pop()
+
+
