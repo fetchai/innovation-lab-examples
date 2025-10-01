@@ -1,0 +1,13 @@
+# Core agent framework
+uagents==0.22.8
+uagents-core==0.3.8
+
+# Async HTTP and JWT
+aiohttp==3.10.9
+python-jose[cryptography]==3.3.0
+
+# Environment variables
+python-dotenv==1.0.1
+
+# HTTP client
+requests
