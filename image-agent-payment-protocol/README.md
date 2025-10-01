@@ -100,3 +100,11 @@ asi1-image-agent/
 ![Skyfire tokens screenshot](img/skyfire1.png)
 ![Skyfire tokens screenshot](img/skyfire3.png)
 ![Skyfire tokens screenshot](img/skyfire2.png)
+
+
+## Enable skyfire on asi1
+
+- enable developer mode in asi1 by going to My account in setting in bottom left.
+- goto labs and enable dev mode.
+- Now goto you AI at top right of UI and goto manage payments at the very bottom.
+- Connect your skyfire account and you will have 0.3$ by default.
