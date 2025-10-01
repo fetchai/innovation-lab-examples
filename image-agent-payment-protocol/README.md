@@ -98,5 +98,5 @@ asi1-image-agent/
 -  get your details from below iamge.
  
 ![Skyfire tokens screenshot](img/skyfire1.png)
-![Skyfire tokens screenshot](img/skyfire2.png)
 ![Skyfire tokens screenshot](img/skyfire3.png)
+![Skyfire tokens screenshot](img/skyfire2.png)
