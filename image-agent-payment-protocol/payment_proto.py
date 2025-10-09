@@ -1,8 +1,7 @@
 import os
 from uuid import uuid4
 from uagents import Context, Protocol
-
-from protocol.payment import (
+from uagents_core.contrib.protocols.payment import (
     Funds,
     RequestPayment,
     RejectPayment,
@@ -11,16 +10,6 @@ from protocol.payment import (
     CompletePayment,
     payment_protocol_spec,
 )
-# The equivalent import from uagents-core (kept here for reference only; DO NOT USE):
-# from uagents_core.contrib.protocols.payment import (
-#     Funds,
-#     RequestPayment,
-#     RejectPayment,
-#     CommitPayment,
-#     CancelPayment,
-#     CompletePayment,
-#     payment_protocol_spec,
-# )
 
 from skyfire import verify_and_charge, get_skyfire_service_id
 from chat_proto import create_text_chat
