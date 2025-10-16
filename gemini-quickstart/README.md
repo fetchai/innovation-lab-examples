@@ -50,7 +50,7 @@ Fetch and analyze information from URLs
 - Deep thinking mode
 - Summarization and analysis
 
-### 7. [Document Q&A Agent](./07-document-qa-agent/) - **NEW! 📚**
+### 7. [Document Q&A Agent](./07-document-qa-agent/) - Coming Soon
 Chat with documents using embeddings and RAG
 - Text/URL document upload
 - Semantic search with embeddings
