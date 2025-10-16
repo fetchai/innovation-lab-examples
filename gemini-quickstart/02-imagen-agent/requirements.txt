@@ -1,4 +1,4 @@
-uagents>=0.12.0
+uagents
 google-genai
 python-dotenv>=1.0.0
 Pillow>=10.0.0
