@@ -1,0 +1,19 @@
+# Environment
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Generated videos
+videos/
+*.mp4
+*.mov
+*.avi
+
+# Agent data
+*_data.json
+
+# IDE
+.vscode/
+.idea/
+*.swp

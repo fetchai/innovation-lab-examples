@@ -1,0 +1,18 @@
+# Environment
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Generated audio
+speech/
+*.wav
+*.mp3
+
+# Agent data
+*_data.json
+
+# IDE
+.vscode/
+.idea/
+*.swp

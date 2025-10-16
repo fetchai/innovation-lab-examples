@@ -1,0 +1,19 @@
+# Environment
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Generated images
+images/
+*.png
+*.jpg
+*.jpeg
+
+# Agent data
+*_data.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
