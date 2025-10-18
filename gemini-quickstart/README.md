@@ -88,7 +88,7 @@ Create agents that work together
 - [Fetch.ai Documentation](https://fetch.ai/docs)
 - [Google Gemini API Docs](https://ai.google.dev/docs)
 - [Agentverse Platform](https://agentverse.ai)
-- [ASI One](https://asi.one)
+- [ASI One](https://asi1.ai)
 
 ## 🎯 Hackathon Tips
 

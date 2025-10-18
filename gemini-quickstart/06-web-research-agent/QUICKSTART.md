@@ -13,7 +13,7 @@ pip install -r requirements.txt
 # Use same .env - already have GEMINI_API_KEY!
 ```
 
-## 2️⃣ Run (30 seconds)
+## 2️⃣ Update the seed in your agent to a unique phrase and Run the Agent
 
 ```bash
 python research_agent.py

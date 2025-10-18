@@ -19,7 +19,7 @@ pip install -r requirements.txt
 python tts_agent.py
 ```
 
-## 3️⃣ Test (30 seconds)
+## 3️⃣ Update the seed in your agent to a unique phrase and Run the Agent
 
 **Via ASI One:**
 1. Find your agent

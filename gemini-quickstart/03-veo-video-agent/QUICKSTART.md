@@ -23,7 +23,7 @@ python veo_agent.py
 ## 3️⃣ Test (30 seconds + 30-60s generation time)
 
 **Via ASI One:**
-1. Go to https://asi.one
+1. Go to https://asi1.ai
 2. Find your agent
 3. Send: `A calico kitten sleeping in the sunshine`
 4. **Wait 30-60 seconds** - video generation takes time!

@@ -29,7 +29,7 @@ cp .env.example .env
    GEMINI_API_KEY=your_actual_key_here
    ```
 
-## 3️⃣ Run Locally (30 seconds)
+## 3️⃣ ## Step 3: Update the seed in your agent to a unique phrase and Run the Agent
 
 ```bash
 python basic_gemini_agent.py
@@ -48,7 +48,7 @@ You should see:
 Open another terminal and test locally or use ASI One!
 
 ### Option A: Use ASI One (Recommended)
-1. Go to https://asi.one
+1. Go to https://asi1.ai
 2. Search for your agent (after deploying to Agentverse)
 3. Start chatting!
 

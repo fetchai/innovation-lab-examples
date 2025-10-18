@@ -24,7 +24,7 @@ python imagen_agent.py
 ## 3️⃣ Test (30 seconds)
 
 **Via ASI One:**
-1. Go to https://asi.one
+1. Go to https://asi1.ai
 2. Find your agent
 3. Send: `A photo of a sunset over mountains`
 

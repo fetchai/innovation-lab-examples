@@ -37,7 +37,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 AGENTVERSE_API_KEY=your_agentverse_api_key_here
 ```
 
-## Step 3: Run the Agent
+## Step 3: Update the seed in your agent to a unique phrase and Run the Agent
 
 ```bash
 python veo_agent.py
@@ -56,7 +56,7 @@ You should see:
 ## Step 4: Generate Videos
 
 ### Via ASI One
-1. Go to https://asi.one
+1. Go to https://asi1.ai
 2. Search for your agent
 3. **Be patient** - videos take 30-60 seconds to generate!
 4. Try these prompts:

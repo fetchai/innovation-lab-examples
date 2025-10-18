@@ -118,7 +118,7 @@ agentverse deploy basic_gemini_agent.py
 
 ## Step 7: Test on ASI One
 
-1. Open [ASI One](https://asi.one)
+1. Open [ASI One](https://asi1.ai)
 2. Search for your agent name
 3. Start chatting!
 

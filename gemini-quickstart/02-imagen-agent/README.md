@@ -38,7 +38,7 @@ Use the same `.env` file or create one:
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-## Step 3: Run the Agent
+## Step 3: Update the seed in your agent to a unique phrase and Run the Agent
 
 ```bash
 python imagen_agent.py
@@ -55,7 +55,7 @@ You should see:
 ## Step 4: Test Image Generation
 
 ### Via ASI One
-1. Go to https://asi.one
+1. Go to https://asi1.ai
 2. Search for your agent
 3. Try these prompts:
 
