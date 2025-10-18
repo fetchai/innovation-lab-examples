@@ -42,7 +42,7 @@ MODEL = 'gemini-2.5-flash'
 # Create agent
 agent = Agent(
     name="web_researcher",
-    seed="research-agent-seed-phrase-12345",
+    seed="", # Change this for your agent to a unique seed phrase
     port=8005,
     mailbox=True
 )

@@ -58,7 +58,7 @@ DEFAULT_VIDEO_CONFIG = types.GenerateVideosConfig(
 # Create agent
 agent = Agent(
     name="veo_generator",
-    seed="veo-agent-seed-phrase-12345",  # Change this for your agent
+    seed="",  # Change this for your agent to a unique seed phrase
     port=8002,
     mailbox=True  # Required for Agentverse deployment
 )

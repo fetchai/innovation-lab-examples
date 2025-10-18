@@ -46,7 +46,7 @@ GENERATION_CONFIG = {
 # Create agent
 agent = Agent(
     name="gemini_assistant",
-    seed="gemini-basic-seed-phrase-12345",  # Change this for your agent
+    seed="",  # Change this for your agent to a unique seed phrase
     port=8000,
     mailbox=True  # Required for Agentverse deployment
 )

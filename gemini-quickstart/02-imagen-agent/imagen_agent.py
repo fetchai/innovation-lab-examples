@@ -52,7 +52,7 @@ IMAGE_MODEL = 'gemini-2.5-flash-image'
 # Create agent
 agent = Agent(
     name="imagen_generator",
-    seed="imagen-agent-seed-phrase-12345",  # Change this for your agent
+    seed="",  # Change this for your agent to a unique seed phrase
     port=8001,
     mailbox=True  # Required for Agentverse deployment
 )

@@ -58,7 +58,7 @@ DURATION_SECONDS = 30  # Generate 30 seconds of music
 # Create agent
 agent = Agent(
     name="lyria_generator",
-    seed="lyria-agent-seed-phrase-12345",  # Change this for your agent
+    seed="",  # Change this for your agent to a unique seed phrase
     port=8003,
     mailbox=True
 )

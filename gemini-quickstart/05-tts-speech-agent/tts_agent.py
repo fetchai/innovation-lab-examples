@@ -61,7 +61,7 @@ AVAILABLE_VOICES = [
 # Create agent
 agent = Agent(
     name="tts_generator",
-    seed="tts-agent-seed-phrase-12345",
+    seed="", # Change this for your agent to a unique seed phrase
     port=8004,
     mailbox=True
 )
