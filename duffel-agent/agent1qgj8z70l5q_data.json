@@ -1,0 +1,724 @@
+{
+    "agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z::de0b537e-cd75-4b04-9389-5b95aeb3398a": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true,
+            "last_tool": "duffel_search_offers",
+            "last_tool_result": {
+                "offers": [
+                    {
+                        "id": "off_0000AzTBAxbcKOy2loBZP1",
+                        "airline": "Alaska Airlines",
+                        "total_amount": "252.62",
+                        "total_currency": "GBP",
+                        "itinerary": "LAX→EWR 2026-01-22 08:02 → 2026-01-22 16:29",
+                        "original_amount": "252.62",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 337.62
+                    },
+                    {
+                        "id": "off_0000AzTBAxbyJ5FcmuLqxE",
+                        "airline": "Alaska Airlines",
+                        "total_amount": "312.21",
+                        "total_currency": "GBP",
+                        "itinerary": "ONT→EWR 2026-01-22 06:00 → 2026-01-22 18:29",
+                        "original_amount": "312.21",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 417.26
+                    },
+                    {
+                        "id": "off_0000AzTBAxbcKOy2loBZPE",
+                        "airline": "Alaska Airlines",
+                        "total_amount": "320.16",
+                        "total_currency": "GBP",
+                        "itinerary": "LAX→EWR 2026-01-22 08:02 → 2026-01-22 16:29",
+                        "original_amount": "320.16",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 427.89
+                    },
+                    {
+                        "id": "off_0000AzTB9xtBmyBTMLvjBW",
+                        "airline": "American Airlines",
+                        "total_amount": "328.22",
+                        "total_currency": "GBP",
+                        "itinerary": "LAX→EWR 2026-01-22 16:15 → 2026-01-23 01:05",
+                        "original_amount": "328.22",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 438.66
+                    },
+                    {
+                        "id": "off_0000AzTB9xtBmyBTMLvjBT",
+                        "airline": "Duffel Airways",
+                        "total_amount": "348.88",
+                        "total_currency": "GBP",
+                        "itinerary": "LAX→EWR 2026-01-22 16:15 → 2026-01-23 01:05",
+                        "original_amount": "348.88",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 466.27
+                    }
+                ],
+                "page": 1,
+                "page_total": 7,
+                "count": 33
+            },
+            "last_search": {
+                "origin": "LAX",
+                "destination": "EWR",
+                "date": "2026-01-22",
+                "passengers": 2,
+                "current_page": 1,
+                "total_pages": 7
+            },
+            "current_offers": [
+                {
+                    "id": "off_0000AzTBAxbcKOy2loBZP1",
+                    "airline": "Alaska Airlines",
+                    "total_amount": "252.62",
+                    "total_currency": "GBP",
+                    "itinerary": "LAX→EWR 2026-01-22 08:02 → 2026-01-22 16:29",
+                    "original_amount": "252.62",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 337.62
+                },
+                {
+                    "id": "off_0000AzTBAxbyJ5FcmuLqxE",
+                    "airline": "Alaska Airlines",
+                    "total_amount": "312.21",
+                    "total_currency": "GBP",
+                    "itinerary": "ONT→EWR 2026-01-22 06:00 → 2026-01-22 18:29",
+                    "original_amount": "312.21",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 417.26
+                },
+                {
+                    "id": "off_0000AzTBAxbcKOy2loBZPE",
+                    "airline": "Alaska Airlines",
+                    "total_amount": "320.16",
+                    "total_currency": "GBP",
+                    "itinerary": "LAX→EWR 2026-01-22 08:02 → 2026-01-22 16:29",
+                    "original_amount": "320.16",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 427.89
+                },
+                {
+                    "id": "off_0000AzTB9xtBmyBTMLvjBW",
+                    "airline": "American Airlines",
+                    "total_amount": "328.22",
+                    "total_currency": "GBP",
+                    "itinerary": "LAX→EWR 2026-01-22 16:15 → 2026-01-23 01:05",
+                    "original_amount": "328.22",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 438.66
+                },
+                {
+                    "id": "off_0000AzTB9xtBmyBTMLvjBT",
+                    "airline": "Duffel Airways",
+                    "total_amount": "348.88",
+                    "total_currency": "GBP",
+                    "itinerary": "LAX→EWR 2026-01-22 16:15 → 2026-01-23 01:05",
+                    "original_amount": "348.88",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 466.27
+                }
+            ]
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "hello"
+            },
+            {
+                "role": "assistant",
+                "content": "Hi there! To help you book a flight, please tell me:\n\n• Departure city\n• Destination city\n• Departure date\n• Number of passengers\n\nFor example: \"Los Angeles to San Francisco on January 22, 2026 for 1 adult\""
+            },
+            {
+                "role": "user",
+                "content": "I want to travel from Los Angeles to New Jersey on 22 jan 2026 for 2 adults"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_wR721LkJxiYAZVBv2nkgrJyd",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"LAX\",\"destination\":\"EWR\",\"date\":\"2026-01-22\",\"passengers\":2}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzTBAxbcKOy2loBZP1\", \"airline\": \"Alaska Airlines\", \"total_amount\": \"252.62\", \"total_currency\": \"GBP\", \"itinerary\": \"LAX\\u2192EWR 2026-01-22 08:02 \\u2192 2026-01-22 16:29\", \"original_amount\": \"252.62\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 337.62}, {\"id\": \"off_0000AzTBAxbyJ5FcmuLqxE\", \"airline\": \"Alaska Airlines\", \"total_amount\": \"312.21\", \"total_currency\": \"GBP\", \"itinerary\": \"ONT\\u2192EWR 2026-01-22 06:00 \\u2192 2026-01-22 18:29\", \"original_amount\": \"312.21\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 417.26}, {\"id\": \"off_0000AzTBAxbcKOy2loBZPE\", \"airline\": \"Alaska Airlines\", \"total_amount\": \"320.16\", \"total_currency\": \"GBP\", \"itinerary\": \"LAX\\u2192EWR 2026-01-22 08:02 \\u2192 2026-01-22 16:29\", \"original_amount\": \"320.16\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 427.89}, {\"id\": \"off_0000AzTB9xtBmyBTMLvjBW\", \"airline\": \"American Airlines\", \"total_amount\": \"328.22\", \"total_currency\": \"GBP\", \"itinerary\": \"LAX\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-23 01:05\", \"original_amount\": \"328.22\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 438.66}, {\"id\": \"off_0000AzTB9xtBmyBTMLvjBT\", \"airline\": \"Duffel Airways\", \"total_amount\": \"348.88\", \"total_currency\": \"GBP\", \"itinerary\": \"LAX\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-23 01:05\", \"original_amount\": \"348.88\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 466.27}], \"page\": 1, \"page_total\": 7, \"count\": 33}",
+                "tool_call_id": "call_wR721LkJxiYAZVBv2nkgrJyd"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the lowest-priced options for 2 adults, LAX→EWR on 2026-01-22 (page 1/7):\n\n1. Alaska Airlines — 337.62 USDC — LAX→EWR 08:02 → 16:29\n2. Alaska Airlines — 417.26 USDC — ONT→EWR 06:00 → 18:29\n3. Alaska Airlines — 427.89 USDC — LAX→EWR 08:02 → 16:29\n4. American Airlines — 438.66 USDC — LAX→EWR 16:15 → 01:05 (+1 day)\n5. Duffel Airways — 466.27 USDC — LAX→EWR 16:15 → 01:05 (+1 day)\n\n---\nShowing page 1 of 7. You can jump to any page 1-7.\n\nPick 1–5, say 'next'/'back', or jump to any page (e.g., 'page 2')."
+            }
+        ]
+    },
+    "agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z::9150cca4-70e7-4ec3-8942-4458514efeb5": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true,
+            "last_tool": "request_payment",
+            "last_tool_result": {
+                "status": "payment_request_queued",
+                "message": "Payment request will be sent to user's wallet with FET and USDC options"
+            },
+            "last_search": {
+                "origin": "EWR",
+                "destination": "LAX",
+                "date": "2026-01-22",
+                "passengers": 2,
+                "current_page": 1,
+                "total_pages": 8
+            },
+            "current_offers": [
+                {
+                    "id": "off_0000AzTBVEuFqW35Y6ElrY",
+                    "airline": "Alaska Airlines",
+                    "total_amount": "234.16",
+                    "total_currency": "GBP",
+                    "itinerary": "EWR→ONT 2026-01-22 16:36 → 2026-01-22 23:56",
+                    "original_amount": "234.16",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 312.95
+                },
+                {
+                    "id": "off_0000AzTBVEvJmYtpbOjcVs",
+                    "airline": "Alaska Airlines",
+                    "total_amount": "252.62",
+                    "total_currency": "GBP",
+                    "itinerary": "EWR→LAX 2026-01-22 19:29 → 2026-01-22 22:55",
+                    "original_amount": "252.62",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 337.62
+                },
+                {
+                    "id": "off_0000AzTBVEubpCKfZCP3PS",
+                    "airline": "Alaska Airlines",
+                    "total_amount": "309.21",
+                    "total_currency": "GBP",
+                    "itinerary": "EWR→ONT 2026-01-22 16:36 → 2026-01-22 23:56",
+                    "original_amount": "309.21",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 413.26
+                },
+                {
+                    "id": "off_0000AzTBVEvJmYtpbOjcW9",
+                    "airline": "Alaska Airlines",
+                    "total_amount": "320.16",
+                    "total_currency": "GBP",
+                    "itinerary": "EWR→LAX 2026-01-22 19:29 → 2026-01-22 22:55",
+                    "original_amount": "320.16",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 427.89
+                },
+                {
+                    "id": "off_0000AzTBUFVg7H938DGmZt",
+                    "airline": "Duffel Airways",
+                    "total_amount": "323.88",
+                    "total_currency": "GBP",
+                    "itinerary": "EWR→LAX 2026-01-22 16:15 → 2026-01-22 19:05",
+                    "original_amount": "323.88",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 432.86
+                }
+            ],
+            "selected_offer_id": "off_0000AzTBUFVg7H938DGmZt",
+            "offer_details": {
+                "id": "off_0000AzTBUFVg7H938DGmZt",
+                "airline": "Duffel Airways",
+                "total_amount": "323.88",
+                "total_currency": "GBP",
+                "itinerary": "EWR→LAX 2026-01-22 16:15 → 2026-01-22 19:05",
+                "payment_required_by": "2025-10-25T14:16:18Z",
+                "bags": [
+                    {
+                        "id": "ase_0000AzTBWxl0RgwVbv4KPK",
+                        "name": "Bag",
+                        "total_amount": "20.00",
+                        "total_currency": "GBP",
+                        "original_amount": "20.00",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 26.73
+                    },
+                    {
+                        "id": "ase_0000AzTBWxl0RgwVbv4KPL",
+                        "name": "Bag",
+                        "total_amount": "20.00",
+                        "total_currency": "GBP",
+                        "original_amount": "20.00",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 26.73
+                    }
+                ],
+                "offer_passengers": [
+                    {
+                        "id": "pas_0000AzTBUFHqwg5ORKnk1q",
+                        "type": "adult"
+                    },
+                    {
+                        "id": "pas_0000AzTBUFHqwg5ORKnk1r",
+                        "type": "adult"
+                    }
+                ],
+                "original_amount": "323.88",
+                "original_currency": "GBP",
+                "total_amount_usdc": 432.86
+            },
+            "offer_passengers": [
+                {
+                    "id": "pas_0000AzTBUFHqwg5ORKnk1q",
+                    "type": "adult"
+                },
+                {
+                    "id": "pas_0000AzTBUFHqwg5ORKnk1r",
+                    "type": "adult"
+                }
+            ],
+            "payment_requested": false,
+            "payment_description": "Duffel Airways flight EWR→LAX for 2 adults on 2026-01-22"
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "use this to book a flight from New jersey to los angeles"
+            },
+            {
+                "role": "assistant",
+                "content": "To search for flights, please tell me:\n- Departure city\n- Destination city\n- Date of travel\n- Number of passengers\n\nFor example: \"New Jersey to Los Angeles on January 22, 2026 for 1 adult\"\n\nCould you please provide the date of your trip and number of travelers?"
+            },
+            {
+                "role": "user",
+                "content": "New jersey to los angeles on 22 jan for 2 adults"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_J0921SLsXlAZpxcwLJ5nWYac",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"EWR\",\"destination\":\"LAX\",\"date\":\"2024-01-22\",\"passengers\":2}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"error\": \"Duffel 422: {\\\"errors\\\":[{\\\"documentation_url\\\":\\\"https://duffel.com/docs/api/overview/response-handling\\\",\\\"source\\\":{\\\"field\\\":\\\"departure_date\\\",\\\"pointer\\\":\\\"/slices/0/departure_date\\\"},\\\"title\\\":\\\"Invalid date\\\",\\\"type\\\":\\\"validation_error\\\",\\\"message\\\":\\\"Field 'departure_date' must be after 2025-10-21\\\",\\\"code\\\":\\\"invalid_date\\\"}],\\\"meta\", \"code\": \"HTTP_ERROR\"}",
+                "tool_call_id": "call_J0921SLsXlAZpxcwLJ5nWYac"
+            },
+            {
+                "role": "assistant",
+                "content": "It looks like the departure date you entered is in the past or too soon for booking. Can you please confirm your intended travel date? For example: \"January 22, 2026\".\n\nOnce you provide a valid future date, I’ll show you available flights for 2 adults from New Jersey (EWR) to Los Angeles (LAX)."
+            },
+            {
+                "role": "user",
+                "content": "yes"
+            },
+            {
+                "role": "assistant",
+                "content": "To proceed, could you please specify your travel date in the future? For example: \"January 22, 2026.\"\n\nOnce you confirm the exact date, I’ll search for flights for 2 adults from New Jersey (EWR) to Los Angeles (LAX)."
+            },
+            {
+                "role": "user",
+                "content": "book for 2 adults on 22 jan 2026 please"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_dsGLqHtDca6pNecJYs6iqUDj",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"EWR\",\"destination\":\"LAX\",\"date\":\"2026-01-22\",\"passengers\":2}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzTBVEuFqW35Y6ElrY\", \"airline\": \"Alaska Airlines\", \"total_amount\": \"234.16\", \"total_currency\": \"GBP\", \"itinerary\": \"EWR\\u2192ONT 2026-01-22 16:36 \\u2192 2026-01-22 23:56\", \"original_amount\": \"234.16\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 312.95}, {\"id\": \"off_0000AzTBVEvJmYtpbOjcVs\", \"airline\": \"Alaska Airlines\", \"total_amount\": \"252.62\", \"total_currency\": \"GBP\", \"itinerary\": \"EWR\\u2192LAX 2026-01-22 19:29 \\u2192 2026-01-22 22:55\", \"original_amount\": \"252.62\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 337.62}, {\"id\": \"off_0000AzTBVEubpCKfZCP3PS\", \"airline\": \"Alaska Airlines\", \"total_amount\": \"309.21\", \"total_currency\": \"GBP\", \"itinerary\": \"EWR\\u2192ONT 2026-01-22 16:36 \\u2192 2026-01-22 23:56\", \"original_amount\": \"309.21\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 413.26}, {\"id\": \"off_0000AzTBVEvJmYtpbOjcW9\", \"airline\": \"Alaska Airlines\", \"total_amount\": \"320.16\", \"total_currency\": \"GBP\", \"itinerary\": \"EWR\\u2192LAX 2026-01-22 19:29 \\u2192 2026-01-22 22:55\", \"original_amount\": \"320.16\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 427.89}, {\"id\": \"off_0000AzTBUFVg7H938DGmZt\", \"airline\": \"Duffel Airways\", \"total_amount\": \"323.88\", \"total_currency\": \"GBP\", \"itinerary\": \"EWR\\u2192LAX 2026-01-22 16:15 \\u2192 2026-01-22 19:05\", \"original_amount\": \"323.88\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 432.86}], \"page\": 1, \"page_total\": 8, \"count\": 39}",
+                "tool_call_id": "call_dsGLqHtDca6pNecJYs6iqUDj"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the lowest-priced options for 2 adults, EWR→LAX on 2026-01-22 (page 1/8):\n\n1. Alaska Airlines — 312.95 USDC — EWR→ONT 2026-01-22 16:36 → 2026-01-22 23:56\n2. Alaska Airlines — 337.62 USDC — EWR→LAX 2026-01-22 19:29 → 2026-01-22 22:55\n3. Alaska Airlines — 413.26 USDC — EWR→ONT 2026-01-22 16:36 → 2026-01-22 23:56\n4. Alaska Airlines — 427.89 USDC — EWR→LAX 2026-01-22 19:29 → 2026-01-22 22:55\n5. Duffel Airways — 432.86 USDC — EWR→LAX 2026-01-22 16:15 → 2026-01-22 19:05\n\n---\nShowing page 1 of 8. You can jump to any page 1-8.\n\nPick 1–5, say 'next'/'back', or jump to any page (e.g., 'page 5')."
+            },
+            {
+                "role": "user",
+                "content": "5"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_WnZ87duiyhhS1pCfQEQuyY68",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_get_offer_with_services",
+                            "arguments": "{\"offer_id\":\"off_0000AzTBUFVg7H938DGmZt\"}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_get_offer_with_services",
+                "content": "{\"id\": \"off_0000AzTBUFVg7H938DGmZt\", \"airline\": \"Duffel Airways\", \"total_amount\": \"323.88\", \"total_currency\": \"GBP\", \"itinerary\": \"EWR\\u2192LAX 2026-01-22 16:15 \\u2192 2026-01-22 19:05\", \"payment_required_by\": \"2025-10-25T14:16:18Z\", \"bags\": [{\"id\": \"ase_0000AzTBWxl0RgwVbv4KPK\", \"name\": \"Bag\", \"total_amount\": \"20.00\", \"total_currency\": \"GBP\", \"original_amount\": \"20.00\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 26.73}, {\"id\": \"ase_0000AzTBWxl0RgwVbv4KPL\", \"name\": \"Bag\", \"total_amount\": \"20.00\", \"total_currency\": \"GBP\", \"original_amount\": \"20.00\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 26.73}], \"offer_passengers\": [{\"id\": \"pas_0000AzTBUFHqwg5ORKnk1q\", \"type\": \"adult\"}, {\"id\": \"pas_0000AzTBUFHqwg5ORKnk1r\", \"type\": \"adult\"}], \"original_amount\": \"323.88\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 432.86}",
+                "tool_call_id": "call_WnZ87duiyhhS1pCfQEQuyY68"
+            },
+            {
+                "role": "assistant",
+                "content": "✅ Selected: Duffel Airways — 432.86 USDC — EWR→LAX 2026-01-22 16:15 → 19:05\n\nNext, please provide passenger details:\n\n• Title (Mr/Ms/Mrs/Miss/Dr/Mx)\n\n• Full name  \n\n• Date of birth (YYYY-MM-DD)\n\n• Gender (M/F/X)\n\n• Email address\n\n• Phone number (with country code, e.g., +1234567890)\n\nPlease provide this for each of the 2 adults."
+            },
+            {
+                "role": "user",
+                "content": "Mr. Abhi Gangani 1997-01-31, male, abhi.gangani@fetch.ai and +447766776655"
+            },
+            {
+                "role": "assistant",
+                "content": "Thank you! I have the details for the first passenger. Could you please provide the same information for the second adult:\n\n• Title (Mr/Ms/Mrs/Miss/Dr/Mx)  \n• Full name  \n• Date of birth (YYYY-MM-DD)  \n• Gender (M/F/X)  \n• Email address  \n• Phone number (with country code, e.g., +1234567890)\n\nOnce I have both passengers’ details, we’ll proceed to payment."
+            },
+            {
+                "role": "user",
+                "content": "Mr. Abhimanyu Gangani 1997-02-15, male, abhi.gangani@fetch.ai and +447766776655"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_QDzKFAoHcPrgPxhKFsf6SnXM",
+                        "type": "function",
+                        "function": {
+                            "name": "request_payment",
+                            "arguments": "{\"currency\":\"USDC\",\"amount\":432.86,\"description\":\"Duffel Airways flight EWR→LAX for 2 adults on 2026-01-22\"}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "request_payment",
+                "content": "{\"status\": \"payment_request_queued\", \"message\": \"Payment request will be sent to user's wallet with FET and USDC options\"}",
+                "tool_call_id": "call_QDzKFAoHcPrgPxhKFsf6SnXM"
+            },
+            {
+                "role": "assistant",
+                "content": ""
+            }
+        ]
+    },
+    "passenger_1:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:9150cca4-70e7-4ec3-8942-4458514efeb5": {
+        "title": "mr",
+        "given_name": "Abhimanyu",
+        "family_name": "Gangani",
+        "born_on": "1997-02-15",
+        "gender": "M",
+        "email": "abhi.gangani@fetch.ai",
+        "phone_number": "+447766776655"
+    },
+    "selected_offer_id:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:9150cca4-70e7-4ec3-8942-4458514efeb5": "off_0000AzTBUFVg7H938DGmZt",
+    "offer_passengers:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:9150cca4-70e7-4ec3-8942-4458514efeb5": [
+        {
+            "id": "pas_0000AzTBUFHqwg5ORKnk1q",
+            "type": "adult"
+        },
+        {
+            "id": "pas_0000AzTBUFHqwg5ORKnk1r",
+            "type": "adult"
+        }
+    ],
+    "payment_requested:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:9150cca4-70e7-4ec3-8942-4458514efeb5": true,
+    "commit_eyJhbGciOiJFUzI1NiIsImtpZCI6IjAiLCJ0eXAiOiJwYXkrSldUIn0.eyJ2ZXIiOiIxLjAiLCJlbnYiOiJwcm9kdWN0aW9uIiwiYnRnIjoicGF5LWZldGNoMTlyeTB2ZXl2OTNlajZ6N3Jyamc5bTV4djc4NHh1OTBmZmFxZDdzIiwic3NpIjoiMmNhYjBmYTMtYzE4MS00NTVhLWFkNDQtOWVhNzA2OTY5OGJjIiwic2NvcGVzIjpbXSwidmFsdWUiOiIxMDAwIiwiYW1vdW50IjoiMC4wMDEiLCJjdXIiOiJVU0QiLCJzdHAiOiJDT0lOIiwic3RpIjp7InR5cGUiOiJVU0RDIn0sInNwcyI6IkNVU1RPTSIsImlhdCI6MTc2MTE0MjY2NiwiaXNzIjoiaHR0cHM6Ly9hcHAuc2t5ZmlyZS54eXoiLCJqdGkiOiJmZWE5OTI0My00MzgwLTQ5NGUtYjZiOC03MzQwZTE5MWIxYjEiLCJhdWQiOiJkOTA2MGJhMi1kYzczLTRjYTktYjI1NS1iNTJjZjI0Yjg0NWYiLCJzdWIiOiIwZTFmZmNmMS1kNTNjLTRjYWEtOTYwYi1kZmM5ZjM0NzU4OGUiLCJleHAiOjE3NjExNDI5NTl9.QqHWTfWhf-fUxSjAr77nFcDj8Q33PG3XpKdxHYplpZ2IAfSsZjpFP6E2YIwtag_08RvRNvSeI2sivrfwS3s9Lw:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:9150cca4-70e7-4ec3-8942-4458514efeb5": true,
+    "paid:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:9150cca4-70e7-4ec3-8942-4458514efeb5": true,
+    "agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z::711f71d3-426f-48f4-9949-7c4540d87711": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true,
+            "last_tool": "list_orders",
+            "last_tool_result": {
+                "status": "list_orders_requested",
+                "message": "Order list will be retrieved from storage"
+            },
+            "last_search": {
+                "origin": "SFO",
+                "destination": "LAX",
+                "date": "2026-01-22",
+                "passengers": 1,
+                "current_page": 1,
+                "total_pages": 32
+            },
+            "current_offers": [
+                {
+                    "id": "off_0000AzTBnRZ7gzdEYJcj6b",
+                    "airline": "Iberia",
+                    "total_amount": "48.72",
+                    "total_currency": "GBP",
+                    "itinerary": "SFO→LAX 2026-01-22 16:15 → 2026-01-22 17:33",
+                    "original_amount": "48.72",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 65.11
+                },
+                {
+                    "id": "off_0000AzTBnRY3kwmUV17sS0",
+                    "airline": "British Airways",
+                    "total_amount": "49.37",
+                    "total_currency": "GBP",
+                    "itinerary": "SFO→LAX 2026-01-22 16:15 → 2026-01-22 17:33",
+                    "original_amount": "49.37",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 65.98
+                },
+                {
+                    "id": "off_0000AzTBnRY3kwmUV17sS3",
+                    "airline": "American Airlines",
+                    "total_amount": "49.50",
+                    "total_currency": "GBP",
+                    "itinerary": "SFO→LAX 2026-01-22 16:15 → 2026-01-22 17:33",
+                    "original_amount": "49.50",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 66.16
+                },
+                {
+                    "id": "off_0000AzTBnRY3kwmUV17sRj",
+                    "airline": "Duffel Airways",
+                    "total_amount": "49.80",
+                    "total_currency": "GBP",
+                    "itinerary": "SFO→LAX 2026-01-22 16:15 → 2026-01-22 17:33",
+                    "original_amount": "49.80",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 66.56
+                },
+                {
+                    "id": "off_0000AzTBnXDMgnnC4ZUR2m",
+                    "airline": "Alaska Airlines",
+                    "total_amount": "58.76",
+                    "total_currency": "GBP",
+                    "itinerary": "SFO→LAX 2026-01-22 14:56 → 2026-01-22 16:27",
+                    "original_amount": "58.76",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 78.53
+                }
+            ],
+            "selected_offer_id": "off_0000AzTBnRY3kwmUV17sS0",
+            "offer_details": {
+                "id": "off_0000AzTBnRY3kwmUV17sS0",
+                "airline": "British Airways",
+                "total_amount": "49.37",
+                "total_currency": "GBP",
+                "itinerary": "SFO→LAX 2026-01-22 16:15 → 2026-01-22 17:33",
+                "payment_required_by": "2025-10-25T14:19:46Z",
+                "bags": [
+                    {
+                        "id": "ase_0000AzTBpimH0qUOaoVEH3",
+                        "name": "Bag",
+                        "total_amount": "20.00",
+                        "total_currency": "GBP",
+                        "original_amount": "20.00",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 26.73
+                    }
+                ],
+                "offer_passengers": [
+                    {
+                        "id": "pas_0000AzTBnRJsbfRFn2UYLK",
+                        "type": "adult"
+                    }
+                ],
+                "original_amount": "49.37",
+                "original_currency": "GBP",
+                "total_amount_usdc": 65.98
+            },
+            "offer_passengers": [
+                {
+                    "id": "pas_0000AzTBnRJsbfRFn2UYLK",
+                    "type": "adult"
+                }
+            ],
+            "payment_requested": false,
+            "payment_description": "Flight SFO to LAX on 2026-01-22 for Mr. Abhi Gangani with British Airways",
+            "list_orders_requested": false
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "Book a flight from New Jersey to Los Angeles"
+            },
+            {
+                "role": "assistant",
+                "content": "To search for flights, please tell me:\n- Departure city\n- Destination city\n- Departure date\n- Number of passengers\n\nFor example: \"New York to Los Angeles on January 22, 2026 for 1 adult\"\n\nSince New Jersey doesn't have a major international airport, would you like to depart from New York (JFK), which is commonly used for flights from that area? If so, please provide your travel date and the number of passengers."
+            },
+            {
+                "role": "user",
+                "content": "San fransisco to Los angeles for 1 adult on 22 jan 2026"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_j0lySCFZQirWAqTNlMnc6QwI",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"SFO\",\"destination\":\"LAX\",\"date\":\"2026-01-22\",\"passengers\":1}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzTBnRZ7gzdEYJcj6b\", \"airline\": \"Iberia\", \"total_amount\": \"48.72\", \"total_currency\": \"GBP\", \"itinerary\": \"SFO\\u2192LAX 2026-01-22 16:15 \\u2192 2026-01-22 17:33\", \"original_amount\": \"48.72\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 65.11}, {\"id\": \"off_0000AzTBnRY3kwmUV17sS0\", \"airline\": \"British Airways\", \"total_amount\": \"49.37\", \"total_currency\": \"GBP\", \"itinerary\": \"SFO\\u2192LAX 2026-01-22 16:15 \\u2192 2026-01-22 17:33\", \"original_amount\": \"49.37\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 65.98}, {\"id\": \"off_0000AzTBnRY3kwmUV17sS3\", \"airline\": \"American Airlines\", \"total_amount\": \"49.50\", \"total_currency\": \"GBP\", \"itinerary\": \"SFO\\u2192LAX 2026-01-22 16:15 \\u2192 2026-01-22 17:33\", \"original_amount\": \"49.50\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 66.16}, {\"id\": \"off_0000AzTBnRY3kwmUV17sRj\", \"airline\": \"Duffel Airways\", \"total_amount\": \"49.80\", \"total_currency\": \"GBP\", \"itinerary\": \"SFO\\u2192LAX 2026-01-22 16:15 \\u2192 2026-01-22 17:33\", \"original_amount\": \"49.80\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 66.56}, {\"id\": \"off_0000AzTBnXDMgnnC4ZUR2m\", \"airline\": \"Alaska Airlines\", \"total_amount\": \"58.76\", \"total_currency\": \"GBP\", \"itinerary\": \"SFO\\u2192LAX 2026-01-22 14:56 \\u2192 2026-01-22 16:27\", \"original_amount\": \"58.76\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 78.53}], \"page\": 1, \"page_total\": 32, \"count\": 156}",
+                "tool_call_id": "call_j0lySCFZQirWAqTNlMnc6QwI"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the lowest-priced options for 1 adult, SFO→LAX on 2026-01-22 (page 1/32):\n\n1. Iberia — 65.11 USDC — SFO→LAX 16:15→17:33\n2. British Airways — 65.98 USDC — SFO→LAX 16:15→17:33\n3. American Airlines — 66.16 USDC — SFO→LAX 16:15→17:33\n4. Duffel Airways — 66.56 USDC — SFO→LAX 16:15→17:33\n5. Alaska Airlines — 78.53 USDC — SFO→LAX 14:56→16:27\n\n---\nShowing page 1 of 32. You can jump to any page 1-32.\n\nPick 1–5, say 'next'/'back', or jump to any page (e.g., 'page 5')."
+            },
+            {
+                "role": "user",
+                "content": "2"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_dikMJYwZiYrfnKUIpVbmiH9p",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_get_offer_with_services",
+                            "arguments": "{\"offer_id\":\"off_0000AzTBnRY3kwmUV17sS0\"}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_get_offer_with_services",
+                "content": "{\"id\": \"off_0000AzTBnRY3kwmUV17sS0\", \"airline\": \"British Airways\", \"total_amount\": \"49.37\", \"total_currency\": \"GBP\", \"itinerary\": \"SFO\\u2192LAX 2026-01-22 16:15 \\u2192 2026-01-22 17:33\", \"payment_required_by\": \"2025-10-25T14:19:46Z\", \"bags\": [{\"id\": \"ase_0000AzTBpimH0qUOaoVEH3\", \"name\": \"Bag\", \"total_amount\": \"20.00\", \"total_currency\": \"GBP\", \"original_amount\": \"20.00\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 26.73}], \"offer_passengers\": [{\"id\": \"pas_0000AzTBnRJsbfRFn2UYLK\", \"type\": \"adult\"}], \"original_amount\": \"49.37\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 65.98}",
+                "tool_call_id": "call_dikMJYwZiYrfnKUIpVbmiH9p"
+            },
+            {
+                "role": "assistant",
+                "content": "✅ Selected: British Airways — 65.98 USDC — SFO→LAX 2026-01-22 16:15→17:33\n\nNext, please provide passenger details:\n\n• Title (Mr/Ms/Mrs/Miss/Dr/Mx)\n\n• Full name  \n\n• Date of birth (YYYY-MM-DD)\n\n• Gender (M/F/X)\n\n• Email address\n\n• Phone number (with country code, e.g., +1234567890)\n\nExample: \nMr. John Smith\nborn 1990-05-15\nmale\njohn@example.com\n+1234567890"
+            },
+            {
+                "role": "user",
+                "content": "Mr. Abhi Gangani 1997-01-31, male, abhi.gangani@fetch.ai and +447766776655"
+            },
+            {
+                "role": "assistant",
+                "content": "Thank you! Here’s what I have:\n\n- Title: Mr.\n- Name: Abhi Gangani\n- Date of Birth: 1997-01-31\n- Gender: Male\n- Email: abhi.gangani@fetch.ai\n- Phone: +447766776655\n\nProceeding to payment for booking your flight.",
+                "tool_calls": [
+                    {
+                        "id": "call_BdUfeMqfgTxzNwzEu0m82TPz",
+                        "type": "function",
+                        "function": {
+                            "name": "request_payment",
+                            "arguments": "{\"currency\":\"USDC\",\"amount\":65.98,\"description\":\"Flight SFO to LAX on 2026-01-22 for Mr. Abhi Gangani with British Airways\"}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "request_payment",
+                "content": "{\"status\": \"payment_request_queued\", \"message\": \"Payment request will be sent to user's wallet with FET and USDC options\"}",
+                "tool_call_id": "call_BdUfeMqfgTxzNwzEu0m82TPz"
+            },
+            {
+                "role": "assistant",
+                "content": ""
+            },
+            {
+                "role": "user",
+                "content": "list my orders"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_4fhQM8Gl1h8CCW5xVZy6P5bP",
+                        "type": "function",
+                        "function": {
+                            "name": "list_orders",
+                            "arguments": "{}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "list_orders",
+                "content": "{\"status\": \"list_orders_requested\", \"message\": \"Order list will be retrieved from storage\"}",
+                "tool_call_id": "call_4fhQM8Gl1h8CCW5xVZy6P5bP"
+            },
+            {
+                "role": "assistant",
+                "content": "📋 Your Bookings:\n\n(Retrieving your current bookings. Please wait a moment if no orders appear instantly.)\n\nIf you have any bookings, they’ll be shown here shortly. To cancel a booking, say \"cancel ord_xxxxx\" once your orders are listed."
+            }
+        ]
+    },
+    "passenger_1:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:711f71d3-426f-48f4-9949-7c4540d87711": {
+        "given_name": "Abhi",
+        "family_name": "Gangani",
+        "title": "mr",
+        "born_on": "1997-01-31",
+        "gender": "M",
+        "email": "abhi.gangani@fetch.ai",
+        "phone_number": "+447766776655",
+        "id": "pas_0000AzTBnRJsbfRFn2UYLK"
+    },
+    "selected_offer_id:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:711f71d3-426f-48f4-9949-7c4540d87711": "off_0000AzTBnRY3kwmUV17sS0",
+    "offer_passengers:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:711f71d3-426f-48f4-9949-7c4540d87711": [
+        {
+            "id": "pas_0000AzTBnRJsbfRFn2UYLK",
+            "type": "adult"
+        }
+    ],
+    "payment_requested:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:711f71d3-426f-48f4-9949-7c4540d87711": true,
+    "commit_eyJhbGciOiJFUzI1NiIsImtpZCI6IjAiLCJ0eXAiOiJwYXkrSldUIn0.eyJ2ZXIiOiIxLjAiLCJlbnYiOiJwcm9kdWN0aW9uIiwiYnRnIjoicGF5LWZldGNoMTlyeTB2ZXl2OTNlajZ6N3Jyamc5bTV4djc4NHh1OTBmZmFxZDdzIiwic3NpIjoiMmNhYjBmYTMtYzE4MS00NTVhLWFkNDQtOWVhNzA2OTY5OGJjIiwic2NvcGVzIjpbXSwidmFsdWUiOiIxMDAwIiwiYW1vdW50IjoiMC4wMDEiLCJjdXIiOiJVU0QiLCJzdHAiOiJDT0lOIiwic3RpIjp7InR5cGUiOiJVU0RDIn0sInNwcyI6IkNVU1RPTSIsImlhdCI6MTc2MTE0Mjg1OCwiaXNzIjoiaHR0cHM6Ly9hcHAuc2t5ZmlyZS54eXoiLCJqdGkiOiIxMmRlMDQ5Ny1kOGZjLTQxYmEtOTBiNy1hYjAwMmNlMTE5N2EiLCJhdWQiOiJkOTA2MGJhMi1kYzczLTRjYTktYjI1NS1iNTJjZjI0Yjg0NWYiLCJzdWIiOiIwZTFmZmNmMS1kNTNjLTRjYWEtOTYwYi1kZmM5ZjM0NzU4OGUiLCJleHAiOjE3NjExNDMxMzd9.qlWSTrp8-EwtG6j6awpyuAG_0UCli4c-QXPOQEIWePzw1XYLXI_pP2voUOl_Y5T6f1KUUMcE_sI70GvNHug5Vg:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:711f71d3-426f-48f4-9949-7c4540d87711": true,
+    "paid:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:711f71d3-426f-48f4-9949-7c4540d87711": true,
+    "booked_offers:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z": [
+        {
+            "timestamp": "2025-10-22T14:21:07.758724+00:00",
+            "session": "711f71d3-426f-48f4-9949-7c4540d87711",
+            "method": "skyfire",
+            "currency": "USDC",
+            "amount": "0.001",
+            "tx": "eyJhbGciOiJFUzI1NiIsImtpZCI6IjAiLCJ0eXAiOiJwYXkrSldUIn0.eyJ2ZXIiOiIxLjAiLCJlbnYiOiJwcm9kdWN0aW9uIiwiYnRnIjoicGF5LWZldGNoMTlyeTB2ZXl2OTNlajZ6N3Jyamc5bTV4djc4NHh1OTBmZmFxZDdzIiwic3NpIjoiMmNhYjBmYTMtYzE4MS00NTVhLWFkNDQtOWVhNzA2OTY5OGJjIiwic2NvcGVzIjpbXSwidmFsdWUiOiIxMDAwIiwiYW1vdW50IjoiMC4wMDEiLCJjdXIiOiJVU0QiLCJzdHAiOiJDT0lOIiwic3RpIjp7InR5cGUiOiJVU0RDIn0sInNwcyI6IkNVU1RPTSIsImlhdCI6MTc2MTE0Mjg1OCwiaXNzIjoiaHR0cHM6Ly9hcHAuc2t5ZmlyZS54eXoiLCJqdGkiOiIxMmRlMDQ5Ny1kOGZjLTQxYmEtOTBiNy1hYjAwMmNlMTE5N2EiLCJhdWQiOiJkOTA2MGJhMi1kYzczLTRjYTktYjI1NS1iNTJjZjI0Yjg0NWYiLCJzdWIiOiIwZTFmZmNmMS1kNTNjLTRjYWEtOTYwYi1kZmM5ZjM0NzU4OGUiLCJleHAiOjE3NjExNDMxMzd9.qlWSTrp8-EwtG6j6awpyuAG_0UCli4c-QXPOQEIWePzw1XYLXI_pP2voUOl_Y5T6f1KUUMcE_sI70GvNHug5Vg",
+            "order_id": "ord_0000AzTBufhhLo1xtpUVj5",
+            "booking_ref": "RKFMSZ",
+            "total": "65.98 USDC"
+        }
+    ],
+    "order_placed:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:711f71d3-426f-48f4-9949-7c4540d87711": true
+}

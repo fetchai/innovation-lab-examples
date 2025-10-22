@@ -1,0 +1,88 @@
+version: "3.9"
+
+services:
+  duffel-flights-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: duffel-flights-agent:latest
+    container_name: duffel-flights-agent
+    restart: unless-stopped
+    
+    # Environment variables from .env file
+    env_file:
+      - .env
+    
+    # Override specific environment variables
+    environment:
+      # Agent Configuration
+      - AGENT_PORT=8044
+      - AGENT_NAME=DuffelFlightsAgent
+      
+      # OpenAI Configuration
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - OPENAI_TEMPERATURE=${OPENAI_TEMPERATURE:-0.2}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_PROJECT=${OPENAI_PROJECT}
+      
+      # Duffel API
+      - DUFFEL_TOKEN=${DUFFEL_TOKEN}
+      
+      # Currency API
+      - FREECURRENCYAPI_KEY=${FREECURRENCYAPI_KEY}
+      
+      # FET Configuration
+      - FET_USD_PRICE=${FET_USD_PRICE:-1.20}
+      
+      # Agentverse
+      - AGENTVERSE_URL=${AGENTVERSE_URL:-https://agentverse.ai}
+      - AGENT_MAILBOX_KEY=${AGENT_MAILBOX_KEY}
+      
+      # Skyfire Configuration
+      - SKYFIRE_ENV=${SKYFIRE_ENV:-production}
+      - SELLER_ACCOUNT_ID=${SELLER_ACCOUNT_ID}
+      - SELLER_SERVICE_ID=${SELLER_SERVICE_ID}
+      - SKYFIRE_API_KEY=${SKYFIRE_API_KEY}
+      
+      # SMTP Configuration (optional)
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_FROM=${SMTP_FROM}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Flight Booking Team}
+      
+      # Database
+      - CHECKPOINT_DB=/app/state/duffel_agent.sqlite
+    
+    # Port mapping
+    ports:
+      - "8044:8044"
+    
+    # Volume mounts
+    volumes:
+      - ./state:/app/state
+      - ./.env:/app/.env:ro
+    
+    # Networking
+    networks:
+      - duffel-network
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8044/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  duffel-network:
+    driver: bridge

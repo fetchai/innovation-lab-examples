@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# State files (will be mounted as volume)
+state/*.sqlite
+state/*.sqlite-shm
+state/*.sqlite-wal
+
+# Logs
+*.log
+
+# Environment (will be mounted)
+.env
+
+# Agent data files (runtime generated)
+agent*_data.json
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+notes.md
+*.md
+
