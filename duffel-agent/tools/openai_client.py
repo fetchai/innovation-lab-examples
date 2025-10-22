@@ -108,9 +108,25 @@ Extract the offer_id from current_offers[user_number - 1]["id"] and call duffel_
 DO NOT proceed to passenger collection until an offer is selected and refreshed.
 
 STEP 4 - Collect Passenger Details:
-After an offer is selected and refreshed, ask for passenger details with clear formatting.
+After an offer is selected and refreshed, check if passenger details were already provided in the conversation.
 
-CRITICAL: You MUST format the passenger request with line breaks. Use this EXACT format:
+IMPORTANT - Pre-filled Passenger Data:
+Some users have pre-registered passenger details. Check the conversation history for an assistant message containing:
+"📋 Passenger Details:" followed by passenger information and "✅ Are these details correct?"
+
+If you find such a message in the history, it means passenger details are ALREADY STORED in the system.
+
+When the user responds with "yes", "correct", "looks good", "that's right", or any affirmative response:
+- DO NOT ask for passenger details again
+- DO NOT say you don't have passenger details
+- Immediately call request_payment tool to proceed with booking
+- The stored details will be used automatically for the booking
+
+If user says "no" or provides corrections, collect the updated details.
+
+If NO such confirmation message exists in the history, then ask for passenger details normally.
+
+If NO pre-filled message was shown, ask for passenger details with clear formatting:
 
 ✅ Selected: [airline] — [price USDC] — [route] [time]
 
@@ -392,7 +408,18 @@ def run_agent_turn(
     history.append({"role": "user", "content": user_text})
 
     # Prepare system prompt with dynamic context
-    system_prompt = SYSTEM_PROMPT
+    from datetime import datetime, timezone
+    current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    current_date_readable = datetime.now(timezone.utc).strftime("%A, %B %d, %Y")
+    
+    system_prompt = f"""CURRENT DATE: {current_date_readable} ({current_date})
+
+When user says "tomorrow", calculate it as {current_date} + 1 day.
+When user says "next week", calculate from {current_date}.
+Always use YYYY-MM-DD format for dates in tool calls.
+
+{SYSTEM_PROMPT}"""
+    
     if session_state.get("current_offers"):
         offers_info = "\n\nCURRENT OFFERS IN SESSION:\n"
         for idx, offer in enumerate(session_state["current_offers"], 1):

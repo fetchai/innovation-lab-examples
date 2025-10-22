@@ -27,6 +27,53 @@ from uagents_core.contrib.protocols.chat import (
 # Protocol initialization
 chat_proto = Protocol(spec=chat_protocol_spec)
 
+# Known passenger profiles (auto-fill based on sender address)
+KNOWN_PASSENGERS = {
+    "agent1qwjam26wx4y45fv44gm09q5znn8kfvy66nvan6ggg9ax2fhw4n0e6sxzkr9": {
+        "title": "mr",
+        "given_name": "Attila",
+        "family_name": "Bagoly",
+        "born_on": "1996-10-10",
+        "gender": "M",
+        "email": "attila.bagoly@fetch.ai",
+        "phone_number": "+13433232242",
+        "passport_number": "XY139503",
+    },
+    "agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z": {
+        "title": "mr",
+        "given_name": "Abhi",
+        "family_name": "Gangani",
+        "born_on": "1997-01-31",
+        "gender": "M",
+        "email": "abhi.gangani@fetch.ai",
+        "phone_number": "+447788998877",
+    }
+}
+
+def _get_known_passenger(sender: str) -> Optional[Dict[str, Any]]:
+    """Get pre-filled passenger details for known agent addresses."""
+    return KNOWN_PASSENGERS.get(sender)
+
+def _format_passenger_confirmation(passenger: Dict[str, Any]) -> str:
+    """Format passenger details for user confirmation."""
+    lines = ["📋 Passenger Details:"]
+    if passenger.get("title"):
+        lines.append(f"• Title: {passenger['title'].upper()}")
+    if passenger.get("given_name") and passenger.get("family_name"):
+        lines.append(f"• Name: {passenger['given_name']} {passenger['family_name']}")
+    if passenger.get("born_on"):
+        lines.append(f"• Date of Birth: {passenger['born_on']}")
+    if passenger.get("gender"):
+        gender_map = {"M": "Male", "F": "Female", "X": "Other"}
+        lines.append(f"• Gender: {gender_map.get(passenger['gender'], passenger['gender'])}")
+    if passenger.get("phone_number"):
+        lines.append(f"• Phone: {passenger['phone_number']}")
+    if passenger.get("email"):
+        lines.append(f"• Email: {passenger['email']}")
+    if passenger.get("passport_number"):
+        lines.append(f"• Passport: {passenger['passport_number']}")
+    return "\n".join(lines)
+
 def _get_session_key(sender: str, session_id: str) -> str:
     """Generate a unique storage key for sender + session."""
     return f"{sender}::{session_id}"
@@ -65,6 +112,7 @@ async def _ack(ctx: Context, sender: str, msg: ChatMessage) -> None:
 
 @chat_proto.on_message(ChatMessage)
 async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
+    ctx.logger.info(f"Sender address: {sender}")
     await _ack(ctx, sender, msg)
 
     text = _extract_text(msg)
@@ -145,47 +193,79 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         _save_session_data(ctx, sender, session_id, session_data)
         return
 
+    # Auto-fill passenger details for known users after offer selection
+    if new_state.get("selected_offer_id") and not state.get("passenger_autofilled"):
+        known_passenger = _get_known_passenger(sender)
+        if known_passenger:
+            # Store the known passenger details
+            ctx.storage.set(f"passenger_1:{sender}:{session_id}", known_passenger)
+            ctx.logger.info(f"Auto-filled passenger details for known user: {sender}")
+            
+            # Format confirmation message
+            confirmation_msg = _format_passenger_confirmation(known_passenger)
+            confirmation_msg += "\n\n✅ Are these details correct? Say 'yes' to proceed with payment, or provide updated details."
+            
+            # Add confirmation message to history so LLM can see it
+            history.append({
+                "role": "assistant",
+                "content": confirmation_msg
+            })
+            session_data["history"] = history
+            
+            # Send confirmation
+            await ctx.send(sender, ChatMessage(content=[TextContent(type="text", text=confirmation_msg)]))
+            
+            # Mark as autofilled and set flag for LLM
+            state["passenger_autofilled"] = True
+            state["passenger_details_confirmed"] = False  # Will be set to True when user says yes
+            session_data["state"] = state
+            _save_session_data(ctx, sender, session_id, session_data)
+            return
+
     # Check if payment was requested by the LLM
     if new_state.get("payment_requested"):
         # Store passenger and offer data for payment protocol to use
         try:
-            # Extract passenger data from conversation history
-            passenger_data = {}
-            for msg in updated_history:
-                if msg.get("role") == "user":
-                    content = msg.get("content", "")
-                    # Try to extract passenger details from user messages
-                    import re
-                    # Title
-                    title_match = re.search(r'\b(mr|ms|mrs|miss|dr|mx)\.?\s', content, re.I)
-                    if title_match:
-                        passenger_data["title"] = title_match.group(1).lower()
-                    # Names
-                    name_match = re.search(r'\b([A-Z][a-z]+)\s+([A-Z][a-z]+)\b', content)
-                    if name_match:
-                        passenger_data["given_name"] = name_match.group(1)
-                        passenger_data["family_name"] = name_match.group(2)
-                    # DOB
-                    dob_match = re.search(r'\b(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b', content)
-                    if dob_match:
-                        passenger_data["born_on"] = dob_match.group(0)
-                    # Gender
-                    gender_match = re.search(r'\b(male|female|m|f|x)\b', content, re.I)
-                    if gender_match:
-                        g = gender_match.group(1).upper()[0]
-                        passenger_data["gender"] = g if g in ['M', 'F', 'X'] else 'M'
-                    # Email
-                    email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', content)
-                    if email_match:
-                        passenger_data["email"] = email_match.group(0)
-                    # Phone (must start with + and have 10+ digits, or be clearly a phone number)
-                    # Avoid matching dates like 1997-01-31
-                    phone_match = re.search(r'\+\d{10,}|\+\d[\d\s-]{9,}', content)
-                    if phone_match:
-                        phone_raw = phone_match.group(0).replace(' ', '').replace('-', '')
-                        # Only store if it doesn't look like a date (not in format like 19970131)
-                        if not (len(phone_raw) == 8 and phone_raw.startswith(('19', '20'))):
-                            passenger_data["phone_number"] = phone_raw
+            # Check if we have known passenger data first
+            known_passenger = _get_known_passenger(sender)
+            if known_passenger:
+                passenger_data = known_passenger.copy()
+            else:
+                # Extract passenger data from conversation history
+                passenger_data = {}
+                for msg in updated_history:
+                    if msg.get("role") == "user":
+                        content = msg.get("content", "")
+                        # Title
+                        title_match = re.search(r'\b(mr|ms|mrs|miss|dr|mx)\.?\s', content, re.I)
+                        if title_match:
+                            passenger_data["title"] = title_match.group(1).lower()
+                        # Names
+                        name_match = re.search(r'\b([A-Z][a-z]+)\s+([A-Z][a-z]+)\b', content)
+                        if name_match:
+                            passenger_data["given_name"] = name_match.group(1)
+                            passenger_data["family_name"] = name_match.group(2)
+                        # DOB
+                        dob_match = re.search(r'\b(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b', content)
+                        if dob_match:
+                            passenger_data["born_on"] = dob_match.group(0)
+                        # Gender
+                        gender_match = re.search(r'\b(male|female|m|f|x)\b', content, re.I)
+                        if gender_match:
+                            g = gender_match.group(1).upper()[0]
+                            passenger_data["gender"] = g if g in ['M', 'F', 'X'] else 'M'
+                        # Email
+                        email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', content)
+                        if email_match:
+                            passenger_data["email"] = email_match.group(0)
+                        # Phone (must start with + and have 10+ digits, or be clearly a phone number)
+                        # Avoid matching dates like 1997-01-31
+                        phone_match = re.search(r'\+\d{10,}|\+\d[\d\s-]{9,}', content)
+                        if phone_match:
+                            phone_raw = phone_match.group(0).replace(' ', '').replace('-', '')
+                            # Only store if it doesn't look like a date (not in format like 19970131)
+                            if not (len(phone_raw) == 8 and phone_raw.startswith(('19', '20'))):
+                                passenger_data["phone_number"] = phone_raw
             
             # Store passenger and offer data using the same keys as payment_proto expects
             if passenger_data:

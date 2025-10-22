@@ -32,7 +32,7 @@ from tools.skyfire import get_skyfire_service_id
 AGENT_NAME = os.getenv("AGENT_NAME", "DuffelFlightsAgent")
 AGENT_PORT = int(os.getenv("AGENT_PORT", "8030"))
 AGENTVERSE_URL = os.getenv("AGENTVERSE_URL", "https://agentverse.ai")
-AGENT_SEED = os.getenv("AGENT_SEED", "Duffel_agent_flights_seed_live_Innovation_Lab")
+AGENT_SEED = os.getenv("AGENT_SEED", "Duffel_agent_flights_seed_live_1")
 
 # Create the agent instance
 agent = Agent(
