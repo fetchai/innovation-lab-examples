@@ -35,11 +35,6 @@ python --version
 
 ### Option A: Use the Root `.env` File
 
-If you're working from the main `caltrain` directory:
-
-```bash
-cd /Users/radhikadanda/caltrain
-
 # Edit the .env file
 nano .env  # or use your preferred editor
 
@@ -123,7 +118,7 @@ You should see:
 ### Via ASI One (Web Interface)
 
 1. Keep your agent running
-2. Open [https://asi.one](https://asi.one) in your browser
+2. Open [https://asi1.ai](https://asi1.ai) in your browser
 3. Copy your agent address from the terminal
 4. Paste it in ASI One search
 5. Start chatting!
@@ -231,27 +226,7 @@ source venv/bin/activate
 # Reinstall dependencies
 pip install -r requirements.txt
 
-# Verify installation
-pip list | grep anthropic
-pip list | grep uagents
-```
 
-## 💰 API Costs
-
-### Free Credits
-New Anthropic accounts typically receive free credits to get started!
-
-### Pricing (Claude 3.5 Sonnet)
-- **Input:** $3 per 1M tokens
-- **Output:** $15 per 1M tokens
-
-### Cost Per Message (Typical)
-- ~100 tokens input
-- ~200 tokens output
-- **≈ $0.0003 per message** (extremely affordable!)
-
-### Monitor Usage
-Check your usage at [console.anthropic.com](https://console.anthropic.com/settings/usage)
 
 ## 🎓 Next Steps
 
