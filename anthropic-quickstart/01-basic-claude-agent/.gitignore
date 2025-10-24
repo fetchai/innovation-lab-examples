@@ -1,0 +1,12 @@
+# Environment
+.env
+venv/
+__pycache__/
+*.pyc
+
+# Agent data
+*_data.json
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,40 @@
+{
+  "servers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "description": "GitHub repository access - search repos, read files, create issues",
+      "enabled": true
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "env": {},
+      "description": "Local filesystem access - read/write files in allowed directories",
+      "enabled": false
+    },
+    "sqlite": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sqlite", "--db-path", "./data.db"],
+      "env": {},
+      "description": "SQLite database access - query and manage local databases",
+      "enabled": false
+    },
+    "airbnb": {
+      "command": "npx",
+      "args": ["-y", "@openbnb/mcp-server-airbnb"],
+      "env": {},
+      "description": "Airbnb search and listings - find properties and get details",
+      "enabled": true
+    }
+  },
+  "notes": {
+    "how_to_add_server": "Add a new server by creating a new entry with command, args, env, and description",
+    "environment_variables": "Use ${VAR_NAME} syntax to reference environment variables from .env file",
+    "enable_disable": "Set 'enabled' to true/false to control which servers are loaded",
+    "find_more_servers": "Browse https://github.com/modelcontextprotocol/servers for more MCP servers"
+  }
+}
