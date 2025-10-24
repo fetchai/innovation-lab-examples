@@ -72,6 +72,22 @@ Connect Claude to ANY MCP (Model Context Protocol) server for unlimited capabili
 
 ---
 
+### 05. Multi-Agent System 
+Build a system where multiple agents work together!
+
+**What you'll learn:**
+- Agent-to-agent communication
+- Request routing and classification
+- Multi-agent coordination
+- Simple 3-agent architecture
+- Message forwarding patterns
+
+**Time:** 20 minutes
+
+ [Start Guide 05](./05-multi-agent-system/README.md)
+
+---
+
 ## Quick Start
 
 ```bash
@@ -192,31 +208,7 @@ Each guide includes:
 - Full infrastructure control
 - Custom networking
 
-## 💰 Costs
 
-### API Costs (Claude)
-**Claude 3.5 Sonnet:**
-- Input: $3 per 1M tokens
-- Output: $15 per 1M tokens
-- ~$0.0003 per typical message
-
-**Free Credits:**
-- New accounts get free credits
-- Great for learning and testing
-
-### Hosting Costs (Optional)
-- **Local:** Free
-- **Agentverse:** Free tier available
-- **Self-hosted:** Depends on provider
-
-**Bottom line:** Very affordable to get started!
-
-## 🤝 Community & Support
-
-- 💬 [Fetch.ai Discord](https://discord.gg/fetchai)
-- 📖 [Anthropic Docs](https://docs.anthropic.com)
-- 🌐 [Fetch.ai Docs](https://fetch.ai/docs)
-- 🐦 [Twitter/X Updates](https://twitter.com/fetch_ai)
 
 ## 🎯 Hackathon Ideas
 
@@ -235,9 +227,9 @@ Use these guides to build:
 - [x] Guide 02: Claude Vision Agent
 - [x] Guide 03: Function Calling Agent
 - [x] Guide 04: MCP Agent
-- [ ] Guide 05: Multi-Agent Systems
-- [ ] Guide 06: Research Agent
-- [ ] Guide 07: Streaming Responses
+- [x] Guide 05: Multi-Agent System (Simple)
+- [ ] Guide 06: Streaming Responses
+- [ ] Guide 07: Advanced Multi-Agent (Complex workflows)
 - [ ] Guide 08: Production Deployment
 
 ## 📦 All Dependencies
@@ -288,4 +280,3 @@ Build your first AI agent in 15 minutes! 🚀
 
 ---
 
-**Questions? Ideas? Feedback?** Open an issue or join the [Fetch.ai Discord](https://discord.gg/fetchai)! 💬
