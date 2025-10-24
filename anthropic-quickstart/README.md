@@ -56,7 +56,7 @@ Let Claude use external tools and APIs to perform actions.
 
 ---
 
-### 04. MCP Agent 
+### 04. MCP Agent ✅
 Connect Claude to ANY MCP (Model Context Protocol) server for unlimited capabilities.
 
 **What you'll learn:**
@@ -72,7 +72,7 @@ Connect Claude to ANY MCP (Model Context Protocol) server for unlimited capabili
 
 ---
 
-### 05. Multi-Agent System 
+### 05. Multi-Agent System ✅
 Build a system where multiple agents work together!
 
 **What you'll learn:**
