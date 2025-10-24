@@ -106,7 +106,7 @@ You should see:
 
 ### Via ASI One
 
-1. Go to [https://asi.one](https://asi.one)
+1. Go to [https://asi1.ai](https://asi1.ai)
 2. Find your agent using the address shown in the terminal
 3. Send images with questions!
 

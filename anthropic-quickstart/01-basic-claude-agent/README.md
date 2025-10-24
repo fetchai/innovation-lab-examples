@@ -89,7 +89,7 @@ You should see:
 ### Option A: Via ASI One (Web Interface)
 
 1. Keep your agent running
-2. Go to [https://asi.one](https://asi.one)
+2. Go to [https://asi1.ai](https://asi1.ai)
 3. Search for your agent address (shown in terminal)
 4. Start chatting!
 
