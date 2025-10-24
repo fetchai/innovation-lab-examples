@@ -59,6 +59,7 @@ pip install -r requirements.txt
 ```bash
 python claude_function_agent.py
 ```
+### You will see an inspector link, which you can open on your browser and connect the mailbox.
 
 You should see:
 

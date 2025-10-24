@@ -67,6 +67,7 @@ python claude_mcp_agent.py
 cd 05-multi-agent-simple
 python router_agent.py
 ```
+### You will see an inspector link, which you can open on your browser and connect the mailbox.
 
 ### Step 3: Update Agent Addresses
 

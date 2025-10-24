@@ -95,6 +95,7 @@ Edit `mcp_servers.json` to enable servers:
 ```bash
 python claude_mcp_agent.py
 ```
+### You will see an inspector link, which you can open on your browser and connect the mailbox.
 
 You should see:
 

@@ -77,6 +77,7 @@ The agent will automatically use your `ANTHROPIC_API_KEY` from the root `.env` f
 ```bash
 python claude_vision_agent.py
 ```
+### You will see an inspector link, which you can open on your browser and connect the mailbox.
 
 You should see:
 
