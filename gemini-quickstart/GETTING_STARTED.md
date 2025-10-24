@@ -197,10 +197,6 @@ pip install -r 01-basic-gemini-agent/requirements.txt
 - Check ARCHITECTURE.md for technical details
 - Review CUSTOMIZATION.md for examples
 
-### Community
-- [Fetch.ai Discord](https://discord.gg/fetchai) - Active community
-- [Fetch.ai Forums](https://community.fetch.ai) - Technical discussions
-- [Stack Overflow](https://stackoverflow.com/questions/tagged/fetchai) - Q&A
 
 ### Debugging
 1. Check console logs for errors
@@ -222,20 +218,6 @@ Before submitting:
 - [ ] License included
 - [ ] GitHub repo is public
 
-## 🏅 Evaluation Criteria
-
-Judges will look for:
-- **Innovation** (30%) - Unique use case or approach
-- **Technical Execution** (25%) - Code quality, architecture
-- **Gemini Integration** (20%) - Effective use of capabilities
-- **User Experience** (15%) - Polish and usability
-- **Documentation** (10%) - Clear explanation and demo
-
-## 🎁 Bonus Resources
-
-### Example Agents to Inspire You
-- [Browse Agentverse Marketplace](https://agentverse.ai/agents)
-- [Fetch.ai Example Agents](https://github.com/fetchai/uAgents/tree/main/python/examples)
 
 ### Gemini Capabilities to Explore
 - Text generation (conversations, writing)
@@ -262,9 +244,3 @@ cd 01-basic-gemini-agent
 cat QUICKSTART.md
 ```
 
-**Good luck with your hackathon project! 🎉**
-
----
-
-*Built with ❤️ for the Google Gemini Hackathon*
-*Powered by Fetch.ai and Google Gemini*
