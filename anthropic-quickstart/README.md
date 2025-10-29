@@ -4,7 +4,7 @@ Build intelligent AI agents powered by Anthropic's Claude on the Fetch.ai decent
 
 ## 🎯 What You'll Learn
 
-This quickstart series teaches you to build production-ready AI agents using **Claude 3.5 Sonnet** and the **Fetch.ai uAgents framework**. From basic conversational agents to advanced multi-modal applications.
+This quickstart series teaches you to build production-ready AI agents using **Claude 3.5 Sonnet** and register them on **Agentverse** using Fetch.ai's uAgent framework. From basic conversational agents to advanced multi-modal applications.
 
 ## 📚 Guides
 
