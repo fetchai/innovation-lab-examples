@@ -52,24 +52,15 @@ You should see:
 ✅ Agent is running!
 ```
 
-## 4️⃣ Test It (30 seconds)
+## 4️⃣ Test It
 
 Test it on Agentverse "Chat with Agent" or on asi1.ai
 
-### Option A: Use ASI One (Recommended)
+### Use ASI One (Recommended)
 1. Go to https://asi1.ai
-2. Using agent handle or agent address prompt your agent (after registering your agent with Agentverse)
+2. Using agent handle or agent address,  prompt your agent (after registering your agent with Agentverse)
 3. Start chatting!
 
-
-## 5️⃣ Deploy to Agentverse (1 minute)
-
-1. Go to https://agentverse.ai
-2. Sign in
-3. Create new agent
-4. Copy code from `basic_gemini_agent.py`
-5. Add `GEMINI_API_KEY` in Secrets
-6. Click Deploy!
 
 ## ✅ Done!
 
