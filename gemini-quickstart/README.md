@@ -2,6 +2,10 @@
 
 Quick start guides for building Google Gemini-powered AI agents on Fetch.ai Agentverse.
 
+For detailed documentation on building agents on Agentverse, see the [Google Gemini Agentverse Documentation](https://innovationlab.fetch.ai/resources/docs/examples/integrations/google/google-gemini-pro).
+
+For understanding the basics of fetch.ai agent technology, refer to the [Fetch.ai Innovation Lab Documentation](https://innovationlab.fetch.ai/resources).
+
 ## 📚 Guides
 
 ### 1. [Basic Gemini Agent](./01-basic-gemini-agent/) - **START HERE**
