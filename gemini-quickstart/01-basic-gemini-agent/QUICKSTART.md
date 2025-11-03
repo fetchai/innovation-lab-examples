@@ -52,11 +52,6 @@ Open another terminal and test locally or use ASI One!
 2. Search for your agent (after deploying to Agentverse)
 3. Start chatting!
 
-### Option B: Test Locally
-```bash
-# In another terminal
-python test_client.py
-```
 
 ## 5️⃣ Deploy to Agentverse (1 minute)
 

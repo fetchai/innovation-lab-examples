@@ -6,7 +6,7 @@ Build your first Google Gemini-powered AI agent on Fetch.ai in 10 minutes! 🚀
 
 A conversational AI agent that:
 - ✅ Uses Google Gemini for intelligent responses
-- ✅ Deploys to Fetch.ai Agentverse
+- ✅ Registers to Fetch.ai Agentverse
 - ✅ Works with ASI One messaging
 - ✅ Maintains conversation context
 - ✅ Is discoverable on the marketplace
@@ -36,7 +36,7 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install required packages
-pip install uagents google-generativeai python-dotenv
+pip install uagents google-genai python-dotenv
 ```
 
 ## Step 3: Set Up Environment Variables
@@ -101,20 +101,15 @@ You should see:
 ✅ Agent is running!
 ```
 
-## Step 6: Deploy to Agentverse
+## Step 6: Register on Agentverse
 
-### Option A: Using the Web UI
+### Option A: Locally
 1. Go to [Agentverse](https://agentverse.ai)
 2. Create new agent
 3. Copy your `basic_gemini_agent.py` code
 4. Add your `GEMINI_API_KEY` to secrets
 5. Deploy!
 
-### Option B: Using CLI (Coming Soon)
-```bash
-# Package agent
-agentverse deploy basic_gemini_agent.py
-```
 
 ## Step 7: Test on ASI One
 
