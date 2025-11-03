@@ -2,7 +2,7 @@
 
 Get your Gemini agent running in 5 minutes!
 
-## 1️⃣ Setup (2 minutes)
+## Step 1: Setup (2 minutes)
 
 ```bash
 # Clone or download this folder
@@ -19,7 +19,7 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-## 2️⃣ Get Gemini API Key (1 minute)
+## Step 2: Get Gemini API Key (1 minute)
 
 1. Go to: https://makersuite.google.com/app/apikey
 2. Click "Create API Key"
@@ -29,7 +29,16 @@ cp .env.example .env
    GEMINI_API_KEY=your_actual_key_here
    ```
 
-## 3️⃣ ## Step 3: Update the seed in your agent to a unique phrase and Run the Agent
+## Step 3: Update the seed in your agent to a unique seed phrase
+
+## step 4: Two options to register your agent with Agentverse: 
+
+1. Direct hosting on agentverse
+2. Running your agent locally and registering it with Agentverse using Mailbox
+
+1.  Direct Hosting: Go to agentverse.ai and create a new agent and paste the code from basic_gemini_agent.py and add the GEMINI_API_KEY in secrets. Refer here : [Fetch.ai Innovation Lab Documentation](https://innovationlab.fetch.ai/resources/docs/agent-creation/uagent-creation#hosted-agents)
+
+2. Running your agent locally and click the inspector link on the terminal and connect to mailbox and register your agent with Agentverse account. Refer here : [Fetch.ai Innovation Lab Documentation](https://innovationlab.fetch.ai/resources/docs/agent-creation/uagent-creation#mailbox-agents)
 
 ```bash
 python basic_gemini_agent.py
@@ -45,11 +54,11 @@ You should see:
 
 ## 4️⃣ Test It (30 seconds)
 
-Open another terminal and test locally or use ASI One!
+Test it on Agentverse "Chat with Agent" or on asi1.ai
 
 ### Option A: Use ASI One (Recommended)
 1. Go to https://asi1.ai
-2. Search for your agent (after deploying to Agentverse)
+2. Using agent handle or agent address prompt your agent (after registering your agent with Agentverse)
 3. Start chatting!
 
 

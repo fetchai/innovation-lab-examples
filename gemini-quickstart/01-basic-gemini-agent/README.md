@@ -69,7 +69,7 @@ agent = Agent(
     name="gemini_assistant",
     seed="your-unique-seed-phrase",
     port=8000,
-    mailbox=True  # Enable for Agentverse deployment
+    mailbox=True  # Enable for local agents running on your machine
 )
 ```
 
