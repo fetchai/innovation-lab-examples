@@ -36,6 +36,7 @@ Use the same `.env` file or create one:
 ```bash
 # Same key as Gemini!
 GEMINI_API_KEY=your_gemini_api_key_here
+AGENTVERSE_API_KEY=your_agentverse_api_key_here
 ```
 
 ## Step 3: Update the seed in your agent to a unique phrase and Run the Agent

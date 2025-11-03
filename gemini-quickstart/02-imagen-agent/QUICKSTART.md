@@ -12,7 +12,9 @@ pip install -r requirements.txt
 
 # Use same .env as Guide 01 or create
 cp .env.example .env
-# Add your GEMINI_API_KEY
+# Add your GEMINI_API_KEY and AGENTVERSE_API_KEY
+
+# Update the seed in your agent to a unique phrase and Run the Agent
 ```
 
 ## 2️⃣ Run (30 seconds)
