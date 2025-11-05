@@ -12,6 +12,7 @@ import os
 import json
 import logging
 from typing import List, Dict, Any, Optional
+import re
 
 from openai import OpenAI  # adjust import if using responses API instead
 
@@ -29,13 +30,13 @@ SYSTEM_PROMPT = """You are a friendly flight-booking assistant.
 Your goal is to help the user book a flight end-to-end.
 
 STEP 1 - Collect Flight Search Details:
-When the user first contacts you or wants to search for flights, ask for ALL required details in ONE message:
-- Departure city (IATA code or city name)
-- Destination city (IATA code or city name)  
-- Departure date (YYYY-MM-DD or natural format like "Jan 22 2026")
-- Number of passengers (default to 1 adult if not specified)
+When the user first contacts you or wants to search for flights, check what information is missing and ask for it.
+If the number of passengers is not provided, ASSUME 1 adult by default and proceed without asking.
 
-Example: "To search for flights, please tell me: departure city, destination city, date, and number of passengers. For example: 'Los Angeles to San Francisco on January 22, 2026 for 1 adult'"
+If they provide partial information (e.g., "London to New York"), respond with:
+"Could you provide the date you want to travel? (I'll assume 1 adult if not specified.)"
+
+Only ask for what's missing - don't repeat information they already gave you.
 
 IMPORTANT - City to Airport Code Mapping:
 If user provides a city name instead of IATA code, use the MOST COMMON airport:
@@ -53,12 +54,12 @@ Then immediately call duffel_search_offers with the IATA codes.
 Only ask for clarification if the city has multiple major airports AND the user explicitly mentions uncertainty.
 
 STEP 2 - Present Offers:
-After calling duffel_search_offers, the tool returns a JSON with "page", "page_total", and "offers" fields.
+After calling duffel_search_offers, the tool returns a JSON with "offers" field containing the top 5 results.
 
-YOU MUST format the response EXACTLY like this:
+Format the response like this:
 
 ```
-Here are the lowest-priced options for X adult(s), ORIGIN→DESTINATION on YYYY-MM-DD (page CURRENT/TOTAL):
+Here are the top flight options for X adult(s), ORIGIN→DESTINATION on YYYY-MM-DD:
 
 1. Airline — XX.XX USDC — Route Time
 2. Airline — XX.XX USDC — Route Time
@@ -66,39 +67,45 @@ Here are the lowest-priced options for X adult(s), ORIGIN→DESTINATION on YYYY-
 4. Airline — XX.XX USDC — Route Time
 5. Airline — XX.XX USDC — Route Time
 
----
-Showing page CURRENT of TOTAL. You can jump to any page 1-TOTAL.
-
-Pick 1–5, say 'next'/'back', or jump to any page (e.g., 'page 5').
+Pick a number (1-5) to select your flight.
 ```
 
-CRITICAL RULES:
-- The header MUST include "(page X/Y)" where X = result["page"] and Y = result["page_total"]
-- Example: If result = {"page": 1, "page_total": 32, ...} then show "(page 1/32)"
-- NEVER skip the pagination info - it's mandatory
+RULES:
+- Show only the top 5 results (no pagination)
 - Only show USDC prices from total_amount_usdc field
 - Number the options 1-5
+- Keep it simple and clear
 
-EXAMPLE RESPONSE:
-If the tool returns: {"page": 2, "page_total": 15, "offers": [...]}
-Your response MUST be formatted as:
+AIRLINE FILTERING:
+If the user asks to filter by a specific airline (e.g., "I want only British Airways options"), you MUST:
+1. Convert the airline NAME to its IATA code using this mapping:
+   - British Airways → BA
+   - American Airlines → AA
+   - Delta → DL
+   - United → UA
+   - Lufthansa → LH
+   - Air France → AF
+   - Iberia → IB
+   - Duffel Airways → ZZ
+   - Virgin Atlantic → VS
+   - Air Canada → AC
+   - Turkish Airlines → TK
+   - KLM → KL
+   - Emirates → EK
+   - Qatar Airways → QR
+   
+2. Call duffel_search_offers with preferred_airlines=[IATA_CODE]
+3. NEVER use the airline name - ALWAYS use the 2-letter IATA code
 
-"Here are the lowest-priced options for 1 adult, LAS→LAX on 2026-01-22 (page 2/15):
+Example: If user says "only Duffel Airways", call:
+duffel_search_offers(origin="LHR", destination="EWR", date="2026-01-22", passengers=1, preferred_airlines=["ZZ"])
 
-1. Airline — XX.XX USDC — Route Time
-...
+CRITICAL: preferred_airlines MUST be IATA codes (2 letters), NOT airline names!
 
-Showing page 2 of 15. You can jump to any page 1-15.
-Pick 1–5, say 'next'/'back', or jump to any page (e.g., 'page 5')."
-
-Note: The pagination info and instructions are on SEPARATE lines at the bottom.
-
-When user says "next", "back", or "page N" for pagination:
-- Look at the tool result from the last duffel_search_offers call to get current page and total pages
-- Call duffel_search_offers again with the same origin, destination, date, passengers
-- For "next": page = current_page + 1
-- For "back": page = current_page - 1  
-- For "page N": page = N
+IMPORTANT: When preferred_airlines is used, the API searches ALL flights and returns ONLY that airline.
+- If you get 1 result, there's only 1 flight from that airline available
+- If you get 5 results, all 5 are from that airline
+- ALL results returned are from the filtered airline - do NOT say "other airlines are shown"
 
 STEP 3 - Select Offer:
 After showing search results, the user MUST select a flight by number (1-5).
@@ -111,45 +118,33 @@ STEP 4 - Collect Passenger Details:
 After an offer is selected and refreshed, check if passenger details were already provided in the conversation.
 
 IMPORTANT - Pre-filled Passenger Data:
-Some users have pre-registered passenger details. Check the conversation history for an assistant message containing:
-"📋 Passenger Details:" followed by passenger information and "✅ Are these details correct?"
-
-If you find such a message in the history, it means passenger details are ALREADY STORED in the system.
-
-When the user responds with "yes", "correct", "looks good", "that's right", or any affirmative response:
-- DO NOT ask for passenger details again
-- DO NOT say you don't have passenger details
-- Immediately call request_payment tool to proceed with booking
-- The stored details will be used automatically for the booking
+Some users have pre-registered passenger details. If passenger details are known (either auto-filled by the system or parsed from prior messages), DO NOT ask for confirmation. Immediately book by calling duffel_create_order with pay_with_balance_now=true.
 
 If user says "no" or provides corrections, collect the updated details.
 
 If NO such confirmation message exists in the history, then ask for passenger details normally.
 
-If NO pre-filled message was shown, ask for passenger details with clear formatting:
+If passenger details are not known, ask for passenger details with clear formatting:
 
 ✅ Selected: [airline] — [price USDC] — [route] [time]
 
 Next, please provide passenger details:
 • Title (Mr/Ms/Mrs/Miss/Dr/Mx)
-• Full name  
+• Full name
 • Date of birth (YYYY-MM-DD)
 • Gender (M/F/X)
 • Email address
 • Phone number (with country code, e.g., +1234567890)
 
-Example: "Mr. John Smith, born 1990-05-15, male, john@example.com, +1234567890"
+Example: "Mr. John Smith 1990-05-15 M john@example.com +1234567890"
 
-IMPORTANT: Each bullet point MUST be on a separate line. Do NOT put all details on one line.
+CRITICAL: Format your request with bullet points on separate lines as shown above.
+HOWEVER, accept the user's response in ANY format - single line, multiple lines, with/without commas, etc.
+Extract the information using pattern matching. NEVER ask users to reformat their input.
+If you successfully extract all required fields (title, name, DOB, gender, email, phone), immediately call duffel_create_order with pay_with_balance_now=false to book directly.
 
-STEP 5 - Request Payment:
-Once passenger details are complete, call the request_payment tool.
-This will send a payment request to the user's wallet with two options:
-- 0.001 FET (for testing, actual price shown separately)
-- 0.001 USDC via Skyfire (for testing, actual price shown separately)
-The payment protocol will automatically complete the booking after payment verification.
-
-IMPORTANT: After calling request_payment, DO NOT send any additional message. The payment request itself is sent to the user's wallet and that's sufficient. The tool call result will confirm the request was queued.
+STEP 5 - Book Now (No Payments):
+Once passenger details are complete, book directly by calling duffel_create_order with pay_with_balance_now=false. Do not ask for or mention any payment.
 
 STEP 6 - Order Management:
 Users can view and manage their bookings:
@@ -217,19 +212,24 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "duffel_search_offers",
-            "description": "Search flight offers given origin, destination, date and passengers",
+            "description": "Search flight offers given origin, destination, date and passengers. Can filter by specific airlines.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "origin": {"type": "string", "description": "IATA code of origin airport (e.g., 'LAX')"},
                     "destination": {"type": "string", "description": "IATA code of destination airport (e.g., 'JFK')"},
                     "date": {"type": "string", "description": "Departure date in YYYY-MM-DD format"},
-                    "passengers": {"type": "integer", "description": "Number of adult passengers"},
+                    "passengers": {"type": "integer", "description": "Optional: number of adult passengers (defaults to 1)"},
                     "cabin_class": {"type": "string", "description": "Optional cabin class (e.g., 'economy')"},
+                    "preferred_airlines": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional: List of airline IATA codes to filter results (e.g., ['BA'] for British Airways, ['AA', 'DL'] for American and Delta)"
+                    },
                     "page": {"type": "integer", "description": "Page number for paginated results"},
                     "page_size": {"type": "integer", "description": "Number of results per page"}
                 },
-                "required": ["origin","destination","date","passengers"]
+                "required": ["origin","destination","date"]
             }
         }
     },
@@ -332,22 +332,7 @@ TOOLS = [
             }
         }
     },
-    {
-        "type": "function",
-        "function": {
-            "name": "request_payment",
-            "description": "Request payment from the user with specified currency and amount to proceed to booking",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "currency": {"type": "string", "description": "Currency code (USDC, FET)"},
-                    "amount": {"type": "number", "description": "Amount to request from user"},
-                    "description": {"type": "string", "description": "Optional description for the payment request"}
-                },
-                "required": ["currency","amount"]
-            }
-        }
-    },
+    
     {
         "type": "function",
         "function": {
@@ -496,13 +481,14 @@ Always use YYYY-MM-DD format for dates in tool calls.
                 # Unwrap if it's a LangChain tool (has .func attribute)
                 if hasattr(func, 'func'):
                     func = func.func
+                num_pax = int(func_args.get("passengers", 1))
                 result = func(
                     slices=[{"origin": func_args["origin"], "destination": func_args["destination"], "departure_date": func_args["date"]}],
-                    passengers=[{"type": "adult"} for _ in range(func_args["passengers"])],
+                    passengers=[{"type": "adult"} for _ in range(max(1, num_pax))],
                     page=func_args.get("page",1),
                     page_size=func_args.get("page_size",5),
                     cabin_class=func_args.get("cabin_class"),
-                    preferred_airlines=None
+                    preferred_airlines=func_args.get("preferred_airlines")
                 )
             elif func_name == "duffel_get_offer_with_services":
                 # Import and unwrap the LangChain tool decorator
@@ -519,13 +505,65 @@ Always use YYYY-MM-DD format for dates in tool calls.
                 func = dt.duffel_create_order
                 if hasattr(func, 'func'):
                     func = func.func
-                result = func(
-                    offer_id=func_args["offer_id"],
-                    passengers=func_args["passengers"],
-                    services=func_args.get("services"),
-                    pay_with_balance_now=func_args.get("pay_with_balance_now", False),
-                    notify_email=func_args.get("notify_email")
-                )
+                # Ensure passengers exist; synthesize from session/history if missing
+                passengers_arg = func_args.get("passengers")
+                if not passengers_arg:
+                    pax: Dict[str, Any] = {}
+                    try:
+                        if isinstance(session_state.get("autofill_passenger_data"), dict):
+                            pax.update(session_state["autofill_passenger_data"]) 
+                        if not pax:
+                            for h in reversed(history):
+                                txt = h.get("content") if isinstance(h, dict) else None
+                                if not isinstance(txt, str):
+                                    continue
+                                m = re.search(r"\b(mr|ms|mrs|miss|dr|mx)\.?\b", txt, re.I)
+                                if m:
+                                    pax["title"] = m.group(1).lower()
+                                m = re.search(r"\b([A-Za-z]+)\s+([A-Za-z]+)\b", txt)
+                                if m:
+                                    pax["given_name"] = m.group(1).strip().title()
+                                    pax["family_name"] = m.group(2).strip().title()
+                                m = re.search(r"\b(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b", txt)
+                                if m:
+                                    pax["born_on"] = m.group(0)
+                                m = re.search(r"\b(male|female|m|f|x)\b", txt, re.I)
+                                if m:
+                                    g = m.group(1).upper()[0]
+                                    pax["gender"] = g if g in ["M","F","X"] else "M"
+                                m = re.search(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b", txt)
+                                if m:
+                                    pax["email"] = m.group(0)
+                                m = re.search(r"\+\d{10,}|\+\d[\d\s-]{9,}", txt)
+                                if m:
+                                    pax["phone_number"] = m.group(0).replace(" ", "").replace("-", "")
+                                if pax.get("given_name") and pax.get("family_name") and pax.get("born_on"):
+                                    break
+                    except Exception:
+                        pax = {}
+                    try:
+                        offer_pax = session_state.get("offer_passengers")
+                        if isinstance(offer_pax, list) and not pax.get("id"):
+                            for op in offer_pax:
+                                if isinstance(op, dict) and op.get("type") == "adult" and op.get("id"):
+                                    pax["id"] = op["id"]
+                                    break
+                    except Exception:
+                        pass
+                    if pax:
+                        passengers_arg = [pax]
+                        func_args["passengers"] = passengers_arg
+                if not passengers_arg:
+                    result = {"error": "MISSING_PASSENGERS", "message": "Passenger details are required to place booking."}
+                else:
+                    # Auto-ticket on first attempt
+                    result = func(
+                        offer_id=func_args["offer_id"],
+                        passengers=passengers_arg,
+                        services=func_args.get("services"),
+                        pay_with_balance_now=True,
+                        notify_email=func_args.get("notify_email") or (passengers_arg[0].get("email") if isinstance(passengers_arg, list) and passengers_arg else None)
+                    )
             elif func_name == "duffel_pay_hold_order":
                 import importlib
                 dt = importlib.import_module('tools.duffel_tools')
@@ -656,53 +694,6 @@ Always use YYYY-MM-DD format for dates in tool calls.
                 messages=messages_with_system
             )
             assistant_content = follow.choices[0].message.content
-            
-            # Validate and fix pagination formatting for search results
-            if func_name == "duffel_search_offers" and not result.get("error"):
-                page = result.get("page", 1)
-                page_total = result.get("page_total", 1)
-                pagination_text = f"(page {page}/{page_total})"
-                
-                # Ensure proper line breaks for pagination
-                if assistant_content:
-                    # Check if "Showing page" and "Pick 1-5" are on the same line (bad formatting)
-                    if "Showing page" in assistant_content and "Pick 1" in assistant_content:
-                        # Find where "Pick 1" starts and add line break before it
-                        assistant_content = assistant_content.replace(". Pick 1", ".\nPick 1")
-                        assistant_content = assistant_content.replace(" Pick 1", "\nPick 1")
-                    
-                    # Check if pagination is missing from header
-                    if pagination_text not in assistant_content.lower() and f"page {page}" not in assistant_content.lower():
-                        logger.warning(f"Pagination missing in LLM response, adding it")
-                        lines = assistant_content.split('\n')
-                        if lines:
-                            first_line = lines[0]
-                            if "options" in first_line.lower() or "flight" in first_line.lower():
-                                if ':' in first_line:
-                                    lines[0] = first_line.replace(':', f' {pagination_text}:')
-                                else:
-                                    lines[0] = first_line + f' {pagination_text}'
-                                assistant_content = '\n'.join(lines)
-            
-            # Fix passenger details formatting for offer selection
-            if func_name == "duffel_get_offer_with_services" and not result.get("error"):
-                if assistant_content:
-                    # Check if passenger details are all on one line
-                    if "Title (Mr/Ms" in assistant_content or "please provide passenger details" in assistant_content.lower():
-                        # Replace common patterns that should have line breaks
-                        assistant_content = assistant_content.replace("• Title", "\n• Title")
-                        assistant_content = assistant_content.replace("• Full name", "\n• Full name")
-                        assistant_content = assistant_content.replace("• Date of birth", "\n• Date of birth")
-                        assistant_content = assistant_content.replace("• Gender", "\n• Gender")
-                        assistant_content = assistant_content.replace("• Email", "\n• Email")
-                        assistant_content = assistant_content.replace("• Phone", "\n• Phone")
-                        
-                        # Ensure "Example:" is on a new line
-                        assistant_content = assistant_content.replace(" Example:", "\n\nExample:")
-                        
-                        # Remove duplicate newlines
-                        while "\n\n\n" in assistant_content:
-                            assistant_content = assistant_content.replace("\n\n\n", "\n\n")
             
             history.append({"role": "assistant", "content": assistant_content})
     else:

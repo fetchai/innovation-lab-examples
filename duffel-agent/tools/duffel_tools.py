@@ -20,14 +20,13 @@ Tools:
 """
 
 from __future__ import annotations
-
 import os
 import re
 import time
 import smtplib
 from typing import Any, Dict, List, Optional, Tuple
+import logging
 from email.message import EmailMessage
-
 import httpx
 
 try:
@@ -35,7 +34,6 @@ try:
 except Exception:  # pragma: no cover
     def _tool(f):
         return f
-
 
 # -----------------------------
 # Environment / constants
@@ -61,12 +59,10 @@ def _headers() -> Dict[str, str]:
         "Content-Type": "application/json",
     }
 
-
 def _fmt_time(ts: str | None) -> str:
     """Show up to minutes: 'YYYY-MM-DD HH:MM' (Duffel returns ISO8601)."""
     s = (ts or "").replace("T", " ").replace("Z", "")
     return re.sub(r"(\d{2}:\d{2}):\d{2}$", r"\1", s)
-
 
 def _get_usd_per(cur: str) -> Optional[float]:
     if not cur:
@@ -156,8 +152,12 @@ def _smtp_enabled() -> bool:
     return bool(os.getenv("SMTP_HOST") and os.getenv("SMTP_USER") and os.getenv("SMTP_PASS"))
 
 
-def _send_email(to_addr: str, subject: str, body: str) -> bool:
+def _send_email(to_addr: str, subject: str, body: str, html: Optional[str] = None) -> bool:
     if not _smtp_enabled():
+        try:
+            logging.getLogger(__name__).info("[email] SMTP not configured; set SMTP_HOST, SMTP_USER, SMTP_PASS to enable emails")
+        except Exception:
+            pass
         return False
     host = os.getenv("SMTP_HOST")
     port = int(os.getenv("SMTP_PORT", "587"))
@@ -171,12 +171,21 @@ def _send_email(to_addr: str, subject: str, body: str) -> bool:
         msg["To"] = to_addr
         msg["Subject"] = subject
         msg.set_content(body)
+        if html:
+            try:
+                msg.add_alternative(html, subtype="html")
+            except Exception:
+                pass
         with smtplib.SMTP(host, port, timeout=15) as s:
             s.starttls()
             s.login(user, pwd)
             s.send_message(msg)
         return True
-    except Exception:
+    except Exception as e:
+        try:
+            logging.getLogger(__name__).warning(f"[email] send failed: {e}")
+        except Exception:
+            pass
         return False
 
 
@@ -260,6 +269,13 @@ def duffel_search_offers(
         body["max_connections"] = max_connections
     if preferred_airlines:
         body["allowed_carriers"] = preferred_airlines
+    
+    # Log the request body for debugging
+    import logging
+    logger = logging.getLogger(__name__)
+    if preferred_airlines:
+        logger.info(f"Sending to Duffel API - allowed_carriers: {body.get('allowed_carriers')}")
+        logger.info(f"Full request body: {body}")
 
     try:
         with httpx.Client(timeout=_TIMEOUT) as client:
@@ -269,17 +285,33 @@ def duffel_search_offers(
 
         data = r.json() or {}
         raw_offers = (data.get("data") or {}).get("offers") or []
+        
+        # Log airline filter info
+        import logging
+        logger = logging.getLogger(__name__)
+        if preferred_airlines:
+            logger.info(f"Filtered search for airlines: {preferred_airlines}, got {len(raw_offers)} raw results from Duffel")
 
         offers: List[Dict[str, Any]] = []
+        airlines_found = set()
         for o in raw_offers:
             owner = o.get("owner") or {}
-            airline = owner.get("name") or owner.get("iata_code") or ""
+            airline_name = owner.get("name") or ""
+            airline_iata = owner.get("iata_code") or ""
+            
+            # If filtering by airline, skip offers that don't match
+            if preferred_airlines:
+                # Check if this offer's airline IATA code matches any in the filter
+                if airline_iata not in preferred_airlines:
+                    continue  # Skip this offer
+            
+            airlines_found.add(airline_name or airline_iata)
             total_amount = o.get("total_amount")
             total_currency = o.get("total_currency")
             itinerary = _format_itinerary(o.get("slices") or [])
             summary = {
                 "id": o.get("id"),
-                "airline": airline or "-",
+                "airline": airline_name or airline_iata or "-",
                 "total_amount": total_amount,
                 "total_currency": total_currency,
                 "itinerary": itinerary or "-",
@@ -296,6 +328,10 @@ def duffel_search_offers(
                 return 1e18
 
         offers.sort(key=_sort_key)
+        
+        # Log what airlines we actually got
+        if preferred_airlines:
+            logger.info(f"After processing, found airlines: {airlines_found}, total offers: {len(offers)}")
 
         # Pagination
         page_size = max(1, min(10, int(page_size)))
@@ -407,13 +443,70 @@ def _summarize_order_email(d: Dict[str, Any]) -> str:
     lines = [
         "Your booking is confirmed ✅",
         f"Airline: {airline or '-'}",
-        f"Itinerary: {itinerary or '-'}",
+        f"Itinerary: {itin or '-'}",
         f"Booking reference: {br or '-'}",
         f"Total: {total or '-'} {cur or ''}".strip(),
+        "",
+        f"To cancel: ask Duffel agent on ASI1 to cancel {d.get('id') or d.get('order_id') or 'ord_xxxxx'}.",
         "",
         "Thank you for booking with Innovation Lab Flights.",
     ]
     return "\n".join(lines)
+
+
+def _build_booking_html(d: Dict[str, Any]) -> str:
+    total = d.get("total_amount")
+    cur = d.get("total_currency")
+    br = d.get("booking_reference") or (d.get("booking_references") or [{}])[0].get("booking_reference")
+    airline = (d.get("owner") or {}).get("name") or (d.get("owner") or {}).get("iata_code") or ""
+    itin = _format_itinerary(d.get("slices") or [])
+    order_id = d.get("id") or d.get("order_id") or "—"
+    total_text = f"{total} {cur}".strip() if (total or cur) else "—"
+    return f"""
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset=\"UTF-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title>Booking Confirmed</title>
+  <style>
+    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; background:#f5f7fb; margin:0; padding:24px; }
+    .wrap { max-width:680px; margin:0 auto; }
+    .card { background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 30px rgba(16,24,40,0.08); }
+    .banner { background:linear-gradient(135deg,#5B86E5 0%,#36D1DC 100%); padding:30px 28px; color:#fff; }
+    .banner h1 { margin:0; font-size:24px; font-weight:700; letter-spacing:.2px; }
+    .banner p { margin:8px 0 0; opacity:.95; }
+    .content { padding:32px 32px 12px; color:#1f2937; }
+    .row { display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e5e7eb; padding:14px 0; font-size:14px; line-height:1.5; }
+    .row:first-child { border-top:none; }
+    .label { color:#6b7280; font-weight:600; }
+    .value { color:#111827; font-weight:700; text-align:right; }
+    .tips { padding:18px 32px 18px; color:#374151; font-size:13px; }
+    .tips p { margin:8px 0; }
+    .footer { padding:20px 28px 28px; color:#6b7280; font-size:12px; border-top:1px dashed #e5e7eb; }
+  </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <div class="banner">
+          <h1>Booking Confirmed ✈️</h1>
+          <p>You're all set for your trip.</p>
+        </div>
+        <div class="content">
+          <div class="row"><div class="label">Airline</div><div class="value">{airline or '-'} </div></div>
+          <div class="row"><div class="label">PNR</div><div class="value">{br or '-'} </div></div>
+          <div class="row"><div class="label">Order ID</div><div class="value">{order_id}</div></div>
+          <div class="row"><div class="label">Itinerary</div><div class="value">{itin or '-'} </div></div>
+          <div class="row"><div class="label">Total</div><div class="value">{total_text}</div></div>
+        </div>
+        <div class="tips"><p>To cancel: ask <strong>Duffel agent on ASI1</strong> to cancel <strong>{order_id}</strong>.</p></div>
+        <div class="footer">Keep this email for your records. Have a great trip!</div>
+      </div>
+    </div>
+  </body>
+</html>
+"""
 
 
 @_tool
@@ -474,14 +567,28 @@ def duffel_create_order(
             "awaiting_payment": bool((data.get("payment_status") or {}).get("awaiting_payment")),
         }
 
-        if notify_email and _smtp_enabled():
-            try:
-                with httpx.Client(timeout=15) as client:
-                    r_full = client.get(f"{_DUFFEL_BASE}/air/orders/{out['id']}", headers=_headers())
-                full = (r_full.json() or {}).get("data") or data
-                _send_email(notify_email, "Your flight booking", _summarize_order_email(full))
-            except Exception:
-                pass
+        if notify_email:
+            if _smtp_enabled():
+                try:
+                    with httpx.Client(timeout=15) as client:
+                        r_full = client.get(f"{_DUFFEL_BASE}/air/orders/{out['id']}", headers=_headers())
+                    full = (r_full.json() or {}).get("data") or data
+                    html = _build_booking_html(full)
+                    ok = _send_email(notify_email, "Your flight booking", _summarize_order_email(full), html)
+                    try:
+                        logging.getLogger(__name__).info(f"[email] booking email {'sent' if ok else 'skipped'} to {notify_email}")
+                    except Exception:
+                        pass
+                except Exception as e:
+                    try:
+                        logging.getLogger(__name__).warning(f"[email] failed to prepare/send booking email: {e}")
+                    except Exception:
+                        pass
+            else:
+                try:
+                    logging.getLogger(__name__).info("[email] SMTP not configured; skipping booking email")
+                except Exception:
+                    pass
 
         return out
     except Exception as e:

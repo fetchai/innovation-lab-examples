@@ -2925,5 +2925,1414 @@
     "payment_requested:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:fb4ede84-c54e-4847-9e25-1fafba16cc95": true,
     "commit_C8D76913123F38844EE43DDAD40FB3ED844ECFF63A0708502AD8FD4725AECA5D:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:fb4ede84-c54e-4847-9e25-1fafba16cc95": true,
     "paid:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:fb4ede84-c54e-4847-9e25-1fafba16cc95": true,
-    "order_placed:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:fb4ede84-c54e-4847-9e25-1fafba16cc95": true
+    "order_placed:agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z:fb4ede84-c54e-4847-9e25-1fafba16cc95": true,
+    "agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w::039bcc33-36d8-450f-b706-af5ed53e705d": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "hello what is up?"
+            },
+            {
+                "role": "assistant",
+                "content": "Hi there! I’m here to help you book flights. If you’d like to search for flights, please tell me:\n\n- Departure city\n- Destination city\n- Date of travel\n- Number of passengers\n\nFor example: \"Los Angeles to New York on January 22, 2026 for 1 adult\"\n\nHow can I assist you today?"
+            }
+        ]
+    },
+    "agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w::81e4c034-f8ab-4ea2-8b7d-0ad3b2663461": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "please help me book flights from London to new york"
+            },
+            {
+                "role": "assistant",
+                "content": "To search for flights, please tell me: departure city, destination city, date, and number of passengers. For example: \"London to New York on January 22, 2026 for 1 adult\"\n\nCould you provide the date you want to travel and how many adults (or children) will be flying?"
+            }
+        ]
+    },
+    "agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w::7a3dd7b2-f01a-4058-9344-1c344e04ad3d": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true,
+            "last_tool": "duffel_search_offers",
+            "last_tool_result": {
+                "offers": [
+                    {
+                        "id": "off_0000AzlT9B4dwdKifuH3wP",
+                        "airline": "British Airways",
+                        "total_amount": "221.80",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                        "original_amount": "221.80",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 291.85
+                    },
+                    {
+                        "id": "off_0000AzlT9B4dwdKifuH3wh",
+                        "airline": "American Airlines",
+                        "total_amount": "222.11",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                        "original_amount": "222.11",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 292.26
+                    },
+                    {
+                        "id": "off_0000AzlT9B4dwdKifuH3wp",
+                        "airline": "Duffel Airways",
+                        "total_amount": "226.19",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                        "original_amount": "226.19",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 297.63
+                    },
+                    {
+                        "id": "off_0000AzlT9B4dwdKifuH3wJ",
+                        "airline": "Iberia",
+                        "total_amount": "229.66",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                        "original_amount": "229.66",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 302.19
+                    },
+                    {
+                        "id": "off_0000AzlT9TKY4EkdIRr1EZ",
+                        "airline": "Lufthansa",
+                        "total_amount": "323.62",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→EWR 2026-01-22 12:05 → 2026-01-22 20:30",
+                        "original_amount": "323.62",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 425.83
+                    }
+                ],
+                "page": 1,
+                "page_total": 50,
+                "count": 248
+            },
+            "last_search": {
+                "origin": "LHR",
+                "destination": "EWR",
+                "date": "2026-01-22",
+                "passengers": 1,
+                "current_page": 1,
+                "total_pages": 50
+            },
+            "current_offers": [
+                {
+                    "id": "off_0000AzlT9B4dwdKifuH3wP",
+                    "airline": "British Airways",
+                    "total_amount": "221.80",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                    "original_amount": "221.80",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 291.85
+                },
+                {
+                    "id": "off_0000AzlT9B4dwdKifuH3wh",
+                    "airline": "American Airlines",
+                    "total_amount": "222.11",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                    "original_amount": "222.11",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 292.26
+                },
+                {
+                    "id": "off_0000AzlT9B4dwdKifuH3wp",
+                    "airline": "Duffel Airways",
+                    "total_amount": "226.19",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                    "original_amount": "226.19",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 297.63
+                },
+                {
+                    "id": "off_0000AzlT9B4dwdKifuH3wJ",
+                    "airline": "Iberia",
+                    "total_amount": "229.66",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                    "original_amount": "229.66",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 302.19
+                },
+                {
+                    "id": "off_0000AzlT9TKY4EkdIRr1EZ",
+                    "airline": "Lufthansa",
+                    "total_amount": "323.62",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→EWR 2026-01-22 12:05 → 2026-01-22 20:30",
+                    "original_amount": "323.62",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 425.83
+                }
+            ]
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "help me book flight on 22 jan 2026 for 1 adult"
+            },
+            {
+                "role": "assistant",
+                "content": "Sure! Could you please tell me your departure city (or airport) and your destination? This will help me find the best flight options for you on 2026-01-22 for 1 adult."
+            },
+            {
+                "role": "user",
+                "content": "help me book flight on 22 jan 2026 for 1 adult"
+            },
+            {
+                "role": "assistant",
+                "content": "I’d be happy to help! Could you please tell me where you’ll be flying from and your destination? This will help me search for flight options for 1 adult on 2026-01-22."
+            },
+            {
+                "role": "user",
+                "content": "i want to fly from london to new jersey"
+            },
+            {
+                "role": "system",
+                "content": "Do not generate 'please wait' or 'searching' messages when calling tools. Just call the tool."
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_SUrtWfUfOVHwOnA0XUj0RWGj",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"LHR\",\"destination\":\"EWR\",\"date\":\"2026-01-22\",\"passengers\":1}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlT9B4dwdKifuH3wP\", \"airline\": \"British Airways\", \"total_amount\": \"221.80\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"221.80\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 291.85}, {\"id\": \"off_0000AzlT9B4dwdKifuH3wh\", \"airline\": \"American Airlines\", \"total_amount\": \"222.11\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"222.11\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 292.26}, {\"id\": \"off_0000AzlT9B4dwdKifuH3wp\", \"airline\": \"Duffel Airways\", \"total_amount\": \"226.19\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"226.19\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 297.63}, {\"id\": \"off_0000AzlT9B4dwdKifuH3wJ\", \"airline\": \"Iberia\", \"total_amount\": \"229.66\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"229.66\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 302.19}, {\"id\": \"off_0000AzlT9TKY4EkdIRr1EZ\", \"airline\": \"Lufthansa\", \"total_amount\": \"323.62\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 12:05 \\u2192 2026-01-22 20:30\", \"original_amount\": \"323.62\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 425.83}], \"page\": 1, \"page_total\": 50, \"count\": 248}",
+                "tool_call_id": "call_SUrtWfUfOVHwOnA0XUj0RWGj"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the top flight options for 1 adult, London (LHR) → New Jersey (EWR) on 2026-01-22:\n\n1. British Airways — 291.85 USDC — LHR→EWR 16:15→19:14\n2. American Airlines — 292.26 USDC — LHR→EWR 16:15→19:14\n3. Duffel Airways — 297.63 USDC — LHR→EWR 16:15→19:14\n4. Iberia — 302.19 USDC — LHR→EWR 16:15→19:14\n5. Lufthansa — 425.83 USDC — LHR→EWR 12:05→20:30\n\nPick a number (1-5) to select your flight."
+            },
+            {
+                "role": "user",
+                "content": "i want only british airlines options"
+            },
+            {
+                "role": "assistant",
+                "content": "The best British Airways option for your route is:\n\n1. British Airways — 291.85 USDC — LHR→EWR 16:15→19:14\n\nWould you like to select this flight? If yes, please reply with \"1\" to continue with booking."
+            }
+        ]
+    },
+    "agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w::073e3033-f21e-4ddd-99f5-368b96fe07c5": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true,
+            "last_tool": "duffel_search_offers",
+            "last_tool_result": {
+                "offers": [
+                    {
+                        "id": "off_0000AzlUHdSfXkBqMJdsmE",
+                        "airline": "Iberia",
+                        "total_amount": "217.69",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                        "original_amount": "217.69",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 286.44
+                    },
+                    {
+                        "id": "off_0000AzlUHdRbbhL6J1926Z",
+                        "airline": "British Airways",
+                        "total_amount": "222.33",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                        "original_amount": "222.33",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 292.55
+                    },
+                    {
+                        "id": "off_0000AzlUHdSJZ3uGLDTbDT",
+                        "airline": "American Airlines",
+                        "total_amount": "223.11",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                        "original_amount": "223.11",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 293.57
+                    },
+                    {
+                        "id": "off_0000AzlUHdRxaNcgK7JJfE",
+                        "airline": "Duffel Airways",
+                        "total_amount": "229.52",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                        "original_amount": "229.52",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 302.01
+                    },
+                    {
+                        "id": "off_0000AzlUI4jy7X4SxmwZzu",
+                        "airline": "Lufthansa",
+                        "total_amount": "281.62",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→JFK 2026-01-25 20:05 → 2026-01-26 13:05",
+                        "original_amount": "281.62",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 370.56
+                    }
+                ],
+                "page": 1,
+                "page_total": 73,
+                "count": 365
+            },
+            "last_search": {
+                "origin": "LHR",
+                "destination": "JFK",
+                "date": "2026-01-25",
+                "passengers": 1,
+                "current_page": 1,
+                "total_pages": 73
+            },
+            "current_offers": [
+                {
+                    "id": "off_0000AzlUHdSfXkBqMJdsmE",
+                    "airline": "Iberia",
+                    "total_amount": "217.69",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                    "original_amount": "217.69",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 286.44
+                },
+                {
+                    "id": "off_0000AzlUHdRbbhL6J1926Z",
+                    "airline": "British Airways",
+                    "total_amount": "222.33",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                    "original_amount": "222.33",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 292.55
+                },
+                {
+                    "id": "off_0000AzlUHdSJZ3uGLDTbDT",
+                    "airline": "American Airlines",
+                    "total_amount": "223.11",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                    "original_amount": "223.11",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 293.57
+                },
+                {
+                    "id": "off_0000AzlUHdRxaNcgK7JJfE",
+                    "airline": "Duffel Airways",
+                    "total_amount": "229.52",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                    "original_amount": "229.52",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 302.01
+                },
+                {
+                    "id": "off_0000AzlUI4jy7X4SxmwZzu",
+                    "airline": "Lufthansa",
+                    "total_amount": "281.62",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→JFK 2026-01-25 20:05 → 2026-01-26 13:05",
+                    "original_amount": "281.62",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 370.56
+                }
+            ]
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "hello book me flight from london to new york"
+            },
+            {
+                "role": "assistant",
+                "content": "Could you provide the date you want to travel and how many adults (or children) will be flying?"
+            },
+            {
+                "role": "user",
+                "content": "1 adult on 25 jan 2026"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_h4XVchNX55Qwvb46aIOdAin2",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"LHR\",\"destination\":\"JFK\",\"date\":\"2026-01-25\",\"passengers\":1}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlUEdwylkPJVpKswk\", \"airline\": \"Duffel Airways\", \"total_amount\": \"218.29\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"218.29\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 287.23}, {\"id\": \"off_0000AzlUEdxKkQgtWvVAV6\", \"airline\": \"Iberia\", \"total_amount\": \"225.03\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"225.03\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 296.1}, {\"id\": \"off_0000AzlUEdxKkQgtWvVAVD\", \"airline\": \"American Airlines\", \"total_amount\": \"231.23\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"231.23\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 304.26}, {\"id\": \"off_0000AzlUEdxKkQgtWvVAVA\", \"airline\": \"British Airways\", \"total_amount\": \"233.45\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"233.45\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 307.18}, {\"id\": \"off_0000AzlUF5wagmjYKjMyF8\", \"airline\": \"Lufthansa\", \"total_amount\": \"281.62\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 20:05 \\u2192 2026-01-26 13:05\", \"original_amount\": \"281.62\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 370.56}], \"page\": 1, \"page_total\": 73, \"count\": 365}",
+                "tool_call_id": "call_h4XVchNX55Qwvb46aIOdAin2"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the top flight options for 1 adult, London (LHR)→New York (JFK) on 2026-01-25:\n\n1. Duffel Airways — 287.23 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n2. Iberia — 296.10 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n3. American Airlines — 304.26 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n4. British Airways — 307.18 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n5. Lufthansa — 370.56 USDC — LHR→JFK 2026-01-25 20:05 → 2026-01-26 13:05\n\nPick a number (1-5) to select your flight."
+            },
+            {
+                "role": "user",
+                "content": "please give me results only for british airways"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_0l4M4f5NTvTF7FYOF3xIPJZb",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"LHR\",\"destination\":\"JFK\",\"date\":\"2026-01-25\",\"passengers\":1,\"preferred_airlines\":[\"BA\"]}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlUHdSfXkBqMJdsmE\", \"airline\": \"Iberia\", \"total_amount\": \"217.69\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"217.69\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 286.44}, {\"id\": \"off_0000AzlUHdRbbhL6J1926Z\", \"airline\": \"British Airways\", \"total_amount\": \"222.33\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"222.33\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 292.55}, {\"id\": \"off_0000AzlUHdSJZ3uGLDTbDT\", \"airline\": \"American Airlines\", \"total_amount\": \"223.11\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"223.11\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 293.57}, {\"id\": \"off_0000AzlUHdRxaNcgK7JJfE\", \"airline\": \"Duffel Airways\", \"total_amount\": \"229.52\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"229.52\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 302.01}, {\"id\": \"off_0000AzlUI4jy7X4SxmwZzu\", \"airline\": \"Lufthansa\", \"total_amount\": \"281.62\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 20:05 \\u2192 2026-01-26 13:05\", \"original_amount\": \"281.62\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 370.56}], \"page\": 1, \"page_total\": 73, \"count\": 365}",
+                "tool_call_id": "call_0l4M4f5NTvTF7FYOF3xIPJZb"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the top British Airways flight options for 1 adult, London (LHR)→New York (JFK) on 2026-01-25:\n\n2. British Airways — 292.55 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n\n(PLEASE NOTE: Only option 2 is a British Airways flight; other nearby results are shown, but British Airways is the one listed as number 2.)\n\nPick number 2 to select the British Airways flight."
+            }
+        ]
+    },
+    "agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w::4fcb30bf-7c63-43e1-b53d-6219631fdb60": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "hello book me flight from new york to london"
+            },
+            {
+                "role": "assistant",
+                "content": "Could you provide the date you want to travel and how many adults (or children) will be flying?"
+            }
+        ]
+    },
+    "agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w::61d7c844-fec6-4221-961f-ed83f37939cc": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true,
+            "last_tool": "duffel_search_offers",
+            "last_tool_result": {
+                "offers": [
+                    {
+                        "id": "off_0000AzlVznmBUmSbfsrS34",
+                        "airline": "British Airways",
+                        "total_amount": "217.98",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                        "original_amount": "217.98",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 286.82
+                    },
+                    {
+                        "id": "off_0000AzlVznmBUmSbfsrS30",
+                        "airline": "Duffel Airways",
+                        "total_amount": "223.22",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                        "original_amount": "223.22",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 293.72
+                    },
+                    {
+                        "id": "off_0000AzlVznmtS91li5C19W",
+                        "airline": "American Airlines",
+                        "total_amount": "223.28",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                        "original_amount": "223.28",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 293.8
+                    },
+                    {
+                        "id": "off_0000AzlVznmXTSkBgz1jbK",
+                        "airline": "Iberia",
+                        "total_amount": "231.38",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                        "original_amount": "231.38",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 304.46
+                    },
+                    {
+                        "id": "off_0000AzlW0GcyE7Jz9hm0Dr",
+                        "airline": "Lufthansa",
+                        "total_amount": "281.62",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→JFK 2026-01-25 20:05 → 2026-01-26 13:05",
+                        "original_amount": "281.62",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 370.56
+                    }
+                ],
+                "page": 1,
+                "page_total": 73,
+                "count": 365
+            },
+            "last_search": {
+                "origin": "LHR",
+                "destination": "JFK",
+                "date": "2026-01-25",
+                "passengers": 1,
+                "current_page": 1,
+                "total_pages": 73
+            },
+            "current_offers": [
+                {
+                    "id": "off_0000AzlVznmBUmSbfsrS34",
+                    "airline": "British Airways",
+                    "total_amount": "217.98",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                    "original_amount": "217.98",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 286.82
+                },
+                {
+                    "id": "off_0000AzlVznmBUmSbfsrS30",
+                    "airline": "Duffel Airways",
+                    "total_amount": "223.22",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                    "original_amount": "223.22",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 293.72
+                },
+                {
+                    "id": "off_0000AzlVznmtS91li5C19W",
+                    "airline": "American Airlines",
+                    "total_amount": "223.28",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                    "original_amount": "223.28",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 293.8
+                },
+                {
+                    "id": "off_0000AzlVznmXTSkBgz1jbK",
+                    "airline": "Iberia",
+                    "total_amount": "231.38",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32",
+                    "original_amount": "231.38",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 304.46
+                },
+                {
+                    "id": "off_0000AzlW0GcyE7Jz9hm0Dr",
+                    "airline": "Lufthansa",
+                    "total_amount": "281.62",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→JFK 2026-01-25 20:05 → 2026-01-26 13:05",
+                    "original_amount": "281.62",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 370.56
+                }
+            ]
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "book flight from london to new york"
+            },
+            {
+                "role": "assistant",
+                "content": "Could you provide the date you want to travel and how many adults (or children) will be flying?"
+            },
+            {
+                "role": "user",
+                "content": "any update?"
+            },
+            {
+                "role": "assistant",
+                "content": "I still need the date you want to travel and how many adults (or children) will be flying to search for your flight from London to New York.\n\nCould you please provide that information?"
+            },
+            {
+                "role": "user",
+                "content": "1 adult on 25 jan 2026"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_ZU7dLCDlgrVQMaSxMOapUeHU",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"LHR\",\"destination\":\"JFK\",\"date\":\"2026-01-25\",\"passengers\":1}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlVvitD7tSpxeetJC\", \"airline\": \"British Airways\", \"total_amount\": \"219.17\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"219.17\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 288.39}, {\"id\": \"off_0000AzlVvisr9DBFwYUbkg\", \"airline\": \"Iberia\", \"total_amount\": \"224.20\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"224.20\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 295.01}, {\"id\": \"off_0000AzlVvitZ6ZkPykpArP\", \"airline\": \"American Airlines\", \"total_amount\": \"232.30\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"232.30\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 305.67}, {\"id\": \"off_0000AzlVvisr9DBFwYUbkf\", \"airline\": \"Duffel Airways\", \"total_amount\": \"232.63\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"232.63\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 306.1}, {\"id\": \"off_0000AzlVwCxVKUixDetkB0\", \"airline\": \"Lufthansa\", \"total_amount\": \"281.62\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 20:05 \\u2192 2026-01-26 13:05\", \"original_amount\": \"281.62\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 370.56}], \"page\": 1, \"page_total\": 73, \"count\": 365}",
+                "tool_call_id": "call_ZU7dLCDlgrVQMaSxMOapUeHU"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the top flight options for 1 adult, London (LHR)→New York (JFK) on 2026-01-25:\n\n1. British Airways — 288.39 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n2. Iberia — 295.01 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n3. American Airlines — 305.67 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n4. Duffel Airways — 306.10 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n5. Lufthansa — 370.56 USDC — LHR→JFK 2026-01-25 20:05 → 2026-01-26 13:05\n\nPick a number (1-5) to select your flight."
+            },
+            {
+                "role": "user",
+                "content": "i only want Duffel Airways"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_TvV5NO7s7aRLl9d09QkQadkw",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"LHR\",\"destination\":\"JFK\",\"date\":\"2026-01-25\",\"passengers\":1,\"preferred_airlines\":[\"Duffel Airways\"]}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlVznmBUmSbfsrS34\", \"airline\": \"British Airways\", \"total_amount\": \"217.98\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"217.98\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 286.82}, {\"id\": \"off_0000AzlVznmBUmSbfsrS30\", \"airline\": \"Duffel Airways\", \"total_amount\": \"223.22\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"223.22\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 293.72}, {\"id\": \"off_0000AzlVznmtS91li5C19W\", \"airline\": \"American Airlines\", \"total_amount\": \"223.28\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"223.28\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 293.8}, {\"id\": \"off_0000AzlVznmXTSkBgz1jbK\", \"airline\": \"Iberia\", \"total_amount\": \"231.38\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 18:34 \\u2192 2026-01-25 21:32\", \"original_amount\": \"231.38\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 304.46}, {\"id\": \"off_0000AzlW0GcyE7Jz9hm0Dr\", \"airline\": \"Lufthansa\", \"total_amount\": \"281.62\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192JFK 2026-01-25 20:05 \\u2192 2026-01-26 13:05\", \"original_amount\": \"281.62\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 370.56}], \"page\": 1, \"page_total\": 73, \"count\": 365}",
+                "tool_call_id": "call_TvV5NO7s7aRLl9d09QkQadkw"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the top flight options for 1 adult, London (LHR)→New York (JFK) on 2026-01-25:\n\n1. British Airways — 286.82 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n2. Duffel Airways — 293.72 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n3. American Airlines — 293.80 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n4. Iberia — 304.46 USDC — LHR→JFK 2026-01-25 18:34 → 2026-01-25 21:32\n5. Lufthansa — 370.56 USDC — LHR→JFK 2026-01-25 20:05 → 2026-01-26 13:05\n\nPick number 2 to select the Duffel Airways flight."
+            }
+        ]
+    },
+    "agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w::e7d74449-4ce6-41c8-9415-ce623bbc5f18": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true,
+            "last_tool": "duffel_search_offers",
+            "last_tool_result": {
+                "offers": [
+                    {
+                        "id": "off_0000AzlWqoTcQH9AoK4GON",
+                        "airline": "American Airlines",
+                        "total_amount": "218.47",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                        "original_amount": "218.47",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 287.47
+                    },
+                    {
+                        "id": "off_0000AzlWqoTcQH9AoK4GOM",
+                        "airline": "Iberia",
+                        "total_amount": "222.07",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                        "original_amount": "222.07",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 292.21
+                    },
+                    {
+                        "id": "off_0000AzlWqoTcQH9AoK4GOU",
+                        "airline": "British Airways",
+                        "total_amount": "222.71",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                        "original_amount": "222.71",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 293.05
+                    },
+                    {
+                        "id": "off_0000AzlWqoSuSua0m7jhHm",
+                        "airline": "Duffel Airways",
+                        "total_amount": "230.93",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                        "original_amount": "230.93",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 303.86
+                    },
+                    {
+                        "id": "off_0000AzlWr4rxTY7heRZvYg",
+                        "airline": "Lufthansa",
+                        "total_amount": "323.62",
+                        "total_currency": "GBP",
+                        "itinerary": "LHR→EWR 2026-01-22 12:05 → 2026-01-22 20:30",
+                        "original_amount": "323.62",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 425.83
+                    }
+                ],
+                "page": 1,
+                "page_total": 50,
+                "count": 248
+            },
+            "last_search": {
+                "origin": "LHR",
+                "destination": "EWR",
+                "date": "2026-01-22",
+                "passengers": 1,
+                "current_page": 1,
+                "total_pages": 50
+            },
+            "current_offers": [
+                {
+                    "id": "off_0000AzlWqoTcQH9AoK4GON",
+                    "airline": "American Airlines",
+                    "total_amount": "218.47",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                    "original_amount": "218.47",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 287.47
+                },
+                {
+                    "id": "off_0000AzlWqoTcQH9AoK4GOM",
+                    "airline": "Iberia",
+                    "total_amount": "222.07",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                    "original_amount": "222.07",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 292.21
+                },
+                {
+                    "id": "off_0000AzlWqoTcQH9AoK4GOU",
+                    "airline": "British Airways",
+                    "total_amount": "222.71",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                    "original_amount": "222.71",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 293.05
+                },
+                {
+                    "id": "off_0000AzlWqoSuSua0m7jhHm",
+                    "airline": "Duffel Airways",
+                    "total_amount": "230.93",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14",
+                    "original_amount": "230.93",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 303.86
+                },
+                {
+                    "id": "off_0000AzlWr4rxTY7heRZvYg",
+                    "airline": "Lufthansa",
+                    "total_amount": "323.62",
+                    "total_currency": "GBP",
+                    "itinerary": "LHR→EWR 2026-01-22 12:05 → 2026-01-22 20:30",
+                    "original_amount": "323.62",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 425.83
+                }
+            ]
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "flights from london to new jersey please"
+            },
+            {
+                "role": "assistant",
+                "content": "Could you provide the date you want to travel and how many adults (or children) will be flying?"
+            },
+            {
+                "role": "user",
+                "content": "1 adult and 22 jan"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_glC5klBXB2T25E6FObqLzN1g",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"LHR\",\"destination\":\"EWR\",\"date\":\"2026-01-22\",\"passengers\":1}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlWKho6so3rF9jHzE\", \"airline\": \"Iberia\", \"total_amount\": \"216.03\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"216.03\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 284.26}, {\"id\": \"off_0000AzlWKhnku7mHE3Z0Qt\", \"airline\": \"Duffel Airways\", \"total_amount\": \"218.31\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"218.31\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 287.26}, {\"id\": \"off_0000AzlWKhoSrULRGFtZX5\", \"airline\": \"American Airlines\", \"total_amount\": \"223.80\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"223.80\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 294.48}, {\"id\": \"off_0000AzlWKhnku7mHE3Z0Qr\", \"airline\": \"British Airways\", \"total_amount\": \"228.37\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"228.37\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 300.49}, {\"id\": \"off_0000AzlWKho6so3rF9jHzX\", \"airline\": \"Iberia\", \"total_amount\": \"321.50\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"321.50\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 423.04}], \"page\": 1, \"page_total\": 50, \"count\": 248}",
+                "tool_call_id": "call_glC5klBXB2T25E6FObqLzN1g"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the top flight options for 1 adult, London (LHR)→New Jersey (EWR) on 2026-01-22:\n\n1. Iberia — 284.26 USDC — LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14\n2. Duffel Airways — 287.26 USDC — LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14\n3. American Airlines — 294.48 USDC — LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14\n4. British Airways — 300.49 USDC — LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14\n5. Iberia — 423.04 USDC — LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14\n\nPick a number (1-5) to select your flight."
+            },
+            {
+                "role": "user",
+                "content": "i want only Duffel Airways flights"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_DyDvqYCQp7eEkKGEFnjlZOfy",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"LHR\",\"destination\":\"EWR\",\"date\":\"2026-01-22\",\"passengers\":1,\"preferred_airlines\":[\"ZZ\"]}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlWqoTcQH9AoK4GON\", \"airline\": \"American Airlines\", \"total_amount\": \"218.47\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"218.47\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 287.47}, {\"id\": \"off_0000AzlWqoTcQH9AoK4GOM\", \"airline\": \"Iberia\", \"total_amount\": \"222.07\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"222.07\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 292.21}, {\"id\": \"off_0000AzlWqoTcQH9AoK4GOU\", \"airline\": \"British Airways\", \"total_amount\": \"222.71\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"222.71\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 293.05}, {\"id\": \"off_0000AzlWqoSuSua0m7jhHm\", \"airline\": \"Duffel Airways\", \"total_amount\": \"230.93\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 16:15 \\u2192 2026-01-22 19:14\", \"original_amount\": \"230.93\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 303.86}, {\"id\": \"off_0000AzlWr4rxTY7heRZvYg\", \"airline\": \"Lufthansa\", \"total_amount\": \"323.62\", \"total_currency\": \"GBP\", \"itinerary\": \"LHR\\u2192EWR 2026-01-22 12:05 \\u2192 2026-01-22 20:30\", \"original_amount\": \"323.62\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 425.83}], \"page\": 1, \"page_total\": 50, \"count\": 248}",
+                "tool_call_id": "call_DyDvqYCQp7eEkKGEFnjlZOfy"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the top flight options for 1 adult, London (LHR)→New Jersey (EWR) on 2026-01-22, with only Duffel Airways flights:\n\n1. Duffel Airways — 303.86 USDC — LHR→EWR 2026-01-22 16:15 → 2026-01-22 19:14\n\nPick 1 to select this flight."
+            }
+        ]
+    },
+    "agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w::564ea96e-d4aa-45bc-b8a0-2cf1f9c45470": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true,
+            "last_tool": "duffel_search_offers",
+            "last_tool_result": {
+                "offers": [
+                    {
+                        "id": "off_0000AzlX4vqZoiQ9iuXSAT",
+                        "airline": "Virgin Atlantic",
+                        "total_amount": "185.70",
+                        "total_currency": "GBP",
+                        "itinerary": "JFK→LHR 2026-01-22 18:00 → 2026-01-23 06:20",
+                        "original_amount": "185.70",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 244.35
+                    },
+                    {
+                        "id": "off_0000AzlX4vqZoiQ9iuXSAN",
+                        "airline": "Virgin Atlantic",
+                        "total_amount": "185.70",
+                        "total_currency": "GBP",
+                        "itinerary": "JFK→LHR 2026-01-22 22:00 → 2026-01-23 10:15",
+                        "original_amount": "185.70",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 244.35
+                    },
+                    {
+                        "id": "off_0000AzlX4vqZoiQ9iuXSAH",
+                        "airline": "Virgin Atlantic",
+                        "total_amount": "185.70",
+                        "total_currency": "GBP",
+                        "itinerary": "JFK→LHR 2026-01-22 20:00 → 2026-01-23 08:05",
+                        "original_amount": "185.70",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 244.35
+                    },
+                    {
+                        "id": "off_0000AzlX4vqZoiQ9iuXSAB",
+                        "airline": "Virgin Atlantic",
+                        "total_amount": "185.70",
+                        "total_currency": "GBP",
+                        "itinerary": "JFK→LHR 2026-01-22 19:01 → 2026-01-23 06:55",
+                        "original_amount": "185.70",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 244.35
+                    },
+                    {
+                        "id": "off_0000AzlX4vqZoiQ9iuXSA5",
+                        "airline": "Virgin Atlantic",
+                        "total_amount": "185.70",
+                        "total_currency": "GBP",
+                        "itinerary": "JFK→LHR 2026-01-22 21:30 → 2026-01-23 09:20",
+                        "original_amount": "185.70",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 244.35
+                    }
+                ],
+                "page": 1,
+                "page_total": 75,
+                "count": 372
+            },
+            "last_search": {
+                "origin": "JFK",
+                "destination": "LHR",
+                "date": "2026-01-22",
+                "passengers": 1,
+                "current_page": 1,
+                "total_pages": 75
+            },
+            "current_offers": [
+                {
+                    "id": "off_0000AzlX4vqZoiQ9iuXSAT",
+                    "airline": "Virgin Atlantic",
+                    "total_amount": "185.70",
+                    "total_currency": "GBP",
+                    "itinerary": "JFK→LHR 2026-01-22 18:00 → 2026-01-23 06:20",
+                    "original_amount": "185.70",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 244.35
+                },
+                {
+                    "id": "off_0000AzlX4vqZoiQ9iuXSAN",
+                    "airline": "Virgin Atlantic",
+                    "total_amount": "185.70",
+                    "total_currency": "GBP",
+                    "itinerary": "JFK→LHR 2026-01-22 22:00 → 2026-01-23 10:15",
+                    "original_amount": "185.70",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 244.35
+                },
+                {
+                    "id": "off_0000AzlX4vqZoiQ9iuXSAH",
+                    "airline": "Virgin Atlantic",
+                    "total_amount": "185.70",
+                    "total_currency": "GBP",
+                    "itinerary": "JFK→LHR 2026-01-22 20:00 → 2026-01-23 08:05",
+                    "original_amount": "185.70",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 244.35
+                },
+                {
+                    "id": "off_0000AzlX4vqZoiQ9iuXSAB",
+                    "airline": "Virgin Atlantic",
+                    "total_amount": "185.70",
+                    "total_currency": "GBP",
+                    "itinerary": "JFK→LHR 2026-01-22 19:01 → 2026-01-23 06:55",
+                    "original_amount": "185.70",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 244.35
+                },
+                {
+                    "id": "off_0000AzlX4vqZoiQ9iuXSA5",
+                    "airline": "Virgin Atlantic",
+                    "total_amount": "185.70",
+                    "total_currency": "GBP",
+                    "itinerary": "JFK→LHR 2026-01-22 21:30 → 2026-01-23 09:20",
+                    "original_amount": "185.70",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 244.35
+                }
+            ]
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "hello buddy\nbook from new york to london"
+            },
+            {
+                "role": "assistant",
+                "content": "Great! Could you provide the date you want to travel and how many adults (or children) will be flying?"
+            },
+            {
+                "role": "user",
+                "content": "1 adult on 22 jan 2026"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_HYaIp23XCrv3vLXhLqoHn3Ml",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"JFK\",\"destination\":\"LHR\",\"date\":\"2026-01-22\",\"passengers\":1}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlX2ZmcsWVgiNZEjM\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 18:00 \\u2192 2026-01-23 06:20\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlX2ZmcsWVgiNZEjG\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 22:00 \\u2192 2026-01-23 10:15\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlX2ZmcsWVgiNZEjA\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 20:00 \\u2192 2026-01-23 08:05\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlX2ZmGtqE6hHOxB2\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 19:01 \\u2192 2026-01-23 06:55\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlX2ZmGtqE6hHOxAw\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 21:30 \\u2192 2026-01-23 09:20\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}], \"page\": 1, \"page_total\": 75, \"count\": 372}",
+                "tool_call_id": "call_HYaIp23XCrv3vLXhLqoHn3Ml"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the top flight options for 1 adult, JFK→LHR on 2026-01-22:\n\n1. Virgin Atlantic — 244.35 USDC — JFK→LHR 2026-01-22 18:00 → 2026-01-23 06:20\n2. Virgin Atlantic — 244.35 USDC — JFK→LHR 2026-01-22 22:00 → 2026-01-23 10:15\n3. Virgin Atlantic — 244.35 USDC — JFK→LHR 2026-01-22 20:00 → 2026-01-23 08:05\n4. Virgin Atlantic — 244.35 USDC — JFK→LHR 2026-01-22 19:01 → 2026-01-23 06:55\n5. Virgin Atlantic — 244.35 USDC — JFK→LHR 2026-01-22 21:30 → 2026-01-23 09:20\n\nPick a number (1-5) to select your flight."
+            },
+            {
+                "role": "user",
+                "content": "i want british airways please"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_47OOAvQQjvMy7vlJDUPVT2pI",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"JFK\",\"destination\":\"LHR\",\"date\":\"2026-01-22\",\"passengers\":1,\"preferred_airlines\":[\"BA\"]}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlX4vqZoiQ9iuXSAT\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 18:00 \\u2192 2026-01-23 06:20\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlX4vqZoiQ9iuXSAN\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 22:00 \\u2192 2026-01-23 10:15\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlX4vqZoiQ9iuXSAH\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 20:00 \\u2192 2026-01-23 08:05\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlX4vqZoiQ9iuXSAB\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 19:01 \\u2192 2026-01-23 06:55\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlX4vqZoiQ9iuXSA5\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 21:30 \\u2192 2026-01-23 09:20\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}], \"page\": 1, \"page_total\": 75, \"count\": 372}",
+                "tool_call_id": "call_47OOAvQQjvMy7vlJDUPVT2pI"
+            },
+            {
+                "role": "assistant",
+                "content": "It looks like there are no British Airways flights available for JFK→LHR on 2026-01-22. The current top options are still with Virgin Atlantic.\n\nWould you like to pick one of these Virgin Atlantic flights (1-5), or would you like to search a different date or route?"
+            }
+        ]
+    },
+    "agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w::78fbb01b-60a6-4d91-8542-a93a7570b4dd": {
+        "state": {
+            "origin": null,
+            "destination": null,
+            "date": null,
+            "passengers": null,
+            "greeted": true,
+            "last_tool": "confirm_order_cancellation",
+            "last_tool_result": {
+                "order_cancellation_id": "ore_0000AzlYmPQgqNEgNypcRN",
+                "order_id": "ord_0000AzlXeuw2gVPjJvFoum",
+                "refund_amount": "1363.94",
+                "refund_currency": "GBP",
+                "confirmed_at": "2025-10-31T11:02:29.461460Z"
+            },
+            "last_search": {
+                "origin": "JFK",
+                "destination": "LHR",
+                "date": "2026-01-22",
+                "passengers": 1,
+                "current_page": 1,
+                "total_pages": 1
+            },
+            "current_offers": [
+                {
+                    "id": "off_0000AzlXVi8K6uRO1rExr4",
+                    "airline": "British Airways",
+                    "total_amount": "216.38",
+                    "total_currency": "GBP",
+                    "itinerary": "JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13",
+                    "original_amount": "216.38",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 284.72
+                },
+                {
+                    "id": "off_0000AzlXVi8K6uRO1rExr8",
+                    "airline": "British Airways",
+                    "total_amount": "348.38",
+                    "total_currency": "GBP",
+                    "itinerary": "JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13",
+                    "original_amount": "348.38",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 458.41
+                },
+                {
+                    "id": "off_0000AzlXVi8K6uRO1rExrK",
+                    "airline": "British Airways",
+                    "total_amount": "1363.94",
+                    "total_currency": "GBP",
+                    "itinerary": "JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13",
+                    "original_amount": "1363.94",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 1794.7
+                },
+                {
+                    "id": "off_0000AzlXVi8g5aiy2xPFPO",
+                    "airline": "British Airways",
+                    "total_amount": "3277.05",
+                    "total_currency": "GBP",
+                    "itinerary": "JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13",
+                    "original_amount": "3277.05",
+                    "original_currency": "GBP",
+                    "total_amount_usdc": 4312.02
+                }
+            ],
+            "selected_offer_id": "off_0000AzlXVi8K6uRO1rExrK",
+            "offer_details": {
+                "id": "off_0000AzlXVi8K6uRO1rExrK",
+                "airline": "British Airways",
+                "total_amount": "1363.94",
+                "total_currency": "GBP",
+                "itinerary": "JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13",
+                "payment_required_by": "2025-11-03T10:47:52Z",
+                "bags": [
+                    {
+                        "id": "ase_0000AzlXYes0iPbrbOVVOC",
+                        "name": "Bag",
+                        "total_amount": "20.00",
+                        "total_currency": "GBP",
+                        "original_amount": "20.00",
+                        "original_currency": "GBP",
+                        "total_amount_usdc": 26.32
+                    }
+                ],
+                "offer_passengers": [
+                    {
+                        "id": "pas_0000AzlXVhuquzfJM4wCrC",
+                        "type": "adult"
+                    }
+                ],
+                "original_amount": "1363.94",
+                "original_currency": "GBP",
+                "total_amount_usdc": 1794.7
+            },
+            "offer_passengers": [
+                {
+                    "id": "pas_0000AzlXVhuquzfJM4wCrC",
+                    "type": "adult"
+                }
+            ],
+            "payment_requested": false,
+            "payment_description": "British Airways, JFK→LHR on 2026-01-22 for 1 adult",
+            "list_orders_requested": false,
+            "pending_cancellation_id": "ore_0000AzlYmPQgqNEgNypcRN",
+            "pending_cancellation_order_id": "ord_0000AzlXeuw2gVPjJvFoum",
+            "cancellation_confirmed": true,
+            "cancelled_order_id": "ord_0000AzlXeuw2gVPjJvFoum",
+            "cancelled_refund_amount": "1363.94",
+            "cancelled_refund_currency": "GBP"
+        },
+        "history": [
+            {
+                "role": "user",
+                "content": "hello buddy book from new york to london"
+            },
+            {
+                "role": "assistant",
+                "content": "Could you provide the date you want to travel and how many adults (or children) will be flying?"
+            },
+            {
+                "role": "user",
+                "content": "22 jan and 1 adult"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_JANdN9LRNoglUaoXLpvw19jy",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"JFK\",\"destination\":\"LHR\",\"date\":\"2026-01-22\",\"passengers\":1}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlXRLE08xTgnnBH1B\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 18:00 \\u2192 2026-01-23 06:20\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlXRLE08xTgnnBH15\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 22:00 \\u2192 2026-01-23 10:15\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlXRLE08xTgnnBH0z\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 20:00 \\u2192 2026-01-23 08:05\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlXRLE08xTgnnBH0t\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 19:01 \\u2192 2026-01-23 06:55\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}, {\"id\": \"off_0000AzlXRLE08xTgnnBH0n\", \"airline\": \"Virgin Atlantic\", \"total_amount\": \"185.70\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 21:30 \\u2192 2026-01-23 09:20\", \"original_amount\": \"185.70\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 244.35}], \"page\": 1, \"page_total\": 75, \"count\": 372}",
+                "tool_call_id": "call_JANdN9LRNoglUaoXLpvw19jy"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the top flight options for 1 adult, JFK→LHR on 2026-01-22:\n\n1. Virgin Atlantic — 244.35 USDC — JFK→LHR 2026-01-22 18:00 → 2026-01-23 06:20\n2. Virgin Atlantic — 244.35 USDC — JFK→LHR 2026-01-22 22:00 → 2026-01-23 10:15\n3. Virgin Atlantic — 244.35 USDC — JFK→LHR 2026-01-22 20:00 → 2026-01-23 08:05\n4. Virgin Atlantic — 244.35 USDC — JFK→LHR 2026-01-22 19:01 → 2026-01-23 06:55\n5. Virgin Atlantic — 244.35 USDC — JFK→LHR 2026-01-22 21:30 → 2026-01-23 09:20\n\nPick a number (1-5) to select your flight."
+            },
+            {
+                "role": "user",
+                "content": "duffel airways options please"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_VtX0fQhMdt6ZlnCRv4sbQY4q",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"JFK\",\"destination\":\"LHR\",\"date\":\"2026-01-22\",\"passengers\":1,\"preferred_airlines\":[\"ZZ\"]}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlXTzEiLvUhTUm9tA\", \"airline\": \"Duffel Airways\", \"total_amount\": \"226.36\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 16:15 \\u2192 2026-01-23 05:13\", \"original_amount\": \"226.36\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 297.85}, {\"id\": \"off_0000AzlXTzEiLvUhTUm9tI\", \"airline\": \"Duffel Airways\", \"total_amount\": \"348.34\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 16:15 \\u2192 2026-01-23 05:13\", \"original_amount\": \"348.34\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 458.35}, {\"id\": \"off_0000AzlXTzEiLvUhTUm9tW\", \"airline\": \"Duffel Airways\", \"total_amount\": \"1344.49\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 16:15 \\u2192 2026-01-23 05:13\", \"original_amount\": \"1344.49\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 1769.11}, {\"id\": \"off_0000AzlXTzF4KbmHUawRRX\", \"airline\": \"Duffel Airways\", \"total_amount\": \"3352.13\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 16:15 \\u2192 2026-01-23 05:13\", \"original_amount\": \"3352.13\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 4410.81}], \"page\": 1, \"page_total\": 1, \"count\": 4}",
+                "tool_call_id": "call_VtX0fQhMdt6ZlnCRv4sbQY4q"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the top Duffel Airways options for 1 adult, JFK→LHR on 2026-01-22:\n\n1. Duffel Airways — 297.85 USDC — JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13\n2. Duffel Airways — 458.35 USDC — JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13\n3. Duffel Airways — 1769.11 USDC — JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13\n4. Duffel Airways — 4410.81 USDC — JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13\n\nPick a number (1-4) to select your flight."
+            },
+            {
+                "role": "user",
+                "content": "british airways options"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_i8cImvCYuSeqmAse5Y4AilJL",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_search_offers",
+                            "arguments": "{\"origin\":\"JFK\",\"destination\":\"LHR\",\"date\":\"2026-01-22\",\"passengers\":1,\"preferred_airlines\":[\"BA\"]}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_search_offers",
+                "content": "{\"offers\": [{\"id\": \"off_0000AzlXVi8K6uRO1rExr4\", \"airline\": \"British Airways\", \"total_amount\": \"216.38\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 16:15 \\u2192 2026-01-23 05:13\", \"original_amount\": \"216.38\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 284.72}, {\"id\": \"off_0000AzlXVi8K6uRO1rExr8\", \"airline\": \"British Airways\", \"total_amount\": \"348.38\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 16:15 \\u2192 2026-01-23 05:13\", \"original_amount\": \"348.38\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 458.41}, {\"id\": \"off_0000AzlXVi8K6uRO1rExrK\", \"airline\": \"British Airways\", \"total_amount\": \"1363.94\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 16:15 \\u2192 2026-01-23 05:13\", \"original_amount\": \"1363.94\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 1794.7}, {\"id\": \"off_0000AzlXVi8g5aiy2xPFPO\", \"airline\": \"British Airways\", \"total_amount\": \"3277.05\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 16:15 \\u2192 2026-01-23 05:13\", \"original_amount\": \"3277.05\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 4312.02}], \"page\": 1, \"page_total\": 1, \"count\": 4}",
+                "tool_call_id": "call_i8cImvCYuSeqmAse5Y4AilJL"
+            },
+            {
+                "role": "assistant",
+                "content": "Here are the top British Airways options for 1 adult, JFK→LHR on 2026-01-22:\n\n1. British Airways — 284.72 USDC — JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13\n2. British Airways — 458.41 USDC — JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13\n3. British Airways — 1794.70 USDC — JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13\n4. British Airways — 4312.02 USDC — JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13\n\nPick a number (1-4) to select your flight."
+            },
+            {
+                "role": "user",
+                "content": "3"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_5oCJbfJvXsu9fKWLmPSnysxY",
+                        "type": "function",
+                        "function": {
+                            "name": "duffel_get_offer_with_services",
+                            "arguments": "{\"offer_id\":\"off_0000AzlXVi8K6uRO1rExrK\"}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "duffel_get_offer_with_services",
+                "content": "{\"id\": \"off_0000AzlXVi8K6uRO1rExrK\", \"airline\": \"British Airways\", \"total_amount\": \"1363.94\", \"total_currency\": \"GBP\", \"itinerary\": \"JFK\\u2192LHR 2026-01-22 16:15 \\u2192 2026-01-23 05:13\", \"payment_required_by\": \"2025-11-03T10:47:52Z\", \"bags\": [{\"id\": \"ase_0000AzlXYes0iPbrbOVVOC\", \"name\": \"Bag\", \"total_amount\": \"20.00\", \"total_currency\": \"GBP\", \"original_amount\": \"20.00\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 26.32}], \"offer_passengers\": [{\"id\": \"pas_0000AzlXVhuquzfJM4wCrC\", \"type\": \"adult\"}], \"original_amount\": \"1363.94\", \"original_currency\": \"GBP\", \"total_amount_usdc\": 1794.7}",
+                "tool_call_id": "call_5oCJbfJvXsu9fKWLmPSnysxY"
+            },
+            {
+                "role": "assistant",
+                "content": "✅ Selected: British Airways — 1794.70 USDC — JFK→LHR 2026-01-22 16:15 → 2026-01-23 05:13\n\nNext, please provide passenger details:\n\n• Title (Mr/Ms/Mrs/Miss/Dr/Mx)\n\n• Full name  \n\n• Date of birth (YYYY-MM-DD)\n\n• Gender (M/F/X)\n\n• Email address\n\n• Phone number (with country code, e.g., +1234567890)\n\nExample: \nMr. John Smith\n1990-05-15\nM\njohn@example.com\n+1234567890"
+            },
+            {
+                "role": "user",
+                "content": "Mr. Abhi Gangani\n1997-01-31\nM"
+            },
+            {
+                "role": "assistant",
+                "content": "Thank you! Please provide the remaining details:\n\n• Email address\n• Phone number (with country code, e.g., +1234567890)"
+            },
+            {
+                "role": "user",
+                "content": "agangani97@gmail.com\n+447788998877"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_9zJarvbqELRhMVwnjXtMyZFD",
+                        "type": "function",
+                        "function": {
+                            "name": "request_payment",
+                            "arguments": "{\"currency\":\"USDC\",\"amount\":1794.7,\"description\":\"British Airways, JFK→LHR on 2026-01-22 for 1 adult\"}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "request_payment",
+                "content": "{\"status\": \"payment_request_queued\", \"message\": \"Payment request will be sent to user's wallet with FET and USDC options\"}",
+                "tool_call_id": "call_9zJarvbqELRhMVwnjXtMyZFD"
+            },
+            {
+                "role": "assistant",
+                "content": ""
+            },
+            {
+                "role": "user",
+                "content": "list my orders"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_CYnRFsLocWhGlkRxaFVL0GFV",
+                        "type": "function",
+                        "function": {
+                            "name": "list_orders",
+                            "arguments": "{}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "list_orders",
+                "content": "{\"status\": \"list_orders_requested\", \"message\": \"Order list will be retrieved from storage\"}",
+                "tool_call_id": "call_CYnRFsLocWhGlkRxaFVL0GFV"
+            },
+            {
+                "role": "assistant",
+                "content": "📋 Your Bookings:\n\n(Your current bookings will be shown here shortly once retrieved from storage.)\n\nIf you have a specific order you'd like to manage or cancel, you can let me know!"
+            },
+            {
+                "role": "user",
+                "content": "cancel please ord_0000AzlXeuw2gVPjJvFoum"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_YEUoNaDFGoqNRYHrCYPvZ0m9",
+                        "type": "function",
+                        "function": {
+                            "name": "get_order_cancellation_quote",
+                            "arguments": "{\"order_id\":\"ord_0000AzlXeuw2gVPjJvFoum\"}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "get_order_cancellation_quote",
+                "content": "{\"order_cancellation_id\": \"ore_0000AzlYmPQgqNEgNypcRN\", \"order_id\": \"ord_0000AzlXeuw2gVPjJvFoum\", \"refund_amount\": \"1363.94\", \"refund_currency\": \"GBP\", \"refund_to\": \"balance\", \"expires_at\": \"2025-10-31T12:02:06Z\"}",
+                "tool_call_id": "call_YEUoNaDFGoqNRYHrCYPvZ0m9"
+            },
+            {
+                "role": "assistant",
+                "content": "🔄 Cancellation Quote for Order ord_0000AzlXeuw2gVPjJvFoum:\n\nRefund: 1363.94 GBP\nRefund method: balance\nExpires: 2025-10-31T12:02:06Z\n\n⚠️ To confirm cancellation, say \"confirm cancel ord_0000AzlXeuw2gVPjJvFoum\"\n   To keep your booking, just ignore this message."
+            },
+            {
+                "role": "user",
+                "content": "confirm cancellation of ord_0000AzlXeuw2gVPjJvFoum"
+            },
+            {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                    {
+                        "id": "call_dFeJDJ4FyBdZH6TxoXTkvO3Q",
+                        "type": "function",
+                        "function": {
+                            "name": "confirm_order_cancellation",
+                            "arguments": "{\"order_cancellation_id\":\"ore_0000AzlYmPQgqNEgNypcRN\"}"
+                        }
+                    }
+                ]
+            },
+            {
+                "role": "tool",
+                "name": "confirm_order_cancellation",
+                "content": "{\"order_cancellation_id\": \"ore_0000AzlYmPQgqNEgNypcRN\", \"order_id\": \"ord_0000AzlXeuw2gVPjJvFoum\", \"refund_amount\": \"1363.94\", \"refund_currency\": \"GBP\", \"confirmed_at\": \"2025-10-31T11:02:29.461460Z\"}",
+                "tool_call_id": "call_dFeJDJ4FyBdZH6TxoXTkvO3Q"
+            },
+            {
+                "role": "assistant",
+                "content": "✅ Order ord_0000AzlXeuw2gVPjJvFoum has been cancelled\n   Refund of 1363.94 GBP will be processed to your balance."
+            }
+        ]
+    },
+    "passenger_1:agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w:78fbb01b-60a6-4d91-8542-a93a7570b4dd": {
+        "title": "mr",
+        "given_name": "Abhi",
+        "family_name": "Gangani",
+        "born_on": "1997-01-31",
+        "gender": "M",
+        "email": "agangani97@gmail.com",
+        "phone_number": "+447788998877",
+        "id": "pas_0000AzlXVhuquzfJM4wCrC"
+    },
+    "selected_offer_id:agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w:78fbb01b-60a6-4d91-8542-a93a7570b4dd": "off_0000AzlXVi8K6uRO1rExrK",
+    "offer_passengers:agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w:78fbb01b-60a6-4d91-8542-a93a7570b4dd": [
+        {
+            "id": "pas_0000AzlXVhuquzfJM4wCrC",
+            "type": "adult"
+        }
+    ],
+    "payment_requested:agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w:78fbb01b-60a6-4d91-8542-a93a7570b4dd": true,
+    "commit_eyJhbGciOiJFUzI1NiIsImtpZCI6IjAiLCJ0eXAiOiJwYXkrSldUIn0.eyJ2ZXIiOiIxLjAiLCJlbnYiOiJwcm9kdWN0aW9uIiwiYnRnIjoicGF5LWZldGNoMTQ3cnJ4Y3RqMDZyY2t5bTh5djR0dHU5d2Vtd3VuNHQ4a2o2YzhhIiwic3NpIjoiMmNhYjBmYTMtYzE4MS00NTVhLWFkNDQtOWVhNzA2OTY5OGJjIiwic2NvcGVzIjpbXSwidmFsdWUiOiIxMDAwIiwiYW1vdW50IjoiMC4wMDEiLCJjdXIiOiJVU0QiLCJzdHAiOiJDT0lOIiwic3RpIjp7InR5cGUiOiJVU0RDIn0sInNwcyI6IkNVU1RPTSIsImlhdCI6MTc2MTkwNzc2NywiaXNzIjoiaHR0cHM6Ly9hcHAuc2t5ZmlyZS54eXoiLCJqdGkiOiI4ZTJhYjM2ZS1kOTg5LTQ0YjktYmQ0My1hMDhjMTE2MDU1NTUiLCJhdWQiOiJkOTA2MGJhMi1kYzczLTRjYTktYjI1NS1iNTJjZjI0Yjg0NWYiLCJzdWIiOiI2ZGZjM2MyNy0wYTk1LTRmYmUtODFkMy1iOGY1MGVjN2NkNGQiLCJleHAiOjE3NjE5MDgwNTF9.cVsVYPXSz-NeVc22XgQHrzGTxgiq5fQAbwYBFmM2BpXXLV9AvD_0Zg1SqWMRbTcgCZemGle-urR7N5PIWYsgLw:agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w:78fbb01b-60a6-4d91-8542-a93a7570b4dd": true,
+    "paid:agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w:78fbb01b-60a6-4d91-8542-a93a7570b4dd": true,
+    "booked_offers:agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w": [
+        {
+            "timestamp": "2025-10-31T10:49:33.463160+00:00",
+            "session": "78fbb01b-60a6-4d91-8542-a93a7570b4dd",
+            "method": "skyfire",
+            "currency": "USDC",
+            "amount": "0.001",
+            "tx": "eyJhbGciOiJFUzI1NiIsImtpZCI6IjAiLCJ0eXAiOiJwYXkrSldUIn0.eyJ2ZXIiOiIxLjAiLCJlbnYiOiJwcm9kdWN0aW9uIiwiYnRnIjoicGF5LWZldGNoMTQ3cnJ4Y3RqMDZyY2t5bTh5djR0dHU5d2Vtd3VuNHQ4a2o2YzhhIiwic3NpIjoiMmNhYjBmYTMtYzE4MS00NTVhLWFkNDQtOWVhNzA2OTY5OGJjIiwic2NvcGVzIjpbXSwidmFsdWUiOiIxMDAwIiwiYW1vdW50IjoiMC4wMDEiLCJjdXIiOiJVU0QiLCJzdHAiOiJDT0lOIiwic3RpIjp7InR5cGUiOiJVU0RDIn0sInNwcyI6IkNVU1RPTSIsImlhdCI6MTc2MTkwNzc2NywiaXNzIjoiaHR0cHM6Ly9hcHAuc2t5ZmlyZS54eXoiLCJqdGkiOiI4ZTJhYjM2ZS1kOTg5LTQ0YjktYmQ0My1hMDhjMTE2MDU1NTUiLCJhdWQiOiJkOTA2MGJhMi1kYzczLTRjYTktYjI1NS1iNTJjZjI0Yjg0NWYiLCJzdWIiOiI2ZGZjM2MyNy0wYTk1LTRmYmUtODFkMy1iOGY1MGVjN2NkNGQiLCJleHAiOjE3NjE5MDgwNTF9.cVsVYPXSz-NeVc22XgQHrzGTxgiq5fQAbwYBFmM2BpXXLV9AvD_0Zg1SqWMRbTcgCZemGle-urR7N5PIWYsgLw",
+            "order_id": "ord_0000AzlXeuw2gVPjJvFoum",
+            "booking_ref": "G6LD77",
+            "total": "1794.70 USDC"
+        }
+    ],
+    "order_placed:agent1qdsxundehgxnvxvpftz8q4zam74h5mupwfuwvqhlz7z8vrwkpt2qj5xul9w:78fbb01b-60a6-4d91-8542-a93a7570b4dd": true
 }

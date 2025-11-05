@@ -15,6 +15,7 @@ from __future__ import annotations
 import re
 from typing import Dict, Any, Optional
 from uuid import uuid4
+from datetime import datetime, timezone
 
 from uagents import Protocol, Context
 from uagents_core.contrib.protocols.chat import (
@@ -155,6 +156,35 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     session_data["history"] = updated_history
     _save_session_data(ctx, sender, session_id, session_data)
 
+    # Save successful bookings to storage (covers direct booking flows)
+    try:
+        if new_state.get("last_tool") == "duffel_create_order":
+            res = new_state.get("last_tool_result") or {}
+            if isinstance(res, dict) and res.get("id") and not res.get("error"):
+                order_id = res.get("id") or res.get("order_id")
+                booking_ref = res.get("booking_reference")
+                amt = res.get("total_amount")
+                cur = res.get("total_currency")
+                entry = {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "session": str(session_id),
+                    "method": "auto_ticket",
+                    "currency": str(cur) if cur else None,
+                    "amount": str(amt) if amt else None,
+                    "order_id": order_id,
+                    "booking_ref": booking_ref,
+                    "total": f"{amt} {cur}" if amt and cur else None,
+                }
+                key_hist = f"booked_offers:{sender}"
+                history_list = ctx.storage.get(key_hist) if ctx.storage.has(key_hist) else []
+                if not isinstance(history_list, list):
+                    history_list = []
+                history_list.append(entry)
+                ctx.storage.set(key_hist, history_list)
+                ctx.logger.info(f"Saved booking to history for {sender}: {order_id}")
+    except Exception as e:
+        ctx.logger.warning(f"Failed to save booking history: {e}")
+
     # Check if list_orders was requested by the LLM
     if new_state.get("list_orders_requested"):
         # Retrieve order history from storage
@@ -193,34 +223,19 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         _save_session_data(ctx, sender, session_id, session_data)
         return
 
-    # Auto-fill passenger details for known users after offer selection
+    # Auto-fill passenger details for known users after offer selection (no confirmation)
     if new_state.get("selected_offer_id") and not state.get("passenger_autofilled"):
         known_passenger = _get_known_passenger(sender)
         if known_passenger:
             # Store the known passenger details
             ctx.storage.set(f"passenger_1:{sender}:{session_id}", known_passenger)
             ctx.logger.info(f"Auto-filled passenger details for known user: {sender}")
-            
-            # Format confirmation message
-            confirmation_msg = _format_passenger_confirmation(known_passenger)
-            confirmation_msg += "\n\n✅ Are these details correct? Say 'yes' to proceed with payment, or provide updated details."
-            
-            # Add confirmation message to history so LLM can see it
-            history.append({
-                "role": "assistant",
-                "content": confirmation_msg
-            })
-            session_data["history"] = history
-            
-            # Send confirmation
-            await ctx.send(sender, ChatMessage(content=[TextContent(type="text", text=confirmation_msg)]))
-            
-            # Mark as autofilled and set flag for LLM
+            # Mark as autofilled; expose to state for direct booking in the next step
             state["passenger_autofilled"] = True
-            state["passenger_details_confirmed"] = False  # Will be set to True when user says yes
+            state["autofill_passenger_data"] = known_passenger
+            state["passenger_details_confirmed"] = True
             session_data["state"] = state
             _save_session_data(ctx, sender, session_id, session_data)
-            return
 
     # Check if payment was requested by the LLM
     if new_state.get("payment_requested"):
