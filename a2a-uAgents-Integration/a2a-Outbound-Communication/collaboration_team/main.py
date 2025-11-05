@@ -61,10 +61,11 @@ class DiscussionTeamSystem:
 
         self.coordinator = SingleA2AAdapter(
             agent_executor=discussion_executor,
-            name="discussion_team_coordinator",
+            name="discussion-team-coordinator",
             description="Coordinator for routing discussion topics to the specialist team.",
             port=8200, # The port for the uAgent coordinator
-            mailbox=True
+            mailbox=True,
+            timeout=2000
         )
         print("✅ Discussion Team Coordinator created!")
         return self.coordinator
@@ -92,10 +93,6 @@ def main():
     """
     Main function to run the Discussion Team A2A system.
     """
-    # Set the UAGENT_MESSAGE_TIMEOUT environment variable
-    # This tells the uAgent coordinator to wait longer for responses.
-    os.environ["UAGENT_MESSAGE_TIMEOUT"] = os.getenv("UAGENT_MESSAGE_TIMEOUT", "600") # Default to 600 seconds (10 minutes)
-
     try:
         system = DiscussionTeamSystem()
         system.start_system()

@@ -4,7 +4,7 @@ from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.types import Part, TextPart
 from a2a.utils import new_agent_text_message
-from agno.agent import Agent, Message, RunResponse
+from agno.agent import Agent, Message, RunOutput
 from agno.models.google import Gemini
 from agno.tools.exa import ExaTools
 from typing_extensions import override
@@ -43,7 +43,6 @@ books_recommender_agno_agent = Agent(
         "Format the recommendations neatly and ensure clarity for ease of user understanding, presenting them as a structured report with clear headings and bullet points. Use a table for the comparative analysis if appropriate. Include the book cover image URLs in the output, ensuring they are valid and accessible."
     ],
     tools=[ExaTools()],
-    show_tool_calls=True,
 )
 
 class BooksRecommenderAgentExecutor(AgentExecutor):
@@ -78,7 +77,7 @@ class BooksRecommenderAgentExecutor(AgentExecutor):
         
         try:
             logger.info("Starting agno agent run with timeout...")
-            result: RunResponse = await asyncio.wait_for(self.agent.arun(message), timeout=180)
+            result: RunOutput = await asyncio.wait_for(self.agent.arun(message), timeout=180)
             logger.info(f"Agno agent finished run. Response content type: {type(result.content)}")
             
             response_text = str(result.content)

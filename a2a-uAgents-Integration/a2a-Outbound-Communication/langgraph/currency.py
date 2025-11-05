@@ -46,7 +46,7 @@ class CurrencyAgent:
         logger.info("🤖 Creating Currency Coordinator...")
         self.coordinator = SingleA2AAdapter(
             agent_executor=CurrencyAgentExecutor(),
-            name="currency--",
+            name="currency-coordinator",
             description="Routes queries to the Currency Agent",
             port=8100,
             mailbox=True

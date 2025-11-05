@@ -61,10 +61,11 @@ class CompetitorAnalysisSystem:
 
         self.coordinator = SingleA2AAdapter(
             agent_executor=competitor_executor,
-            name="competitor_analysis_coordinator",
+            name="competitor-analysis-coordinator",
             description="Coordinator for routing competitor analysis queries to the specialist agent.",
             port=8200, # The port for the uAgent coordinator
-            mailbox=True
+            mailbox=True,
+            timeout=2000
         )
         print("✅ Competitor Analysis Coordinator created!")
         return self.coordinator

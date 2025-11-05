@@ -2,11 +2,6 @@ import os
 from typing import Dict, List
 from uagents_adapter import SingleA2AAdapter, A2AAgentConfig, a2a_servers 
 from shopping_agent import ShoppingAgentExecutor
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-load_dotenv()
-
 class ShoppingPartnerSystem:
     """
     Manages the setup and execution of the A2A Shopping Partner agent.
@@ -24,7 +19,7 @@ class ShoppingPartnerSystem:
         print("🔧 Setting up Shopping Partner Agent")
         self.agent_configs = [
             A2AAgentConfig(
-                name="shopping_partner_specialist",
+                name="shopping-partner-specialist",
                 description="AI Agent for product recommendations and shopping assistance.",
                 url="http://localhost:10020", # The URL where the A2A server for this agent will run
                 port=10020, # The port for the A2A server
@@ -36,7 +31,7 @@ class ShoppingPartnerSystem:
             )
         ]
         self.executors = {
-            "shopping_partner_specialist": ShoppingAgentExecutor()
+            "shopping-partner-specialist": ShoppingAgentExecutor()
         }
         print("✅ Shopping Partner Agent configuration created")
 
@@ -55,16 +50,17 @@ class ShoppingPartnerSystem:
         print("🤖 Creating Shopping Partner Coordinator...")
         
         # Get the executor instance
-        shopping_executor = self.executors.get("shopping_partner_specialist")
+        shopping_executor = self.executors.get("shopping-partner-specialist")
         if shopping_executor is None:
             raise ValueError("ShoppingAgentExecutor not found in executors dictionary.")
 
         self.coordinator = SingleA2AAdapter(
             agent_executor=shopping_executor,
-            name="shopping_partner_coordinator",
+            name="shopping-partner-coordinator",
             description="Coordinator for routing shopping-related queries to the Shopping Partner Agent.",
             port=8200, # The port for the uAgent coordinator
-            mailbox=True
+            mailbox=True,
+            timeout=2000
         )
         print("✅ Shopping Partner Coordinator created!")
         return self.coordinator
@@ -92,10 +88,6 @@ def main():
     """
     Main function to run the Shopping Partner A2A system.
     """
-    # Set the UAGENT_MESSAGE_TIMEOUT environment variable
-    # This tells the uAgent coordinator to wait longer for responses.
-    os.environ["UAGENT_MESSAGE_TIMEOUT"] = os.getenv("UAGENT_MESSAGE_TIMEOUT", "120") # Default to 120 seconds
-
     try:
         system = ShoppingPartnerSystem()
         system.start_system()

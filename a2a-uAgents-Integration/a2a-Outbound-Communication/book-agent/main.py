@@ -66,10 +66,11 @@ class BooksRecommenderSystem:
 
         self.coordinator = SingleA2AAdapter(
             agent_executor=books_executor,
-            name="books_recommender",
+            name="books_recommender-coordinator",
             description="Coordinator for routing book-related queries to the Books Recommender Agent.",
             port=8033,
             mailbox=True,
+
         )
         logger.info("✅ Books Recommender Coordinator created!")
         return self.coordinator

@@ -1,246 +1,208 @@
 # YouTube Summarizer Agent
 
-An AI-powered agent that summarizes YouTube videos by extracting and processing closed captions/transcripts. Built with the A2A (Agent-to-Agent) framework and uAgents.
+![uagents](https://img.shields.io/badge/uagents-4A90E2) ![a2a](https://img.shields.io/badge/a2a-000000) ![autogen](https://img.shields.io/badge/autogen-00ADD8) ![innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3) ![chatprotocol](https://img.shields.io/badge/chatprotocol-1D3BD4)
 
-## 🚀 Features
+## 🎯 YouTube Summarizer Agent: Your AI-Powered Video Summary Assistant
 
-- **Video Summarization**: Automatically extracts transcripts from YouTube videos and generates concise summaries
-- **Multi-language Support**: Tries multiple languages (en, en-US, en-GB, auto) to find available transcripts
-- **Intelligent Fallbacks**: Provides helpful error messages when transcripts aren't available
-- **Real-time Processing**: Streams responses for better user experience
-- **A2A Integration**: Built on the Agent-to-Agent protocol for seamless communication
+Need to quickly understand YouTube video content without watching the entire video? The YouTube Summarizer Agent is your AI-powered video analysis assistant, designed to extract and summarize YouTube video transcripts. Using advanced AI, this agent delivers concise, structured summaries that capture the key points and insights from any YouTube video.
 
-## 📋 Prerequisites
+### What it Does
 
-- Python 3.10+
+This agent automatically extracts closed captions from YouTube videos and generates comprehensive summaries, saving you time while ensuring you don't miss important information.
+
+## ✨ Key Features
+
+* **Automatic Transcript Extraction** - Fetches closed captions from YouTube videos
+* **Multi-Language Support** - Tries multiple language variants (en, en-US, en-GB, auto)
+* **AI-Powered Summarization** - Uses OpenAI GPT-4o for intelligent summaries
+* **Structured Output** - Clear, organized summaries with key points
+* **Real-time Streaming** - Streams responses for better user experience
+* **Error Handling** - Helpful messages when transcripts aren't available
+* **A2A Integration** - Seamless communication with other agents
+
+## 🔧 Setup
+
+### Prerequisites
+
+- Python 3.10 or higher (3.10.14 recommended)
+- pip (Python package manager)
 - OpenAI API key
-- Internet connection for YouTube transcript access
 
-## 🛠️ Installation
+### Installation
 
 1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd youtube_summarizer
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Set up your OpenAI API key:**
-   ```bash
-   # Option 1: Set environment variable
-   export OPENAI_API_KEY="your_openai_api_key_here"
-   
-   # Option 2: Create .env file
-   echo "OPENAI_API_KEY=your_openai_api_key_here" > .env
-   ```
-
-## 🏃‍♂️ Quick Start
-
-1. **Start the YouTube Summarizer system:**
-   ```bash
-   python main.py
-   ```
-
-2. **The system will start multiple services:**
-   - YouTube Summarizer Agent on port 10030
-   - A2A Coordinator on port 8300
-   - A2A Server on port 9999
-
-3. **Send a request to summarize a YouTube video:**
-   ```
-   Summarize this video: https://www.youtube.com/watch?v=dQw4w9WgXcQ
-   ```
-
-## 🏗️ Architecture
-
-### Core Components
-
-#### `main.py` - System Orchestrator
-- **YoutubeSummarizerSystem**: Main system class that coordinates all components
-- **Agent Configuration**: Sets up the A2A agent with specialties and examples
-- **Server Management**: Starts individual A2A servers and coordinator
-
-#### `agent.py` - YouTube Processing Agent
-- **YoutubeSummarizerAgent**: Core agent that handles video processing
-- **Transcript Extraction**: Multi-language transcript fetching from YouTube
-- **AI Summarization**: Uses OpenAI GPT-4o to generate concise summaries
-- **Error Handling**: Graceful fallbacks when transcripts aren't available
-
-#### `agent_executor.py` - A2A Integration
-- **SummarizerAgentExecutor**: Bridges the agent with A2A framework
-- **Event Management**: Handles task status updates and streaming responses
-- **Response Formatting**: Structures responses for A2A protocol
-
-#### uAgent Adapter - Cross-Agent Communication
-- **SingleA2AAdapter**: Enables communication with other uAgents
-- **Mailbox Integration**: Connects to AgentVerse.ai for message routing
-- **Agent Registration**: Registers with Almanac API for discoverability
-- **Protocol Support**: Implements AgentChatProtocol for standardized messaging
-
-## 🔧 Configuration
-
-### Agent Settings
-```python
-# In main.py - Agent Configuration
-A2AAgentConfig(
-    name="youtube_summarizer",
-    description="AI Agent for summarizing YouTube videos using closed captions",
-    url="http://localhost:10030",
-    port=10030,
-    specialties=["youtube", "video summarization", "transcription", "content analysis"],
-    priority=3,
-    examples=[
-        "Summarize this YouTube video: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-        "Provide a summary of the key points in this tutorial video",
-    ],
-)
+```bash
+git clone <repository-url>
+cd youtube_summarizer
 ```
 
-### Supported Video Formats
-- YouTube watch URLs: `https://www.youtube.com/watch?v=VIDEO_ID`
-- YouTube short URLs: `https://youtu.be/VIDEO_ID`
+2. **Set Python version (if using pyenv):**
+```bash
+pyenv local 3.10.14
+```
+
+3. **Install dependencies:**
+```bash
+pip install -r requirements.txt
+```
+
+4. **Configure environment variables:**
+
+Create a `.env` file in the project root directory with the following variables:
+
+```env
+# OpenAI API Key (required for GPT-4o model)
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+**How to get API keys:**
+- **OpenAI API Key**: Get it from [OpenAI Platform](https://platform.openai.com/api-keys)
+
+### How to Start
+
+Run the application with:
+
+```bash
+python main.py
+```
+
+Or if you have Python version issues:
+
+```bash
+pyenv shell 3.10.14
+python main.py
+```
+
+The agent will start on the following ports:
+- **YouTube Summarizer Specialist**: `http://localhost:10030`
+- **A2A Server**: `http://localhost:9999`
+- **uAgent Coordinator**: `http://localhost:8300`
+
+**To stop the application:** Press `CTRL+C` in the terminal
+
+### Example Queries
+
+```plaintext
+Summarize this YouTube video: https://www.youtube.com/watch?v=dQw4w9WgXcQ
+```
+
+```plaintext
+Provide a summary of the key points in this tutorial video: https://youtu.be/VIDEO_ID
+```
+
+### Expected Output Structure
+
+```markdown
+## Video Summary: {Video Title}
+
+**Video ID**: {VIDEO_ID}
+
+### Key Points:
+- {Main point 1}
+- {Main point 2}
+- {Main point 3}
+
+### Summary:
+{Comprehensive summary of the video content, highlighting the main topics, arguments, and conclusions presented in the video}
+
+### Topics Covered:
+- {Topic 1}
+- {Topic 2}
+- {Topic 3}
+
+---
+*Summary generated from closed captions*
+```
+
+## 🔧 Technical Architecture
+
+- **Framework**: uAgents + A2A Protocol + AutoGen
+- **AI Models**: OpenAI GPT-4o
+- **Transcript Source**: YouTube Transcript API
+- **Communication**: Asynchronous agent processing with streaming
+- **Output Format**: Markdown with structured summaries
 
 ## 📊 How It Works
 
 ### Video Processing Flow
 1. **URL Parsing**: Extracts video ID from YouTube URLs
-2. **Transcript Fetching**: Attempts to get transcripts in multiple languages
-3. **AI Processing**: Sends transcript to OpenAI GPT-4o for summarization
-4. **Response Streaming**: Returns formatted summary with captions preview
+2. **Transcript Fetching**: Attempts to get transcripts in multiple languages (en, en-US, en-GB, auto)
+3. **AI Processing**: Sends transcript to OpenAI GPT-4o for intelligent summarization
+4. **Response Streaming**: Returns formatted summary with key points
+5. **Error Handling**: Provides helpful messages when transcripts aren't available
 
-### uAgent Communication Flow
-1. **Message Reception**: uAgent receives messages via AgentVerse.ai mailbox
-2. **Task Routing**: A2A coordinator routes requests to the YouTube summarizer agent
-3. **Processing**: Agent processes the video and generates summary
-4. **Response Delivery**: Results are sent back through the uAgent network
-5. **Acknowledgment**: Message acknowledgment is sent to confirm completion
+### Supported URL Formats
+- Standard YouTube URLs: `https://www.youtube.com/watch?v=VIDEO_ID`
+- YouTube short URLs: `https://youtu.be/VIDEO_ID`
+- URLs with additional parameters: `https://www.youtube.com/watch?v=VIDEO_ID&t=123`
 
-### Transcript Detection Process
-```python
-# Multi-language fallback strategy
-languages = ['en', 'en-US', 'en-GB', 'auto']
-for lang in languages:
-    try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=[lang])
-        return transcript
-    except NoTranscriptFound:
-        continue
-```
+## 🆘 Troubleshooting
 
-## 🚨 Error Handling
+### Common Issues
 
-### Common Scenarios
-- **No Transcript Available**: Provides detailed explanation and suggestions
-- **Invalid URL**: Returns helpful error message
-- **Private/Restricted Videos**: Explains why access is limited
-- **Network Issues**: Graceful timeout handling
+1. **API Key Errors**: Ensure your OpenAI API key is correctly set in the `.env` file
+   - Warning: "The API key specified is not a valid OpenAI format" - Check your key format
 
-### Error Response Example
-```
-No transcript available for "Video Title" (ID: VIDEO_ID). This could be because:
-• The video has no captions/subtitles
-• The video is private or restricted
-• The video has been removed
+2. **Port Conflicts**: Check if ports 10030, 8300, or 9999 are already in use. Kill them with:
+   ```bash
+   lsof -ti:10030,8300,9999 | xargs kill -9
+   ```
 
-Please try a different YouTube video with available captions.
-```
+3. **Python Version Error**: If you see import errors:
+   ```bash
+   pyenv shell 3.10.14
+   python main.py
+   ```
 
-## 🔌 API Endpoints
+4. **No Transcript Available**: The video may not have captions enabled
+   - Try a different video with closed captions
+   - Check if the video is public and available
 
-### A2A Protocol Endpoints
-- **Agent Card Server**: `http://localhost:10030`
-- **A2A Server**: `http://localhost:9999`
+5. **Import Error for autogen**: Install the correct version:
+   ```bash
+   pip install "pyautogen<0.3"
+   ```
 
-### uAgent Adapter Endpoints
-- **uAgent Coordinator**: `http://localhost:8300`
-- **uAgent Address**: `agent1qd26k3l7cddgfny53z4dh9tk32cjq3ksn0ry5pf85slanwd5xqft7wvnymc`
-- **Mailbox**: `https://agentverse.ai` (for cross-agent communication)
+6. **YouTubeTranscriptApi Errors**: Ensure correct import:
+   - Use: `from youtube_transcript_api import YouTubeTranscriptApi`
+   - Not: `from youtube_transcript_api._api import YouTubeTranscriptApi`
 
-### Agent Inspector
-Access the agent inspector at:
-```
-https://agentverse.ai/inspect/?uri=http%3A//127.0.0.1%3A8300&address=agent1qd26k3l7cddgfny53z4dh9tk32cjq3ksn0ry5pf85slanwd5xqft7wvnymc
-```
+### Performance Tips
 
-## 📝 Usage Examples
+- Videos with longer transcripts may take more time to summarize
+- Ensure stable internet connection for transcript fetching
+- OpenAI API rate limits may apply for high-volume usage
+- The agent works best with videos that have clear, structured content
 
-### Basic Video Summarization
-```
-Input: Summarize this video: https://www.youtube.com/watch?v=dQw4w9WgXcQ
-Output: [Concise summary of video content with key points]
-```
+## 📈 Use Cases
 
-### Educational Content
-```
-Input: Provide a summary of the key points in this tutorial video
-Output: [Structured summary with main concepts and takeaways]
-```
+- **Educational Content**: Quickly understand tutorial and lecture videos
+- **Meeting Recordings**: Extract key points from recorded meetings
+- **Conference Talks**: Summarize conference presentations and talks
+- **Product Reviews**: Get quick summaries of product review videos
+- **News Content**: Stay updated with news video summaries
+- **Research**: Extract information from research presentation videos
 
-## 🛡️ Security Considerations
+## 🔒 Limitations
 
-- **API Key Management**: Store OpenAI API keys securely (use environment variables)
-- **Rate Limiting**: Be mindful of YouTube API and OpenAI rate limits
-- **Content Privacy**: Only processes publicly available video transcripts
+- Only works with videos that have closed captions/transcripts enabled
+- Requires public videos (private/restricted videos not supported)
+- Summary quality depends on transcript accuracy
+- Language support limited to languages supported by YouTube transcripts
+- OpenAI API costs apply for summarization
 
-## 🔄 Development
+## 📚 Response Format
 
-### Adding New Features
-1. **Extend Transcript Sources**: Add support for other video platforms
-2. **Enhance Summarization**: Implement different summary styles (bullet points, timeline, etc.)
-3. **Add Language Support**: Support for non-English video summarization
+Each summary includes:
+- **Video Title** and ID
+- **Key Points** extracted from the content
+- **Comprehensive Summary** of main topics
+- **Topics Covered** list
+- **Closed Captions Preview** (optional)
 
-### Testing
-```bash
-# Test agent initialization
-python -c "from agent import YoutubeSummarizerAgent; print('✅ Agent ready')"
+## 🧠 Inspired by
 
-# Test system startup
-python -c "from main import YoutubeSummarizerSystem; print('✅ System ready')"
-```
-
-## 📦 Dependencies
-
-### Core Dependencies
-- `uagents-adapter`: A2A framework integration and uAgent communication
-- `a2a-sdk`: Agent-to-Agent SDK
-- `autogen`: OpenAI agent framework
-- `youtube-transcript-api`: YouTube transcript extraction
-- `python-dotenv`: Environment variable management
-- `uagents`: Core uAgent framework for decentralized agent communication
-
-### Development Dependencies
-- `uvicorn`: ASGI server
-- `requests`: HTTP client for video info fetching
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-[Add your license information here]
-
-## 🆘 Support
-
-For issues and questions:
-1. Check the error logs for detailed information
-2. Ensure your OpenAI API key is valid
-3. Verify the YouTube video has available captions
-4. Check network connectivity
-
-## 🔮 Roadmap
-
-- [ ] Support for YouTube playlists
-- [ ] Multiple summary formats (bullet points, timeline, etc.)
-- [ ] Integration with YouTube Data API for enhanced metadata
-- [ ] Support for other video platforms (Vimeo, etc.)
-- [ ] Batch processing capabilities
-- [ ] Custom summary length preferences
+* [Fetch.ai uAgents](https://github.com/fetchai/uAgents)
+* [Microsoft AutoGen](https://github.com/microsoft/autogen)
+* [A2A Protocol](https://a2a-protocol.org/latest/)
+* [Fetch.ai Innovation Lab Examples](https://github.com/fetchai/innovation-lab-examples)

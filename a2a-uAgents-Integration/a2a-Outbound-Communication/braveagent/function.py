@@ -39,7 +39,7 @@ class BraveSearchAgent:
             raise ValueError("BraveSearchAgentExecutor not found in executors dictionary.")
         self.coordinator = SingleA2AAdapter(
             agent_executor=brave_executor,
-            name="brave_coordinator",
+            name="brave-search-coordinator",
             description="Coordinator for routing Brave Search queries",
             port=8200,
             mailbox=True
