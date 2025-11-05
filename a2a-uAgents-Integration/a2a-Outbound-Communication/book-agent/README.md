@@ -1,6 +1,6 @@
 # Books Recommender Agent
 
-![uagents](https://img.shields.io/badge/uagents-4A90E2) ![a2a](https://img.shields.io/badge/a2a-000000) ![agno](https://img.shields.io/badge/agno-FF69B4) ![innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3) ![chatprotocol](https://img.shields.io/badge/chatprotocol-1D3BD4) [![X](https://img.shields.io/badge/X-black.svg?logo=X&logoColor=white)](https://x.com/gautammanak02)
+![uagents](https://img.shields.io/badge/uagents-4A90E2) ![a2a](https://img.shields.io/badge/a2a-000000) ![agno](https://img.shields.io/badge/agno-FF69B4) ![innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3) ![chatprotocol](https://img.shields.io/badge/chatprotocol-1D3BD4)
 
 ## 📚 Books Recommender Agent: Your Intelligent Reading Companion
 
@@ -17,6 +17,52 @@ This agent helps you quickly find your next book without the hassle. Tell it wha
 * Clear details: title, author, price, rating, format, summary, and link
 * Quick comparisons to help you decide
 
+
+## 🔧 Setup
+
+### Prerequisites
+
+- Python 3.10 or higher
+- pip (Python package manager)
+
+### Installation
+
+1. **Clone the repository:**
+```bash
+git clone <repository-url>
+cd book-agent
+```
+
+2. **Install dependencies:**
+```bash
+pip install -r requirements.txt
+```
+
+3. **Configure environment variables:**
+
+Create a `.env` file in the project root directory with the following variables:
+
+```env
+# Google AI API Key (required for Gemini model)
+GOOGLE_API_KEY=your_google_api_key_here
+
+# Exa API Key (required for web search functionality)
+EXA_API_KEY=your_exa_api_key_here
+```
+
+**How to get API keys:**
+- **Google API Key**: Get it from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- **Exa API Key**: Sign up at [Exa.ai Dashboard](https://dashboard.exa.ai/)
+
+### How to Start
+
+Run the application with:
+
+```bash
+python main.py
+```
+
+**To stop the application:** Press `CTRL+C` in the terminal
 
 ### Example Query
 
@@ -64,15 +110,6 @@ Recommend up to 5 science fiction books with strong world-building, published af
 | **Best For**        | Philosophical sci-fi   | Adventure & science | Epic sagas        |
 ```
 
-
-## 👨‍💻 Author
-
-**Gautam Manak**  
-🔗 [Portfolio](https://gautammanak.vercel.app/)
-
-## 🌐 Socials
-
-[![Instagram](https://img.shields.io/badge/Instagram-%23E4405F.svg?logo=Instagram&logoColor=white)](https://instagram.com/_half_engineer_01) [![LinkedIn](https://img.shields.io/badge/LinkedIn-%230077B5.svg?logo=linkedin&logoColor=white)](https://linkedin.com/in/gautammanak1) [![Medium](https://img.shields.io/badge/Medium-12100E?logo=medium&logoColor=white)](https://medium.com/@gautammanak1) [![Stack Overflow](https://img.shields.io/badge/-Stackoverflow-FE7A16?logo=stack-overflow&logoColor=white)](https://stackoverflow.com/users/user:21267046) [![X](https://img.shields.io/badge/X-black.svg?logo=X&logoColor=white)](https://x.com/gautammanak02) [![YouTube](https://img.shields.io/badge/YouTube-%23FF0000.svg?logo=YouTube&logoColor=white)](https://youtube.com/@gautammanakbtech) [![Codepen](https://img.shields.io/badge/Codepen-000000?style=for-the-badge&logo=codepen&logoColor=white)](https://codepen.io/gautammanak1)
 
 ## 🧠 Inspired by
 

@@ -3,7 +3,7 @@ import json
 import re
 import requests
 from typing import AsyncIterable, Any
-from autogen import AssistantAgent, LLMConfig
+from autogen import AssistantAgent
 from youtube_transcript_api._api import YouTubeTranscriptApi
 from youtube_transcript_api._errors import NoTranscriptFound
 from pydantic import BaseModel
@@ -44,11 +44,13 @@ class YoutubeSummarizerAgent:
 
     def __init__(self):
         try:
-            llm_config = LLMConfig(
-                model='gpt-4o',
-                api_key=get_api_key(),
-                response_format=ResponseModel,
-            )
+            llm_config = {
+                "config_list": [{
+                    "model": "gpt-4o",
+                    "api_key": get_api_key(),
+                }],
+                "temperature": 0.7,
+            }
             self.agent = AssistantAgent(
                 name='YoutubeSummarizerAgent',
                 llm_config=llm_config,

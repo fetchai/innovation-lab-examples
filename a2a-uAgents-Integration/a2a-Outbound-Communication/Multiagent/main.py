@@ -58,15 +58,15 @@ class MultiAgentOrchestrator:
     def create_coordinator(self):
         print("🤖 Creating Coordinator...")
         self.coordinator = MultiA2AAdapter(
-            name="coordinator-TEST-GAUTAM",
+            name="coordinator----",
             description="Routes queries to AI specialists",
             llm_api_key= os.getenv("ASI1_API_KEY"),
-            model= os.getenv("MODEL"),
-            base_url= os.getenv("BASE_URL"),
+            model= os.getenv("MODEL", "asi1-mini"),
+            base_url= os.getenv("BASE_URL", "https://api.asi1.ai/v1/chat/completions"),
             port=8200,
             mailbox=True,
             agent_configs=self.agent_configs,
-            routing_strategy="keyword_match"
+            routing_strategy="llm"  # Changed from "keyword_match" to "llm"
         )
         print("✅ Coordinator created!")
         return self.coordinator
