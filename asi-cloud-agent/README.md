@@ -7,7 +7,7 @@ Build your first ASI:Cloud-powered AI agent on Fetch.ai in 10 minutes! 🚀
 A conversational AI agent that:
 - ✅ Uses ASI:Cloud (asi1-mini) for intelligent responses
 - ✅ Registers to Fetch.ai Agentverse
-- ✅ Works with ASI One messaging
+- ✅ Works with ASI:One messaging
 - ✅ Maintains conversation context and history
 - ✅ Is discoverable on the marketplace
 
@@ -135,7 +135,7 @@ Refer to the [Fetch.ai Innovation Lab Documentation](https://innovationlab.fetch
 
 ## Step 7: Test on ASI One
 
-1. Open [ASI One](https://asi1.ai)
+1. Open [ASI:One](https://asi1.ai)
 2. Search for your agent name or use the agent address
 3. Start chatting!
 
@@ -158,7 +158,7 @@ Now that you have a basic agent running, you can:
 ## 📊 Architecture
 
 ```
-User (ASI One) 
+User (ASI:One) 
     ↓
     ↓ ChatMessage
     ↓
@@ -170,14 +170,14 @@ ASI:Cloud API (asi1-mini)
     ↓
     ↓ Response
     ↓
-User (ASI One)
+User (ASI:One)
 ```
 
 ## 🔧 Configuration Options
 
 ### Available Models
 
-The ASI:Cloud API supports multiple asi native models. You can change the model in `agent.py`:
+The ASI:Cloud API supports multiple ASI:One native models. You can change the model in `agent.py`:
 
 ```python
 MODEL_NAME = "asi1-mini"  # Fast and efficient
@@ -216,7 +216,7 @@ The agent maintains conversation history per user:
 - Verify ASI:Cloud API is accessible
 - Check your API key is valid
 
-**"Can't find agent on ASI One"**
+**"Can't find agent on ASI:One"**
 - Wait 1-2 minutes after deployment
 - Ensure mailbox is enabled for local agents
 - Check agent is deployed successfully on Agentverse
@@ -256,7 +256,7 @@ Enhance this basic agent for:
 - [ASI:Cloud Documentation](https://docs.cudos.org/docs/asi-cloud/inference/tutorials/chat-completions)
 - [Fetch.ai Innovation Lab](https://innovationlab.fetch.ai)
 - [Agentverse](https://agentverse.ai)
-- [ASI One](https://asi1.ai)
+- [ASI:One](https://asi1.ai)
 - [uAgents Documentation](https://docs.fetch.ai)
 
 ## Next Steps
