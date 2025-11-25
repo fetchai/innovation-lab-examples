@@ -1,0 +1,7 @@
+uagents
+uagents-core
+httpx
+pdfplumber
+PyPDF2
+requests
+
