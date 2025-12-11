@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Environment files
+.env
+.envrc
+
+# Test files
+test_*.py
+*_test.py
+tests/
+
+# Supabase (not needed in container)
+supabase/
+
+# Agent data files
+agent*.json
+
+# Chroma data (will be mounted or configured separately)
+# Exclude only data files, keep Python source files
+chroma/*.sqlite3
+chroma/__pycache__/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Other
+.DS_Store
+*.log
+

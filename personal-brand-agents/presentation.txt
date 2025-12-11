@@ -1,0 +1,12 @@
+pitch
+- ncgs not sure how to represent themselves depending on audience
+- handles answeirng common questions, lets say the ncg is bsy and has many people like hackathon team mate reachouts hitting dms on various platforms
+- long turnaround times bc youre busy when theyre free and vice versea
+- solution doubles as a representative for you and a ideator for how you should respond (ex: you act like an interviewer and talk to your own brand agent) 
+
+costs and scalability
+$0 for xxxx users 
+feature walkthrough
+i think this will be the most important
+nice ncg and presenter flow
+
