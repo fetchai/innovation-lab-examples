@@ -9,6 +9,7 @@ __pycache__/
 private_keys.json
 
 # Distribution / packaging
+.DS_Store/
 .Python
 build/
 develop-eggs/
