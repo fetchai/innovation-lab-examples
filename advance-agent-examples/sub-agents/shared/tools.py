@@ -156,7 +156,7 @@ async def generate_infographic(
     data_summary: str,
     tool_context: ToolContext
 ) -> dict[str, Any]:
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     try:
         client = Client()
@@ -168,37 +168,53 @@ async def generate_infographic(
             )
         )
 
-        for part in response.candidates[0].content.parts:
-            if part.inline_data and part.inline_data.mime_type.startswith("image/"):
-                artifact_name = f"infographic_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.png"
-                artifact = types.Part.from_bytes(
-                    data=part.inline_data.data,
-                    mime_type=part.inline_data.mime_type,
-                )
+        # Validate response has candidates
+        if not response.candidates or len(response.candidates) == 0:
+            return {"status": "error", "message": "No candidates returned from model"}
 
-                version = await tool_context.save_artifact(
-                    filename=artifact_name,
-                    artifact=artifact,
-                )
+        candidate = response.candidates[0]
+        if candidate.content is None or candidate.content.parts is None:
+            return {"status": "error", "message": "No content returned from model"}
 
-                av = await tool_context.get_artifact_version(
-                    filename=artifact_name,
-                    version=version,
-                )
+        for part in candidate.content.parts:
+            inline_data = part.inline_data
+            if inline_data is None:
+                continue
+            mime_type = inline_data.mime_type
+            data = inline_data.data
+            if mime_type is None or data is None:
+                continue
+            if not mime_type.startswith("image/"):
+                continue
 
-                return {
-                    "status": "success",
-                    "artifact": artifact_name,
-                    "version": version,
-                    "public_link": generate_signed_gcs_url(av),
-                }
+            artifact_name = f"infographic_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.png"
+            artifact = types.Part.from_bytes(
+                data=data,
+                mime_type=mime_type,
+            )
+
+            version = await tool_context.save_artifact(
+                filename=artifact_name,
+                artifact=artifact,
+            )
+
+            av = await tool_context.get_artifact_version(
+                filename=artifact_name,
+                version=version,
+            )
+
+            return {
+                "status": "success",
+                "artifact": artifact_name,
+                "version": version,
+                "public_link": generate_signed_gcs_url(av),
+            }
 
         return {"status": "partial", "message": "No image returned"}
 
     except Exception as e:
         logger.exception("Infographic generation failed")
         return {"status": "error", "message": str(e)}
-
 
 __all__ = [
     "generate_financial_chart",

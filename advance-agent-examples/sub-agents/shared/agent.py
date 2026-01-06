@@ -139,7 +139,7 @@ class AgentManager(BaseModel):
     def get_app(self, tools: list[ToolUnion]) -> App:
         """Helper to get the App."""
         return App(
-            name="TimeAgentApp",
+            name=self.NAME,
             root_agent=self.get_agent(tools=tools),
             context_cache_config=ContextCacheConfig(
                 min_tokens=self.CACHE_MIN_TOKENS,
