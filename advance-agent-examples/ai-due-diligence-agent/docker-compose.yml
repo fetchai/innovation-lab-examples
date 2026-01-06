@@ -1,0 +1,14 @@
+services:
+  ai_due_diligence_agent:
+    build: .
+    container_name: ai_due_diligence_agent
+    command: uv run -m ai_due_diligence_agent
+    env_file:
+      - .env
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/service_account.json
+    volumes:
+      - ${HOME}/.gcp/service_account.json:/app/credentials/service_account.json:ro
+    ports:
+      - "${AI_DUE_DILIGENCE_AGENT_PORT:-9016}:${AI_DUE_DILIGENCE_AGENT_PORT:-9016}"
+    restart: unless-stopped

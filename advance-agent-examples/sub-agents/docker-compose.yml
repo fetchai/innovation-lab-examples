@@ -1,0 +1,70 @@
+services:
+  company-research-agent:
+    build: .
+    container_name: company-research-agent
+    command: uv run -m agents.company_research
+    env_file:
+      - .env
+    ports:
+      - "${COMPANY_RESEARCH_AGENT_PORT}:${COMPANY_RESEARCH_AGENT_PORT}"
+    restart: unless-stopped
+
+  market-analysis-agent:
+    build: .
+    container_name: market-analysis-agent
+    command: uv run -m agents.market_analysis
+    env_file:
+      - .env
+    ports:
+      - "${MARKET_ANALYSIS_AGENT_PORT}:${MARKET_ANALYSIS_AGENT_PORT}"
+    restart: unless-stopped
+
+  financial-modeling-agent:
+    build: .
+    container_name: financial-modeling-agent
+    command: uv run -m agents.financial_modeling
+    env_file:
+      - .env
+    ports:
+      - "${FINANCIAL_MODELING_AGENT_PORT}:${FINANCIAL_MODELING_AGENT_PORT}"
+    restart: unless-stopped
+
+  risk-assessment-agent:
+    build: .
+    container_name: risk-assessment-agent
+    command: uv run -m agents.risk_assessment
+    env_file:
+      - .env
+    ports:
+      - "${RISK_ASSESSMENT_AGENT_PORT}:${RISK_ASSESSMENT_AGENT_PORT}"
+    restart: unless-stopped
+
+  investor-memo-agent:
+    build: .
+    container_name: investor-memo-agent
+    command: uv run -m agents.investor_memo
+    env_file:
+      - .env
+    ports:
+      - "${INVESTOR_MEMO_AGENT_PORT}:${INVESTOR_MEMO_AGENT_PORT}"
+    restart: unless-stopped
+
+  report-generator-agent:
+    build: .
+    container_name: report-generator-agent
+    command: uv run -m agents.report_generator
+    env_file:
+      - .env
+    ports:
+      - "${REPORT_GENERATOR_AGENT_PORT}:${REPORT_GENERATOR_AGENT_PORT}"
+    restart: unless-stopped
+
+  infographic-generator-agent:
+    build: .
+    container_name: infographic-generator-agent
+    command: uv run -m agents.infographic_generator
+    env_file:
+      - .env
+    ports:
+      - "${INFOGRAPHIC_GENERATOR_AGENT_PORT}:${INFOGRAPHIC_GENERATOR_AGENT_PORT}"
+    restart: unless-stopped
