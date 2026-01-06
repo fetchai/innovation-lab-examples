@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  security-agent:
+    build: .
+    container_name: security-agent
+    ports:
+      - "8008:8008"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - ./.env:/app/.env
+    working_dir: /app
+    command: python security_agent/agent.py
+    restart: unless-stopped

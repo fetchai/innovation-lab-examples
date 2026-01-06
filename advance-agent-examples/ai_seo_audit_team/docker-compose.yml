@@ -1,0 +1,15 @@
+services:
+  seo-audit-agent:
+    build: .
+    container_name: seo-audit-agent
+    ports:
+      - "8007:8007"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY}
+    volumes:
+      - ./.env:/app/.env
+    working_dir: /app
+    command: python agent.py
+    restart: unless-stopped

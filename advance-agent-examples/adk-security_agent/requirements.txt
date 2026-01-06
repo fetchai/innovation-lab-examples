@@ -1,0 +1,6 @@
+uagents
+uagents-core
+google-adk
+python-dotenv
+pyyaml
+
