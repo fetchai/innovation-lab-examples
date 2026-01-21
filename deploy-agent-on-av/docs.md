@@ -3,11 +3,10 @@ id: deploy-agent-on-agentverse-via-render
 title: Deploy Agent on Agentverse via Render
 ---
 
-# Deploy Agent on Agentverse via Render 
 
-This guide shows how to deploy a uAgents-based chat agent to Render without Docker and connect it to Agentverse via the mailbox. It uses ASI's OpenAI-compatible API for responses.
+# Deploy Agent on Agentverse via Render
 
----
+[Render](https://render.com/) is a cloud platform for deploying Python-based services and agents. This guide walks you through creating, testing, and deploying an **ASI-LLM-AGENT** on Render and integrating it with Agentverse.
 
 ## Project Structure
 
@@ -34,9 +33,9 @@ asi-agent/
 Minimal dependencies to run the agent and ASI client.
 
 ```text
-uagents
-uagents-core
-openai>=1.0.0
+uagents==0.23.6
+uagents-core==0.4.0
+openai
 python-dotenv
 ```
 
@@ -44,11 +43,17 @@ python-dotenv
 
 ## .env
 
-Create a `.env` file with your ASI API key.
+Create a `.env` file with your ASI API key, agent seed phrase, and Agentverse API key.
 
 ```bash
 ASI_API_KEY=sk-...
+AGENT_SEED_PHRASE=av-deploy-example
+ILABS_AGENTVERSE_API_KEY=your-agentverse-api-key
 ```
+
+> 💡 **Need help getting your API keys?**
+> - Get your ASI API key: [ASI:One Quickstart](https://innovationlab.fetch.ai/resources/docs/asione/asi-one-quickstart)
+> - Get your Agentverse API key: [Agentverse API Key](https://innovationlab.fetch.ai/resources/docs/agentverse/agentverse-api-key)
 
 Do not commit `.env` to version control.
 
@@ -72,18 +77,28 @@ from uagents_core.contrib.protocols.chat import (
     TextContent,
     chat_protocol_spec,
 )
+from uagents_core.utils.registration import (
+    register_chat_agent,
+    RegistrationRequestCredentials,
+)
 
 load_dotenv()
+
+# Constants
+AGENT_NAME = "asi1-agent"
+SEED_PHRASE = os.getenv("AGENT_SEED_PHRASE", "av-deploy-example")
+AGENTVERSE_KEY = os.getenv("ILABS_AGENTVERSE_API_KEY")
 client = OpenAI(
     base_url='https://api.asi1.ai/v1',
     api_key=os.getenv("ASI_API_KEY"),  
 )
 
 agent = Agent(
-    name="ASI-agent-gautam",
-    seed="ASI-agent-gautam",
+    name=AGENT_NAME,
+    seed=SEED_PHRASE,
     port=8001,
     mailbox=True,
+    handle_messages_concurrently=True
 )
 
 protocol = Protocol(spec=chat_protocol_spec)
@@ -102,7 +117,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     response = "Sorry, I wasn’t able to process that."
     try:
         r = client.chat.completions.create(
-            model="asi1-mini",
+            model="asi1",
             messages=[
                 {"role": "system", "content": "You are a helpful AI assistant. Answer user queries clearly and politely."},
                 {"role": "user", "content": text},
@@ -128,6 +143,49 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
 
 agent.include(protocol, publish_manifest=True)
 
+README = """# ASI1 Agent
+
+![tag:asi1-llm-agent](https://img.shields.io/badge/asi1-3D8BD3)
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
+
+An AI assistant powered by ASI1 that can help answer questions and process queries using advanced AI capabilities.
+
+## Features
+
+- **AI-powered responses**: Uses ASI API for intelligent conversation
+- **Chat protocol support**: Compatible with uAgents chat protocol
+- **Session management**: Handles multi-turn conversations
+
+## Usage
+
+Send messages to the agent via ASI1 or direct chat protocol to interact with the AI assistant.
+"""
+
+@agent.on_event("startup")
+async def startup_handler(ctx: Context):
+    """Initialize agent and register with Agentverse on startup."""
+    ctx.logger.info(f"🚀 Agent starting: {ctx.agent.name} at {ctx.agent.address}")
+    
+    # Register with Agentverse
+    if AGENTVERSE_KEY and SEED_PHRASE:
+        try:
+            register_chat_agent(
+                AGENT_NAME,
+                agent._endpoints[0].url,
+                active=True,
+                credentials=RegistrationRequestCredentials(
+                    agentverse_api_key=AGENTVERSE_KEY,
+                    agent_seed_phrase=SEED_PHRASE,
+                ),
+                readme=README,
+                description="An AI assistant powered by ASI1 that can help answer questions and process queries using advanced AI capabilities."
+            )
+            ctx.logger.info("✅ Registered with Agentverse")
+        except Exception as e:
+            ctx.logger.error(f"Failed to register with Agentverse: {e}")
+    else:
+        ctx.logger.warning("⚠️ AGENTVERSE_KEY or SEED_PHRASE not set, skipping Agentverse registration")
+
 if __name__ == "__main__":
     agent.run()
 ```
@@ -138,7 +196,7 @@ if __name__ == "__main__":
 
 1. Create and activate a virtual environment.
 2. Install dependencies: `pip install -r requirements.txt`.
-3. Create a `.env` with `ASI_API_KEY`.
+3. Create a `.env` with `ASI_API_KEY`, `AGENT_SEED_PHRASE`, and `ILABS_AGENTVERSE_API_KEY`.
 4. Run the agent: `python app.py`.
 5. In the logs, open the Agent Inspector link to connect your agent to Agentverse via mailbox.
 6. From Agentverse, find the agent under Local Agents and chat using the chat interface.
@@ -152,15 +210,16 @@ Create a free account at [render.com](https://render.com/).
 
 ### 2. Prepare Your Repository
 Ensure your repository contains:
-- `agent.py`
+- `app.py`
 - `requirements.txt`
-- `README.md` (optional but recommended)
+- `.env.example` (optional; do not commit actual secrets)
+- `README.md` (optional)
 
 Push your project to a GitHub, GitLab, or Bitbucket repository.
 
-### 3. Create a New Web Service
+### 3. Create a Background Worker Service
 1. Log in to the [Render Dashboard](https://dashboard.render.com/).
-2. Click **+ New** and select **Web Service**.
+2. Click **+ New** and select **Background Worker** (no HTTP server required for this agent).
 
    ![Render dashboard new service](https://render.com/docs-assets/7dc4f6883d3ea0c4791a40442153805bb0f8c8f3edf647cf599e601e016117cb/new-dropdown.webp)
 
@@ -179,7 +238,10 @@ Push your project to a GitHub, GitLab, or Bitbucket repository.
 - **Environment**: Python
 - **Build Command**: `pip install -r requirements.txt`
 - **Start Command**: `python app.py`
-- **Environment Variables**: Add `ASI_API_KEY` with your key value
+- **Environment Variables**: Add the following environment variables:
+  - `ASI_API_KEY`: Your ASI API key
+  - `AGENT_SEED_PHRASE`: Your agent seed phrase (defaults to "av-deploy-example" if not set)
+  - `ILABS_AGENTVERSE_API_KEY`: Your Agentverse API key
 - Click **Create Background Worker**
 
 ### 6. Monitor the Deployment
@@ -187,21 +249,41 @@ Push your project to a GitHub, GitLab, or Bitbucket repository.
 
   ![Render deploy logs](https://render.com/docs-assets/6aa330511f718bd38326c7f6c0fd8697807e4c3ae18257449d156ae353ca1a09/first-deploy-logs.webp)
 
-
 Render will install dependencies and start the agent. The logs will show the Agent Inspector link for mailbox connection.
 
 
-### 7. Verify the Deployment
-- From Agentverse, initiate a chat and verify responses from the deployed agent.
+
+---
+
+## README.md Tag Example for Agentverse
+
+```markdown
+# ASI1 Agent
+
+![tag:asi1-llm-agent](https://img.shields.io/badge/asi1-3D8BD3)
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
+
+An AI assistant powered by ASI1 that can help answer questions and process queries using advanced AI capabilities.
+
+## Features
+
+- **AI-powered responses**: Uses ASI API for intelligent conversation
+- **Chat protocol support**: Compatible with uAgents chat protocol
+- **Session management**: Handles multi-turn conversations
+
+## Usage
+
+Send messages to the agent via ASI1 or direct chat protocol to interact with the AI assistant.
+```
 
 ---
 
 ## Troubleshooting
 
-- **Dependency Errors**: Ensure `requirements.txt` includes `uagents`, `uagents-core`, `openai>=1.0.0`, and `python-dotenv`.
+- **Dependency Errors**: Ensure `requirements.txt` includes `uagents==0.23.6`, `uagents-core==0.4.0`, `openai`, and `python-dotenv`.
 - **Missing API Key**: Verify `ASI_API_KEY` is set in Render environment variables or `.env` locally.
 - **Mailbox Not Connecting**: Use the Agent Inspector link from logs and ensure your network/firewall allows outbound traffic.
-- **No Responses**: Check Render logs for exceptions from the ASI API call and confirm the `asi1-mini` model is accessible with your key.
+- **No Responses**: Check Render logs for exceptions from the ASI API call and confirm the `asi1` model is accessible with your key.
 
 ---
 
@@ -217,7 +299,11 @@ Render will install dependencies and start the agent. The logs will show the Age
 > 💡 **Full Example Repository**:
 > Check out this [complete deployment example on GitHub](https://github.com/fetchai/innovation-lab-examples/tree/main/deploy-agent-on-av/example) for a ready-to-use setup including Render + Agentverse integration.
 
-📚 Useful Docs:
+> ⚠️ **Alternative Platforms**:
+> You can also deploy your agent on other platforms like [Railway](https://railway.com/), [Google Cloud Platform (GCP)](https://cloud.google.com/), or [Amazon Web Services (AWS)](https://aws.amazon.com/). The deployment process is similar - just ensure your agent runs as a background worker/service with the required environment variables configured.
 
+📚 Useful Docs:
+* [Uagents Docs] (https://uagents.fetch.ai/docs)
+* [ASI1 Docs] (https://docs.asi1.ai/documentation/getting-started/quickstart)
 * [Render Documentation](https://render.com/docs)
 * [Agentverse Documentation](https://docs.agentverse.ai/)
