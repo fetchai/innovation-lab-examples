@@ -1,0 +1,5 @@
+uagents==0.23.6
+uagents-core==0.4.0
+python-dotenv
+google-genai
+Pillow
