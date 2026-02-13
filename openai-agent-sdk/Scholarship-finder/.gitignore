@@ -1,0 +1,46 @@
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+private_keys.json
+.env.save
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+.Python
+dist/
+build/
+*.log
+
+# Virtual environments
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Generated files
+*.xlsx
+*.ics
+*.pdf
+output/
+temp/
+
+# Agent specific
+*.db
+*.sqlite
+.cache/
