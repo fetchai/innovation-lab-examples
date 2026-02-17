@@ -346,3 +346,11 @@ Project2/
 - **Money Found**: $5K-$50K+ in scholarship opportunities
 - **Accuracy**: 90%+ eligibility matching
 - **Success Rate**: Students apply to 3x more scholarships
+
+## 🔗 Links
+
+- **OpenAI Agent SDK**: https://platform.openai.com/docs/agents
+- **Fetch.ai uAgents**: https://fetch.ai/docs
+- **ASI-One Platform**: https://asi1.ai/
+- **Agentverse**: http://agentverse.ai/
+- **Innovation Lab Examples**: https://github.com/fetchai/innovation-lab-examples
