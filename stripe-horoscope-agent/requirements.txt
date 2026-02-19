@@ -1,0 +1,13 @@
+# Core agent framework
+uagents==0.22.8
+uagents-core==0.3.8
+
+# ASI:One (OpenAI-compatible client)
+openai
+
+# Stripe (payments)
+stripe
+
+# Environment variables
+python-dotenv==1.0.1
+
