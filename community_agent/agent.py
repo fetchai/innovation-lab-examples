@@ -6,9 +6,11 @@ Mailbox-enabled uAgent that helps organizers with events, conferences, and hacka
 
 from __future__ import annotations
 
+import asyncio
 import os
 from datetime import datetime, timezone
 from uuid import uuid4
+
 import httpx
 from uagents import Agent, Context, Protocol
 from uagents_core.contrib.protocols.chat import (
@@ -52,7 +54,7 @@ def _tavily_search(query: str, max_results: int = 8, max_chars: int = 6000) -> s
         return ""
 
 
-def _call_asi1_chat(
+async def _call_asi1_chat(
     system_prompt: str,
     user_text: str,
     web_context: str = "",
@@ -89,12 +91,13 @@ def _call_asi1_chat(
         "Content-Type": "application/json",
     }
 
-    resp = httpx.post(
-        "https://api.asi1.ai/v1/chat/completions",
-        json=payload,
-        headers=headers,
-        timeout=90.0,
-    )
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://api.asi1.ai/v1/chat/completions",
+            json=payload,
+            headers=headers,
+            timeout=90.0,
+        )
     resp.raise_for_status()
 
     data = resp.json()
@@ -259,12 +262,12 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     if _should_use_web_search(user_text) and TAVILY_AVAILABLE and TAVILY_API_KEY:
         query = user_text[:500].strip().replace("\n", " ")
         if query:
-            web_context = _tavily_search(query)
+            web_context = await asyncio.to_thread(_tavily_search, query)
             if web_context:
                 ctx.logger.info("Using Tavily web search for this request")
 
     try:
-        answer = _call_asi1_chat(SYSTEM_PROMPT, user_text, web_context=web_context)
+        answer = await _call_asi1_chat(SYSTEM_PROMPT, user_text, web_context=web_context)
     except Exception as e:
         ctx.logger.exception("ASI:One call failed")
         answer = f"Sorry — backend error: {str(e)[:120]}"
