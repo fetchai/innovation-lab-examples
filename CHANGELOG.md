@@ -6,6 +6,8 @@ All notable changes to this repository are documented in this file.
 
 ### Added
 
+- `pdf-podcast-agent/`: 6-agent PDF-to-podcast pipeline with live debate, Q&A, host personality customization, and Stripe payment gating via AgentPaymentProtocol. Uses ASI:One for text generation and OpenAI TTS for audio synthesis. Includes Dockerfile and docker-compose.yml for containerised deployment.
+
 - `google-adk/google-trends-agent`: Fetch.ai uAgent that answers natural-language Google Trends questions with per-query Stripe payment gating, using ASI:One LLM for BigQuery SQL generation and result interpretation
 
 - `stripe-payment-agents/conversational-property-finder`: ASI1 conversational property search agent (Repliers MLS, optional Stripe details paywall, OpenAI/regex parsing)

@@ -1,0 +1,36 @@
+# PDF-to-Podcast Agent – Python dependencies
+# Install with: pip install -r requirements.txt
+
+# ── Fetch.ai uAgents framework ────────────────────────────────────────────────
+uagents>=0.21.1
+uagents-core>=0.3.0
+
+# ── OpenAI (LLM + TTS) ────────────────────────────────────────────────────────
+openai>=1.30.0
+
+# ── PDF text extraction ───────────────────────────────────────────────────────
+pdfplumber>=0.11.0
+
+# ── Audio stitching ───────────────────────────────────────────────────────────
+# pydub requires ffmpeg on your PATH for MP3 encoding.
+# Install ffmpeg: https://ffmpeg.org/download.html
+# Windows:  choco install ffmpeg   |  winget install ffmpeg
+# macOS:    brew install ffmpeg
+# Linux:    sudo apt install ffmpeg
+pydub>=0.25.1
+audioop-lts>=0.2.1; python_version >= "3.13"
+
+# ── HTTP (test script only) ───────────────────────────────────────────────────
+requests>=2.31.0
+
+# ── DOCX script generation ───────────────────────────────────────────────────
+python-docx>=1.1.0
+
+# ── MP3 ID3 metadata ─────────────────────────────────────────────────────────
+mutagen>=1.47.0
+
+# ── Environment variable loading ──────────────────────────────────────────────
+python-dotenv>=1.0.0
+
+# ── Stripe payments ────────────────────────────────────────────────────────────
+stripe>=8.0.0
