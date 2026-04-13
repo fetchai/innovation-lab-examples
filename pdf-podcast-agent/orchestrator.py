@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Optional
 from uuid import UUID, uuid4
 
-import requests
+import requests  # type: ignore[import-untyped]
 import stripe as _stripe_lib
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -560,7 +560,7 @@ def _create_embedded_checkout(
     """Create a Stripe embedded Checkout Session and return the payload
     that goes into ``RequestPayment.metadata["stripe"]``.
 
-    Uses ``ui_mode="embedded_page"`` so ASI:One renders the payment form
+    Uses ``ui_mode="embedded"`` so ASI:One renders the payment form
     inline as an overlay — no redirect required.
     """
     _stripe_lib.api_key = os.getenv("STRIPE_SECRET_KEY", "")  # type: ignore[union-attr]
@@ -569,7 +569,7 @@ def _create_embedded_checkout(
     success_url = os.getenv("STRIPE_SUCCESS_URL", "https://asi1.ai")
 
     session = _stripe_lib.checkout.Session.create(  # type: ignore[union-attr]
-        ui_mode="embedded_page",
+        ui_mode="embedded",
         redirect_on_completion="if_required",
         mode="payment",
         payment_method_types=["card"],
