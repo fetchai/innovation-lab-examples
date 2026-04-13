@@ -6,6 +6,8 @@ All notable changes to this repository are documented in this file.
 
 ### Added
 
+- `openai-agent-sdk/Appliance Auto Whisperer`: Multi-agent right-to-repair assistant for ASI:One with orchestrator + parts/tutorial workers, streamlined bureau-first architecture, and updated README demo screenshots
+
 - `google-adk/google-trends-agent`: Fetch.ai uAgent that answers natural-language Google Trends questions with per-query Stripe payment gating, using ASI:One LLM for BigQuery SQL generation and result interpretation
 
 - `stripe-payment-agents/conversational-property-finder`: ASI1 conversational property search agent (Repliers MLS, optional Stripe details paywall, OpenAI/regex parsing)
