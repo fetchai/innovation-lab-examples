@@ -1,0 +1,57 @@
+# Primary deploy: Fetch.ai uAgents bureau (mailbox → Agentverse).
+# ASI:One talks only to repair-orchestrator; workers stay internal.
+#
+# After deploy: copy ORCHESTRATOR_AGENT_SEED / stable seeds from secrets, note orchestrator
+# address from logs, then register the public agent in Agentverse (see README).
+
+services:
+  - type: web
+    name: repair-orchestrator-bureau
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.bureau
+    dockerContext: .
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Render injects PORT at runtime — do not pin PORT here.
+      - key: VISION_PROVIDER
+        value: auto
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: BRIGHTDATA_CUSTOMER_ID
+        sync: false
+      - key: BRIGHTDATA_API_TOKEN
+        sync: false
+      - key: BRIGHTDATA_ZONE
+        value: web_unlocker1
+      - key: AGENTVERSE_API_KEY
+        sync: false
+      - key: AGENT_NETWORK
+        value: testnet
+      # Mailbox mode: leave AGENT_ENDPOINT unset in dashboard (or empty string).
+      # Optional: set a public URL only if you switch to direct endpoint delivery.
+      - key: ORCHESTRATOR_AGENT_SEED
+        sync: false
+      - key: PARTS_AGENT_SEED
+        sync: false
+      - key: TUTORIAL_AGENT_SEED
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
+      # Seconds to wait for worker agents to respond before falling back to
+      # direct service calls.  Increase on slow free-plan dynos.
+      - key: WORKER_TIMEOUT_S
+        value: "120"
+      # Single-container mode: the bureau image's default CMD runs diagnostic_bureau.py
+      # (orchestrator only, direct service calls — no separate worker processes).
+      # For full 3-agent bureau in one Render dyno, override startCommand:
+      #   startCommand: bash docker-entrypoint.sh
+      # and set WORKER_READY_WAIT=10
+
+# Optional second service: duplicate this file or add another web service using
+# Dockerfile (uvicorn main:app) if you need the REST API alongside the bureau.

@@ -1,0 +1,148 @@
+version: "3.8"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Appliance Auto Whisperer — Docker Compose
+#
+# Three modes (uncomment the profiles you want):
+#
+#   Full multi-agent bureau (recommended):
+#     docker-compose --profile bureau up --build
+#
+#   REST API only (no uAgents, no workers):
+#     docker-compose --profile rest up --build
+#
+#   Both:
+#     docker-compose --profile bureau --profile rest up --build
+#
+# Required: copy .env.example → .env and fill in keys before running.
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-base: &base
+  env_file:
+    - .env
+  restart: unless-stopped
+  networks:
+    - agent-network
+
+# ── Worker: parts-sourcing-agent ─────────────────────────────────────────────
+services:
+  parts-agent:
+    <<: *base
+    profiles: [bureau]
+    build:
+      context: .
+      dockerfile: Dockerfile.bureau
+    container_name: appliance-parts-agent
+    command: ["python", "workers/parts_agent.py"]
+    environment:
+      - PORT=8002
+      - PARTS_AGENT_PORT=8002
+      # Agent registers this public endpoint on the Almanac so the orchestrator
+      # can reach it by container hostname on the shared Docker network.
+      - PARTS_AGENT_HOST=parts-agent
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./reports:/app/reports
+    healthcheck:
+      test: ["CMD", "python3", "-c",
+             "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 8002)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+# ── Worker: tutorial-agent ────────────────────────────────────────────────────
+  tutorial-agent:
+    <<: *base
+    profiles: [bureau]
+    build:
+      context: .
+      dockerfile: Dockerfile.bureau
+    container_name: appliance-tutorial-agent
+    command: ["python", "workers/tutorial_agent.py"]
+    environment:
+      - PORT=8003
+      - TUTORIAL_AGENT_PORT=8003
+      - TUTORIAL_AGENT_HOST=tutorial-agent
+    ports:
+      - "8003:8003"
+    healthcheck:
+      test: ["CMD", "python3", "-c",
+             "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 8003)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+# ── Orchestrator: repair-orchestrator (ASI:One gateway) ───────────────────────
+  orchestrator:
+    <<: *base
+    profiles: [bureau]
+    build:
+      context: .
+      dockerfile: Dockerfile.bureau
+    container_name: appliance-orchestrator
+    command: ["python", "diagnostic_bureau.py"]
+    environment:
+      - PORT=8001
+      - ORCHESTRATOR_AGENT_PORT=8001
+      # Workers are accessible via Docker Compose service hostnames.
+      # The orchestrator POSTs REST calls directly to these hosts.
+      - PARTS_AGENT_HOST=parts-agent
+      - PARTS_AGENT_PORT=8002
+      - TUTORIAL_AGENT_HOST=tutorial-agent
+      - TUTORIAL_AGENT_PORT=8003
+      - WORKER_TIMEOUT_S=90
+    ports:
+      - "8001:8001"
+    depends_on:
+      parts-agent:
+        condition: service_healthy
+      tutorial-agent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python3", "-c",
+             "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 8001)); s.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+# ── REST API (optional — Agentverse-independent HTTP interface) ────────────────
+  whisperer-rest:
+    <<: *base
+    profiles: [rest]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: appliance-auto-whisperer-rest
+    environment:
+      - PORT=8000
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python3", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+# ── Reports file server (downloadable Excel spreadsheets) ─────────────────────
+  reports-server:
+    image: python:3.11-slim
+    profiles: [bureau]
+    container_name: appliance-reports-server
+    command: ["python", "-m", "http.server", "8080", "--directory", "/reports"]
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./reports:/reports
+    networks:
+      - agent-network
+    restart: unless-stopped
+
+networks:
+  agent-network:
+    driver: bridge

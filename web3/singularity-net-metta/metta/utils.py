@@ -32,9 +32,14 @@ def get_intent_and_keyword(query, llm):
     )
     response = llm.create_completion(prompt)
     try:
-        result = json.loads(response)
+        cleaned = response.strip()
+        if cleaned.startswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[1:])
+        if cleaned.endswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[:-1])
+        result = json.loads(cleaned.strip())
         return result["intent"], result["keyword"]
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, KeyError):
         print(f"Error parsing ASI:One response: {response}")
         return "unknown", None
 
@@ -160,11 +165,6 @@ def process_query(query, rag: MedicalRAG, llm: LLM):
     if not prompt:
         prompt = f"Query: '{query}'\nNo specific info found. Offer general assistance."
 
-    prompt += "\nFormat response as: 'Selected Question: <question>' on first line, 'Humanized Answer: <response>' on second."
+    prompt += "\nProvide a clear, empathetic medical response. Do not repeat the query."
     response = llm.create_completion(prompt)
-    try:
-        selected_q = response.split('\n')[0].replace("Selected Question: ", "").strip()
-        answer = response.split('\n')[1].replace("Humanized Answer: ", "").strip()
-        return {"selected_question": selected_q, "humanized_answer": answer}
-    except IndexError:
-        return {"selected_question": query, "humanized_answer": response}
+    return {"selected_question": query, "humanized_answer": response.strip()}

@@ -31,9 +31,14 @@ def get_intent_and_keyword(query, llm):
     )
     response = llm.create_completion(prompt)
     try:
-        result = json.loads(response)
+        cleaned = response.strip()
+        if cleaned.startswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[1:])
+        if cleaned.endswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[:-1])
+        result = json.loads(cleaned.strip())
         return result["intent"], result["keyword"]
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, KeyError):
         print(f"Error parsing ASI:One response: {response}")
         return "unknown", None
 

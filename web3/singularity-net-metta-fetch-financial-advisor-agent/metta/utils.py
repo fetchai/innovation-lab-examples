@@ -31,9 +31,14 @@ def get_intent_and_keyword(query, llm):
     )
     response = llm.create_completion(prompt)
     try:
-        result = json.loads(response)
+        cleaned = response.strip()
+        if cleaned.startswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[1:])
+        if cleaned.endswith("```"):
+            cleaned = "\n".join(cleaned.split("\n")[:-1])
+        result = json.loads(cleaned.strip())
         return result["intent"], result["keyword"]
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, KeyError):
         print(f"Error parsing ASI:One response: {response}")
         return "unknown", None
 
@@ -212,11 +217,6 @@ def process_query(query, rag: InvestmentRAG, llm: LLM):
     if not prompt:
         prompt = f"Query: '{query}'\nNo specific investment information found. Provide general investment guidance and suggest consulting a financial advisor."
 
-    prompt += "\nFormat response as: 'Selected Question: <question>' on first line, 'Investment Advice: <response>' on second. Include appropriate disclaimers about consulting financial professionals."
+    prompt += "\nProvide a clear, professional investment response with appropriate disclaimers about consulting financial professionals. Do not repeat the query."
     response = llm.create_completion(prompt, max_tokens=300)
-    try:
-        selected_q = response.split('\n')[0].replace("Selected Question: ", "").strip()
-        answer = response.split('\n')[1].replace("Investment Advice: ", "").strip()
-        return {"selected_question": selected_q, "humanized_answer": answer}
-    except IndexError:
-        return {"selected_question": query, "humanized_answer": response}
+    return {"selected_question": query, "humanized_answer": response.strip()}

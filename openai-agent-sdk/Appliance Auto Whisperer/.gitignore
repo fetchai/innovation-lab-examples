@@ -1,0 +1,19 @@
+.env
+.venv/
+.venv-*/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+appliance_auto_whisperer.egg-info/
+dist/
+build/
+*.log
+*_data.json
+reports/
+# uAgents local keystore / state files
+agent1q*.json
+uagents_core.log

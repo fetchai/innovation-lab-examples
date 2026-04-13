@@ -22,7 +22,7 @@ from metta.utils import LLM, process_query
 
 load_dotenv()
 
-agent = Agent(name="Financial Investment Advisor", port=8008, mailbox=True, publish_agent_details=True)
+agent = Agent(name="Financial Investment Advisor", seed="financial-investment-advisor-seed-1", port=8008, mailbox=True, publish_agent_details=True)
 
 class InvestmentQuery(Model):
     query: str
@@ -66,7 +66,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 response = process_query(user_query, rag, llm)
                 
                 if isinstance(response, dict):
-                    answer_text = f"**{response.get('selected_question', user_query)}**\n\n{response.get('humanized_answer', 'I apologize, but I could not process your query.')}"
+                    answer_text = response.get('humanized_answer', 'I apologize, but I could not process your query.')
                 else:
                     answer_text = str(response)
                 

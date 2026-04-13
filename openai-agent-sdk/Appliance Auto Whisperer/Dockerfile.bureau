@@ -1,0 +1,35 @@
+# Fetch.ai uAgents bureau image.
+#
+# Used for ALL three agent containers (parts-agent, tutorial-agent, orchestrator).
+# The docker-compose.yml sets the `command:` to run the appropriate entry-point:
+#   python workers/parts_agent.py
+#   python workers/tutorial_agent.py
+#   python diagnostic_bureau.py
+#
+# Mailbox mode: set AGENTVERSE_API_KEY, leave AGENT_ENDPOINT empty.
+# Render: point Dockerfile Path at this file; Render injects PORT automatically.
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Create and activate a virtual environment inside the container.
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install deps first (layer-cached unless requirements change).
+COPY requirements.txt pyproject.toml README.md ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy full project so any entry-point can be invoked.
+COPY app ./app
+COPY workers ./workers
+COPY diagnostic_bureau.py ./
+
+EXPOSE 8001
+
+# Default: run orchestrator.  Override with `command:` in docker-compose.yml.
+CMD ["python", "diagnostic_bureau.py"]
