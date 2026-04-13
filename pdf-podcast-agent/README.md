@@ -21,7 +21,6 @@ Reading dense research papers causes serious fatigue. This agent replicates the 
 - ✅ Paid live debate — 8-turn agent-to-agent debate streamed in chat
 - ✅ Host personality customization — 16 combos across 4 presets
 - ✅ Stripe payment gate ($10) via AgentPaymentProtocol (embedded checkout)
-- ✅ Docker Compose deployment for all 6 agents
 
 ## Prerequisites
 
@@ -53,7 +52,6 @@ cp .env.example .env
 ```
 
 Then run `python get_addresses.py` and paste the printed addresses into `.env`.
-If you use Docker Compose, address variables are auto-generated from seeds at container startup.
 
 ### Variables
 
@@ -88,19 +86,6 @@ Or use the convenience launcher:
 ```bash
 python run.py
 ```
-
-Or use Docker:
-
-```bash
-cp .env.example .env
-# Fill in your API keys
-docker-compose up --build -d
-docker-compose logs -f
-```
-
-Docker Compose now auto-resolves `EXTRACTOR_ADDRESS`, `SCRIPTWRITER_ADDRESS`,
-`VOICE_STUDIO_ADDRESS`, `HOST_A_ADDRESS`, and `HOST_B_ADDRESS` if they are left
-blank in `.env`, using deterministic seeds (`*_SEED` values).
 
 ## Expected Output
 
@@ -183,8 +168,6 @@ pdf-podcast-agent/
 ├── test_pipeline.py       # Local smoke test
 ├── requirements.txt
 ├── .env.example
-├── Dockerfile             # Python 3.12 + ffmpeg
-├── docker-compose.yml     # 6-container deployment
 ├── render.yaml            # Render.com deployment config
 └── output/                # Generated MP3/DOCX files (gitignored)
 ```
@@ -194,7 +177,6 @@ pdf-podcast-agent/
 - **"Missing ASI1_API_KEY / OPENAI_API_KEY"** — Check `.env` is created from `.env.example` with real values.
 - **"I do not have enough funds to register on Almanac contract"** — Safe to ignore for local dev.
 - **Port already in use** — Kill stale process on that port and restart.
-- **Docker build fails with audioop-lts** — Expected on Python <3.13; the marker in `requirements.txt` handles this.
 - **Debate hosts repeat arguments** — Full debate history is passed via `debate_history` field with anti-repetition prompts.
 
 ## Resources
