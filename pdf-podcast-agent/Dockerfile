@@ -14,8 +14,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+RUN chmod +x /app/docker-entrypoint.sh
 
 RUN mkdir -p /app/output
 
-# Default entrypoint — overridden per service in docker-compose.yml
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# Default command — overridden per service in docker-compose.yml
 CMD ["python", "orchestrator.py"]

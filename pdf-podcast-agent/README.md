@@ -53,6 +53,7 @@ cp .env.example .env
 ```
 
 Then run `python get_addresses.py` and paste the printed addresses into `.env`.
+If you use Docker Compose, address variables are auto-generated from seeds at container startup.
 
 ### Variables
 
@@ -96,6 +97,10 @@ cp .env.example .env
 docker-compose up --build -d
 docker-compose logs -f
 ```
+
+Docker Compose now auto-resolves `EXTRACTOR_ADDRESS`, `SCRIPTWRITER_ADDRESS`,
+`VOICE_STUDIO_ADDRESS`, `HOST_A_ADDRESS`, and `HOST_B_ADDRESS` if they are left
+blank in `.env`, using deterministic seeds (`*_SEED` values).
 
 ## Expected Output
 
