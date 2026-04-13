@@ -112,7 +112,21 @@ When a user uploads a PDF via ASI:One, the agent replies with:
 
 ## Demo
 
-![ASI:One Demo](./assets/demo.png)
+PDF upload and podcast generation:
+
+![PDF upload and generated podcast](./assets/demo-podcast-ready.png)
+
+Live Q&A and paid live show entry point:
+
+![Live Q&A and paid pass prompt](./assets/demo-live-qa-pass.png)
+
+Stripe payment confirmation for Live Show Pass:
+
+![Stripe payment flow](./assets/demo-stripe-pass.png)
+
+Host personality customization menu:
+
+![Host personality customization](./assets/demo-customize-hosts.png)
 
 ## Architecture
 
