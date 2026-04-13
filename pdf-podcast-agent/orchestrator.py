@@ -1157,6 +1157,9 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
     for item in msg.content:
         # PDF sent as an attachment from ASI:One
         if isinstance(item, ResourceContent):
+            if isinstance(item.resource, list) and not item.resource:
+                ctx.logger.warning("[Chat] ResourceContent had empty resource list; skipping item.")
+                continue
             resource = (
                 item.resource[0]
                 if isinstance(item.resource, list)
