@@ -123,9 +123,22 @@ def _free_port(port: int) -> None:
         try:
             conns = psutil.net_connections(kind="inet")
         except AttributeError:
-            conns = psutil.net_connections()
+            try:
+                conns = psutil.net_connections()
+            except psutil.AccessDenied:
+                log.warning(
+                    "Port %d appears busy, but psutil cannot inspect connections due to permissions.",
+                    port,
+                )
+                return
+        except psutil.AccessDenied:
+            log.warning(
+                "Port %d appears busy, but psutil cannot inspect connections due to permissions.",
+                port,
+            )
+            return
         for conn in conns:
-            if conn.laddr.port == port and conn.pid:
+            if conn.laddr and getattr(conn.laddr, "port", None) == port and conn.pid:
                 try:
                     proc = psutil.Process(conn.pid)
                     log.info(
