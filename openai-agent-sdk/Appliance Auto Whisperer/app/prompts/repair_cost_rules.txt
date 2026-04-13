@@ -1,0 +1,2 @@
+Provide conservative USD ranges. Separate parts vs professional labor when possible.
+Flag when OEM vs aftermarket affects price. Never present estimates as guaranteed quotes.
