@@ -25,18 +25,6 @@ import os
 import re
 import sys
 import threading
-
-# Windows PowerShell defaults to cp1252 which can't encode arrows/checkmarks.
-# Force UTF-8 on stdout/stderr so logger never crashes on Unicode characters.
-if sys.stdout and hasattr(sys.stdout, "buffer"):
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True)
-if sys.stderr and hasattr(sys.stderr, "buffer"):
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace", line_buffering=True)
-
-try:
-    import stripe as _stripe_lib
-except ImportError:
-    _stripe_lib = None  # type: ignore[assignment]
 from datetime import datetime, timezone
 from functools import partial
 from http.server import HTTPServer, SimpleHTTPRequestHandler
@@ -45,16 +33,15 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 import requests
+import stripe as _stripe_lib
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, RGBColor
 from openai import AsyncOpenAI
-
-from dotenv import load_dotenv
-load_dotenv()
-
 import pdfplumber
 from uagents import Agent, Context, Protocol
+
+from dotenv import load_dotenv
 
 from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
@@ -87,13 +74,26 @@ from schemas import (
     ResearchInsights,
 )
 
+load_dotenv()
+
+# Windows PowerShell defaults to cp1252 which can't encode arrows/checkmarks.
+# Force UTF-8 on stdout/stderr so logger never crashes on Unicode characters.
+if sys.stdout and hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(
+        sys.stdout.buffer, encoding="utf-8", errors="replace", line_buffering=True
+    )
+if sys.stderr and hasattr(sys.stderr, "buffer"):
+    sys.stderr = io.TextIOWrapper(
+        sys.stderr.buffer, encoding="utf-8", errors="replace", line_buffering=True
+    )
+
 # ── Sub-agent addresses (set via env vars — run get_addresses.py first) ───────
 
-EXTRACTOR_ADDRESS    = os.getenv("EXTRACTOR_ADDRESS",    "")
+EXTRACTOR_ADDRESS = os.getenv("EXTRACTOR_ADDRESS", "")
 SCRIPTWRITER_ADDRESS = os.getenv("SCRIPTWRITER_ADDRESS", "")
 VOICE_STUDIO_ADDRESS = os.getenv("VOICE_STUDIO_ADDRESS", "")
-HOST_A_ADDRESS       = os.getenv("HOST_A_ADDRESS",       "")
-HOST_B_ADDRESS       = os.getenv("HOST_B_ADDRESS",       "")
+HOST_A_ADDRESS = os.getenv("HOST_A_ADDRESS", "")
+HOST_B_ADDRESS = os.getenv("HOST_B_ADDRESS", "")
 
 OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "output"))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -103,71 +103,106 @@ AUDIO_SERVER_HOST = os.getenv("AUDIO_SERVER_HOST", "localhost")
 
 # ── Live debate trigger keywords & storage key ────────────────────────────────
 _LIVE_DEBATE_TRIGGERS = {
-    "live debate", "start debate", "watch debate", "debate now",
-    "watch them", "let them talk", "replay", "show debate", "debate",
-    "continue debate", "continue",
+    "live debate",
+    "start debate",
+    "watch debate",
+    "debate now",
+    "watch them",
+    "let them talk",
+    "replay",
+    "show debate",
+    "debate",
+    "continue debate",
+    "continue",
 }
-_LAST_SESSION_KEY     = "last_session_context"
-_ACTIVE_DEBATE_KEY    = "active_debate_session"
-_DEBATE_ACCUM_KEY     = "debate_transcript_accum"
-_DEBATE_COOLDOWN_KEY  = "debate_last_started_ts"  # Unix timestamp — debounces duplicate triggers
-_DEBATE_MSG_ID_KEY    = "debate_bubble_msg_id"     # stable UUID so all updates hit the same bubble
-_PERSONALITIES_KEY    = "host_personalities"
-_PAID_SESSIONS_KEY    = "paid_podcast_sessions"    # JSON list of paid session IDs
-_PENDING_PAYMENTS_KEY = "pending_stripe_payments"  # JSON dict with current pending checkout info
+_LAST_SESSION_KEY = "last_session_context"
+_ACTIVE_DEBATE_KEY = "active_debate_session"
+_DEBATE_ACCUM_KEY = "debate_transcript_accum"
+_DEBATE_COOLDOWN_KEY = (
+    "debate_last_started_ts"  # Unix timestamp — debounces duplicate triggers
+)
+_DEBATE_MSG_ID_KEY = (
+    "debate_bubble_msg_id"  # stable UUID so all updates hit the same bubble
+)
+_PERSONALITIES_KEY = "host_personalities"
+_PAID_SESSIONS_KEY = "paid_podcast_sessions"  # JSON list of paid session IDs
+_PENDING_PAYMENTS_KEY = (
+    "pending_stripe_payments"  # JSON dict with current pending checkout info
+)
 
-_DEBATE_COOLDOWN_SECS = 30   # ignore duplicate "debate" triggers within this window
-_ACTIVE_DEBATE_TTL    = 300  # auto-clear stale active debate after 5 minutes
+_DEBATE_COOLDOWN_SECS = 30  # ignore duplicate "debate" triggers within this window
+_ACTIVE_DEBATE_TTL = 300  # auto-clear stale active debate after 5 minutes
 _ACTIVE_DEBATE_TS_KEY = "active_debate_started_ts"  # Unix timestamp of debate start
-_SEEN_MSG_IDS_KEY     = "seen_msg_ids"  # JSON list of recently processed msg_ids
+_SEEN_MSG_IDS_KEY = "seen_msg_ids"  # JSON list of recently processed msg_ids
 
 # ── Personality presets ───────────────────────────────────────────────────────
 # Each entry: (display_name, system_prompt_hint)
 _PERSONALITY_PRESETS: dict[str, dict[str, tuple[str, str]]] = {
     "host_a": {
-        "1": ("Classic Skeptic",
-              "You demand hard empirical evidence. You always ask 'what's the sample size?' "
-              "and 'was this peer-reviewed?'. You challenge methodology relentlessly but fairly. "
-              "You are NOT dismissive — you are intellectually rigorous."),
-        "2": ("Investigative Journalist",
-              "You follow the money. You ask 'who funded this research?', probe conflicts of "
-              "interest, and surface what the paper conveniently omits. You are the audience's "
-              "advocate — sharp, tenacious, and never satisfied with PR-speak."),
-        "3": ("Academic Critic",
-              "You are obsessed with methodological rigor and the replication crisis. You demand "
-              "statistical significance thresholds, effect sizes, confidence intervals, and "
-              "independent replication before accepting any finding as credible."),
-        "4": ("Industry Veteran",
-              "You have seen every hype cycle — dot-com, blockchain, metaverse. You compare new "
-              "claims to past failed promises, demand real-world deployment numbers over lab "
-              "results, and are deeply sceptical of trend reports and analyst projections."),
+        "1": (
+            "Classic Skeptic",
+            "You demand hard empirical evidence. You always ask 'what's the sample size?' "
+            "and 'was this peer-reviewed?'. You challenge methodology relentlessly but fairly. "
+            "You are NOT dismissive — you are intellectually rigorous.",
+        ),
+        "2": (
+            "Investigative Journalist",
+            "You follow the money. You ask 'who funded this research?', probe conflicts of "
+            "interest, and surface what the paper conveniently omits. You are the audience's "
+            "advocate — sharp, tenacious, and never satisfied with PR-speak.",
+        ),
+        "3": (
+            "Academic Critic",
+            "You are obsessed with methodological rigor and the replication crisis. You demand "
+            "statistical significance thresholds, effect sizes, confidence intervals, and "
+            "independent replication before accepting any finding as credible.",
+        ),
+        "4": (
+            "Industry Veteran",
+            "You have seen every hype cycle — dot-com, blockchain, metaverse. You compare new "
+            "claims to past failed promises, demand real-world deployment numbers over lab "
+            "results, and are deeply sceptical of trend reports and analyst projections.",
+        ),
     },
     "host_b": {
-        "1": ("Researcher",
-              "You cite exact data points from the study. You defend findings with measured "
-              "confidence, acknowledge limitations honestly, and never over-claim. You often "
-              "say 'the data shows' and back it up with a specific number."),
-        "2": ("Industry Insider",
-              "You speak in terms of ROI, market share, and enterprise adoption curves. "
-              "You name companies already shipping these solutions, focus on practical value "
-              "delivered, and translate academic findings into business impact."),
-        "3": ("Futurist",
-              "You connect the paper's findings to sweeping technological and societal shifts. "
-              "You extrapolate decades ahead, frame every result as part of a larger paradigm "
-              "change, and are genuinely excited about what comes next."),
-        "4": ("Enthusiastic Teacher",
-              "You use vivid analogies to make complex concepts click for anyone. You celebrate "
-              "the 'aha moment', make the audience feel smart, and genuinely love helping people "
-              "understand difficult ideas through relatable storytelling."),
+        "1": (
+            "Researcher",
+            "You cite exact data points from the study. You defend findings with measured "
+            "confidence, acknowledge limitations honestly, and never over-claim. You often "
+            "say 'the data shows' and back it up with a specific number.",
+        ),
+        "2": (
+            "Industry Insider",
+            "You speak in terms of ROI, market share, and enterprise adoption curves. "
+            "You name companies already shipping these solutions, focus on practical value "
+            "delivered, and translate academic findings into business impact.",
+        ),
+        "3": (
+            "Futurist",
+            "You connect the paper's findings to sweeping technological and societal shifts. "
+            "You extrapolate decades ahead, frame every result as part of a larger paradigm "
+            "change, and are genuinely excited about what comes next.",
+        ),
+        "4": (
+            "Enthusiastic Teacher",
+            "You use vivid analogies to make complex concepts click for anyone. You celebrate "
+            "the 'aha moment', make the audience feel smart, and genuinely love helping people "
+            "understand difficult ideas through relatable storytelling.",
+        ),
     },
 }
 
 _PERSONALITY_SET_RE = re.compile(
-    r'\bA\s*:\s*([1-4])\b.*?\bB\s*:\s*([1-4])\b', re.IGNORECASE
+    r"\bA\s*:\s*([1-4])\b.*?\bB\s*:\s*([1-4])\b", re.IGNORECASE
 )
 _PERSONALITY_TRIGGERS = {
-    "customize", "set personality", "change personality",
-    "set hosts", "host style", "personalities", "change hosts",
+    "customize",
+    "set personality",
+    "change personality",
+    "set hosts",
+    "host style",
+    "personalities",
+    "change hosts",
 }
 
 _PERSONALITY_MENU = (
@@ -249,6 +284,7 @@ def _audio_url(audio_path: str) -> str:
 
 # ── PDF helpers ───────────────────────────────────────────────────────────────
 
+
 def _pdf_bytes_to_text(pdf_bytes: bytes) -> str:
     lines = []
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
@@ -298,8 +334,8 @@ _asi = AsyncOpenAI(
     base_url="https://api.asi1.ai/v1",
 )
 
-_ASI_MODEL   = os.getenv("ASI1_MODEL", "asi1-mini")
-_DOCX_MODEL  = _ASI_MODEL
+_ASI_MODEL = os.getenv("ASI1_MODEL", "asi1-mini")
+_DOCX_MODEL = _ASI_MODEL
 
 
 def _docx_slug(title: str) -> str:
@@ -312,7 +348,9 @@ def _set_heading(doc: Document, text: str, level: int = 1) -> None:
         run.font.color.rgb = RGBColor(0x1A, 0x1A, 0x2E)
 
 
-def _add_speaker_block(doc: Document, speaker_label: str, text: str, color: RGBColor) -> None:
+def _add_speaker_block(
+    doc: Document, speaker_label: str, text: str, color: RGBColor
+) -> None:
     p = doc.add_paragraph()
     label = p.add_run(f"{speaker_label}  ")
     label.bold = True
@@ -337,8 +375,8 @@ async def _build_docx(
       4. Extended Script — ~25 additional exchanges, director's cut
     Returns the saved .docx path.
     """
-    COLOR_A  = RGBColor(0x0D, 0x47, 0xA1)   # deep blue  – Host A (Skeptic)
-    COLOR_B  = RGBColor(0x1B, 0x5E, 0x20)   # deep green – Host B (Expert)
+    COLOR_A = RGBColor(0x0D, 0x47, 0xA1)  # deep blue  – Host A (Skeptic)
+    COLOR_B = RGBColor(0x1B, 0x5E, 0x20)  # deep green – Host B (Expert)
     COLOR_HDR = RGBColor(0x1A, 0x1A, 0x2E)  # near-black
 
     # ── Generate extended dialogue via LLM ─────────────────────────────────
@@ -355,8 +393,8 @@ async def _build_docx(
         f"Controversy: {insights.controversial_point}\n\n"
         "VOICED SCRIPT (do not repeat verbatim, but continue naturally from it):\n"
         + "\n".join(
-            f"{'HostA' if l.speaker == 'HostA' else 'HostB'}: {l.text}"
-            for l in script.lines
+            f"{'HostA' if line.speaker == 'HostA' else 'HostB'}: {line.text}"
+            for line in script.lines
         )
         + "\n\n"
         "Return ONLY a JSON array of objects with keys 'speaker' ('HostA'|'HostB') and 'text'. "
@@ -366,8 +404,11 @@ async def _build_docx(
     resp = await _asi.chat.completions.create(
         model=_ASI_MODEL,
         messages=[
-            {"role": "system", "content": "You are a podcast showrunner. Return only valid JSON."},
-            {"role": "user",   "content": extend_prompt},
+            {
+                "role": "system",
+                "content": "You are a podcast showrunner. Return only valid JSON.",
+            },
+            {"role": "user", "content": extend_prompt},
         ],
         temperature=0.85,
     )
@@ -389,10 +430,10 @@ async def _build_docx(
 
     # — narrow margins —
     for section in doc.sections:
-        section.top_margin    = Pt(72)
+        section.top_margin = Pt(72)
         section.bottom_margin = Pt(72)
-        section.left_margin   = Pt(80)
-        section.right_margin  = Pt(80)
+        section.left_margin = Pt(80)
+        section.right_margin = Pt(80)
 
     # Cover
     title_p = doc.add_paragraph()
@@ -424,7 +465,9 @@ async def _build_docx(
         p.add_run(m).font.size = Pt(10.5)
 
     _set_heading(doc, "The Controversy", level=2)
-    doc.add_paragraph(insights.controversial_point).paragraph_format.space_after = Pt(12)
+    doc.add_paragraph(insights.controversial_point).paragraph_format.space_after = Pt(
+        12
+    )
     doc.add_page_break()
 
     # Voiced Script
@@ -441,7 +484,9 @@ async def _build_docx(
         stamp = f"[{ts // 60}:{ts % 60:02d}]"
         _add_speaker_block(
             doc,
-            f"{stamp}  HOST A (The Skeptic)" if is_a else f"{stamp}  HOST B (The Expert)",
+            f"{stamp}  HOST A (The Skeptic)"
+            if is_a
+            else f"{stamp}  HOST B (The Expert)",
             line.text,
             COLOR_A if is_a else COLOR_B,
         )
@@ -470,13 +515,14 @@ async def _build_docx(
         )
 
     # Save alongside the MP3
-    stem    = Path(audio_path).stem
+    stem = Path(audio_path).stem
     docx_path = OUTPUT_DIR / f"{stem}.docx"
     doc.save(str(docx_path))
     return str(docx_path)
 
 
 # ── Personality helpers ───────────────────────────────────────────────────────
+
 
 def _load_personalities(ctx: Context) -> tuple[str, str, str, str]:
     """Return (a_name, a_hint, b_name, b_hint) from storage, falling back to defaults."""
@@ -493,6 +539,7 @@ def _load_personalities(ctx: Context) -> tuple[str, str, str, str]:
 
 
 # ── Payment helpers ───────────────────────────────────────────────────────────
+
 
 def _stripe_enabled() -> bool:
     return bool(_stripe_lib and os.getenv("STRIPE_SECRET_KEY", ""))
@@ -527,17 +574,19 @@ def _create_embedded_checkout(
         mode="payment",
         payment_method_types=["card"],
         return_url=success_url + "?session_id={CHECKOUT_SESSION_ID}",
-        line_items=[{
-            "price_data": {
-                "currency": "usd",
-                "unit_amount": price_cents,
-                "product_data": {
-                    "name": "PDF Podcast - Live Show Pass",
-                    "description": description,
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "usd",
+                    "unit_amount": price_cents,
+                    "product_data": {
+                        "name": "PDF Podcast - Live Show Pass",
+                        "description": description,
+                    },
                 },
-            },
-            "quantity": 1,
-        }],
+                "quantity": 1,
+            }
+        ],
         metadata={
             "podcast_session_id": podcast_session_id,
             "user_address": user_address,
@@ -575,10 +624,13 @@ async def _gate_with_payment(ctx: Context, sender: str, feature_name: str) -> bo
 
     raw = ctx.storage.get(_LAST_SESSION_KEY)
     if not raw:
-        await ctx.send(sender, _chat(
-            "No podcast session found.\n\n"
-            "Send me a PDF first to generate a podcast, then unlock the Live Show Pass."
-        ))
+        await ctx.send(
+            sender,
+            _chat(
+                "No podcast session found.\n\n"
+                "Send me a PDF first to generate a podcast, then unlock the Live Show Pass."
+            ),
+        )
         return False
 
     data = json.loads(raw)
@@ -587,7 +639,7 @@ async def _gate_with_payment(ctx: Context, sender: str, feature_name: str) -> bo
     if _is_session_paid(ctx, podcast_session_id):
         return True
 
-    price_cents   = int(os.getenv("STRIPE_LIVE_SHOW_PRICE_CENTS", "1000"))
+    price_cents = int(os.getenv("STRIPE_LIVE_SHOW_PRICE_CENTS", "1000"))
     price_dollars = price_cents / 100
 
     try:
@@ -603,17 +655,23 @@ async def _gate_with_payment(ctx: Context, sender: str, feature_name: str) -> bo
 
         ctx.storage.set(
             _PENDING_PAYMENTS_KEY,
-            json.dumps({
-                "checkout_session_id": checkout_payload["checkout_session_id"],
-                "podcast_session_id": podcast_session_id,
-                "user_address": sender,
-                "feature": feature_name,
-            }),
+            json.dumps(
+                {
+                    "checkout_session_id": checkout_payload["checkout_session_id"],
+                    "podcast_session_id": podcast_session_id,
+                    "user_address": sender,
+                    "feature": feature_name,
+                }
+            ),
         )
 
         req = RequestPayment(
             accepted_funds=[
-                Funds(currency="USD", amount=f"{price_dollars:.2f}", payment_method="stripe")
+                Funds(
+                    currency="USD",
+                    amount=f"{price_dollars:.2f}",
+                    payment_method="stripe",
+                )
             ],
             recipient=str(ctx.agent.address),
             deadline_seconds=600,
@@ -628,16 +686,20 @@ async def _gate_with_payment(ctx: Context, sender: str, feature_name: str) -> bo
         )
     except Exception as exc:
         ctx.logger.error(f"[Payment] Stripe error: {exc}")
-        await ctx.send(sender, _chat(
-            f"Payment service temporarily unavailable.\n\n"
-            f"Please try again in a moment. *(Error: {exc})*"
-        ))
+        await ctx.send(
+            sender,
+            _chat(
+                f"Payment service temporarily unavailable.\n\n"
+                f"Please try again in a moment. *(Error: {exc})*"
+            ),
+        )
     return False
 
 
 # ── Cover art ─────────────────────────────────────────────────────────────────
 
 # ── Host-agent context injection ──────────────────────────────────────────────
+
 
 async def _inject_context_to_hosts(
     ctx: Context,
@@ -649,7 +711,9 @@ async def _inject_context_to_hosts(
     """Fire-and-forget context push to @HostA and @HostB so they can answer
     follow-up questions from ASI:One users after the podcast is ready."""
     if not HOST_A_ADDRESS and not HOST_B_ADDRESS:
-        ctx.logger.warning("[Orchestrator] HOST_A_ADDRESS / HOST_B_ADDRESS not set — skipping context injection")
+        ctx.logger.warning(
+            "[Orchestrator] HOST_A_ADDRESS / HOST_B_ADDRESS not set — skipping context injection"
+        )
         return
 
     _, a_hint, _, b_hint = _load_personalities(ctx)
@@ -672,6 +736,7 @@ async def _inject_context_to_hosts(
 
 
 # ── Core pipeline ─────────────────────────────────────────────────────────────
+
 
 async def _run_pipeline(
     ctx: Context, document_text: str, session_id: str
@@ -706,7 +771,9 @@ async def _run_pipeline(
     )
     if not isinstance(script, PodcastScript):
         raise RuntimeError(f"Scriptwriter failed (status={st2})")
-    ctx.logger.info(f"[{sid}] ✓ Script — {len(script.lines)} lines  •  '{script.topic_title}'")
+    ctx.logger.info(
+        f"[{sid}] ✓ Script — {len(script.lines)} lines  •  '{script.topic_title}'"
+    )
 
     # Step 3 — Audio generation + stitching
     ctx.logger.info(f"[{sid}] ⟶ Voice Studio …")
@@ -739,28 +806,35 @@ async def _run_live_debate(ctx: Context, sender: str) -> None:
     """
     raw = ctx.storage.get(_LAST_SESSION_KEY)
     if not raw:
-        await ctx.send(sender, _chat(
-            "⚠️ No podcast session found yet.\n\n"
-            "Send me a PDF first to generate a podcast, "
-            "then say **debate** to watch the hosts go head-to-head."
-        ))
+        await ctx.send(
+            sender,
+            _chat(
+                "⚠️ No podcast session found yet.\n\n"
+                "Send me a PDF first to generate a podcast, "
+                "then say **debate** to watch the hosts go head-to-head."
+            ),
+        )
         return
 
     if not HOST_A_ADDRESS or not HOST_B_ADDRESS:
-        await ctx.send(sender, _chat(
-            "⚠️ Host agent addresses not configured.\n"
-            "Set HOST_A_ADDRESS and HOST_B_ADDRESS in your .env file."
-        ))
+        await ctx.send(
+            sender,
+            _chat(
+                "⚠️ Host agent addresses not configured.\n"
+                "Set HOST_A_ADDRESS and HOST_B_ADDRESS in your .env file."
+            ),
+        )
         return
 
-    data      = json.loads(raw)
-    topic     = data["topic_title"]
-    sid       = str(uuid4())[:8]
+    data = json.loads(raw)
+    topic = data["topic_title"]
+    sid = str(uuid4())[:8]
 
     a_name, a_hint, b_name, b_hint = _load_personalities(ctx)
 
     # Stamp cooldown so duplicate trigger messages are ignored
     import time as _time
+
     now = str(_time.time())
     ctx.storage.set(_DEBATE_COOLDOWN_KEY, now)
 
@@ -772,17 +846,21 @@ async def _run_live_debate(ctx: Context, sender: str) -> None:
     # Seed storage with empty transcript + active session + TTL timestamp
     ctx.storage.set(_ACTIVE_DEBATE_KEY, sid)
     ctx.storage.set(_ACTIVE_DEBATE_TS_KEY, now)
-    ctx.storage.set(_DEBATE_ACCUM_KEY, json.dumps({
-        "session_id": sid,
-        "lines":      [],
-        "user":       sender,
-        "a_hint":     a_hint,
-        "b_hint":     b_hint,
-    }))
+    ctx.storage.set(
+        _DEBATE_ACCUM_KEY,
+        json.dumps(
+            {
+                "session_id": sid,
+                "lines": [],
+                "user": sender,
+                "a_hint": a_hint,
+                "b_hint": b_hint,
+            }
+        ),
+    )
 
     ctx.logger.info(
-        f"[LiveDebate] Starting session {sid} for '{topic}' "
-        f"— A: {a_name}, B: {b_name}"
+        f"[LiveDebate] Starting session {sid} for '{topic}' — A: {a_name}, B: {b_name}"
     )
 
     # Opening message — keep bubble OPEN so subsequent turns update it in-place
@@ -793,19 +871,22 @@ async def _run_live_debate(ctx: Context, sender: str) -> None:
     )
     await ctx.send(sender, _chat_open(header, debate_msg_id))
 
-    await ctx.send(HOST_A_ADDRESS, DebateTurn(
-        session_id=sid,
-        topic_title=data["topic_title"],
-        core_thesis=data["core_thesis"],
-        key_metrics=data.get("key_metrics", []),
-        controversial_point=data.get("controversial_point", ""),
-        document_snippet=data.get("document_snippet", "")[:2000],
-        user_address=sender,
-        turn=0,
-        max_turns=_MAX_DEBATE_TURNS,
-        previous_statement="",
-        speaker_personality=a_hint,
-    ))
+    await ctx.send(
+        HOST_A_ADDRESS,
+        DebateTurn(
+            session_id=sid,
+            topic_title=data["topic_title"],
+            core_thesis=data["core_thesis"],
+            key_metrics=data.get("key_metrics", []),
+            controversial_point=data.get("controversial_point", ""),
+            document_snippet=data.get("document_snippet", "")[:2000],
+            user_address=sender,
+            turn=0,
+            max_turns=_MAX_DEBATE_TURNS,
+            previous_statement="",
+            speaker_personality=a_hint,
+        ),
+    )
     ctx.logger.info(f"[LiveDebate] DebateTurn 0 → HostA ({a_name})")
 
 
@@ -822,11 +903,15 @@ orchestrator = Agent(
     # ASI:One to try localhost:8000 (unreachable from the cloud).
     # Sub-agent replies route through Agentverse relay (slightly slower),
     # compensated by the 120 s timeout on send_and_receive calls.
-    **({
-        "mailbox": _agentverse_key,
-    } if _agentverse_key else {
-        "endpoint": ["http://localhost:8000/submit"],
-    }),
+    **(
+        {
+            "mailbox": _agentverse_key,
+        }
+        if _agentverse_key
+        else {
+            "endpoint": ["http://localhost:8000/submit"],
+        }
+    ),
     network="testnet",
 )
 
@@ -834,16 +919,19 @@ chat_proto = Protocol(spec=chat_protocol_spec)
 
 # ── Startup ───────────────────────────────────────────────────────────────────
 
+
 @orchestrator.on_event("startup")
 async def on_startup(ctx: Context) -> None:
     ctx.logger.info(f"[Orchestrator] address: {ctx.agent.address}")
 
     missing = [
-        name for name, val in [
-            ("EXTRACTOR_ADDRESS",    EXTRACTOR_ADDRESS),
+        name
+        for name, val in [
+            ("EXTRACTOR_ADDRESS", EXTRACTOR_ADDRESS),
             ("SCRIPTWRITER_ADDRESS", SCRIPTWRITER_ADDRESS),
             ("VOICE_STUDIO_ADDRESS", VOICE_STUDIO_ADDRESS),
-        ] if not val
+        ]
+        if not val
     ]
     if missing:
         ctx.logger.warning(
@@ -875,6 +963,7 @@ async def on_startup(ctx: Context) -> None:
 
     ctx.logger.info("[Orchestrator] REST: POST http://localhost:8000/process")
 
+
 # ── Agent Payment Protocol (Stripe embedded checkout) ─────────────────────────
 
 payment_proto = Protocol(spec=payment_protocol_spec, role="seller")
@@ -889,26 +978,35 @@ async def on_commit_payment(ctx: Context, sender: str, msg: CommitPayment) -> No
     mark the session as paid, and notify the user.
     """
     if msg.funds.payment_method != "stripe" or not msg.transaction_id:
-        await ctx.send(sender, RejectPayment(
-            reason="Unsupported payment method (expected stripe)."
-        ))
+        await ctx.send(
+            sender,
+            RejectPayment(reason="Unsupported payment method (expected stripe)."),
+        )
         return
 
     checkout_session_id = msg.transaction_id
 
     try:
-        paid = await asyncio.to_thread(_verify_checkout_session_paid, checkout_session_id)
+        paid = await asyncio.to_thread(
+            _verify_checkout_session_paid, checkout_session_id
+        )
     except Exception as exc:
         ctx.logger.error(f"[Payment] Stripe verify error: {exc}")
-        await ctx.send(sender, RejectPayment(
-            reason="Could not verify payment with Stripe. Please try again."
-        ))
+        await ctx.send(
+            sender,
+            RejectPayment(
+                reason="Could not verify payment with Stripe. Please try again."
+            ),
+        )
         return
 
     if not paid:
-        await ctx.send(sender, RejectPayment(
-            reason="Stripe payment not completed yet. Please finish checkout."
-        ))
+        await ctx.send(
+            sender,
+            RejectPayment(
+                reason="Stripe payment not completed yet. Please finish checkout."
+            ),
+        )
         return
 
     await ctx.send(sender, CompletePayment(transaction_id=checkout_session_id))
@@ -927,9 +1025,12 @@ async def on_commit_payment(ctx: Context, sender: str, msg: CommitPayment) -> No
         try:
             _stripe_lib.api_key = os.getenv("STRIPE_SECRET_KEY", "")  # type: ignore[union-attr]
             stripe_session = await asyncio.to_thread(
-                _stripe_lib.checkout.Session.retrieve, checkout_session_id  # type: ignore[union-attr]
+                _stripe_lib.checkout.Session.retrieve,
+                checkout_session_id,  # type: ignore[union-attr]
             )
-            podcast_session_id = (stripe_session.metadata or {}).get("podcast_session_id", "")
+            podcast_session_id = (stripe_session.metadata or {}).get(
+                "podcast_session_id", ""
+            )
         except Exception:
             pass
 
@@ -943,15 +1044,18 @@ async def on_commit_payment(ctx: Context, sender: str, msg: CommitPayment) -> No
 
     ctx.storage.set(_PENDING_PAYMENTS_KEY, "{}")
 
-    await ctx.send(sender, _chat(
-        "## Payment confirmed -- Live Show Pass is active!\n\n"
-        "The hosts are loaded and ready. Here's what you can do now:\n\n"
-        "* **Start the live debate** -- type `continue debate`\n"
-        "* **Customize host personalities first** -- type `A:[1-4] B:[1-4]` "
-        "*(e.g. `A:2 B:3`)* or type `customize` to see the full menu\n"
-        "* **Ask the hosts anything** -- tag @skeptic-agent or @expert-agent\n\n"
-        "*Tip: set personalities before the debate for the best experience!*"
-    ))
+    await ctx.send(
+        sender,
+        _chat(
+            "## Payment confirmed -- Live Show Pass is active!\n\n"
+            "The hosts are loaded and ready. Here's what you can do now:\n\n"
+            "* **Start the live debate** -- type `continue debate`\n"
+            "* **Customize host personalities first** -- type `A:[1-4] B:[1-4]` "
+            "*(e.g. `A:2 B:3`)* or type `customize` to see the full menu\n"
+            "* **Ask the hosts anything** -- tag @skeptic-agent or @expert-agent\n\n"
+            "*Tip: set personalities before the debate for the best experience!*"
+        ),
+    )
 
 
 @payment_proto.on_message(RejectPayment)
@@ -959,10 +1063,14 @@ async def on_reject_payment(ctx: Context, sender: str, msg: RejectPayment) -> No
     """User cancelled or the UI rejected the payment."""
     ctx.logger.info(f"[Payment] Payment rejected by {sender[:20]}...: {msg.reason}")
 
+
 # ── Debate response relay (Host → Orchestrator → User bubble) ─────────────────
 
+
 @orchestrator.on_message(DebateResponse)
-async def handle_debate_response(ctx: Context, sender: str, msg: DebateResponse) -> None:
+async def handle_debate_response(
+    ctx: Context, sender: str, msg: DebateResponse
+) -> None:
     """Receive one debate line, accumulate internally, show progress only.
 
     Intermediate updates send a short progress indicator (no debate content)
@@ -984,17 +1092,19 @@ async def handle_debate_response(ctx: Context, sender: str, msg: DebateResponse)
 
     debate_msg_id = UUID(ctx.storage.get(_DEBATE_MSG_ID_KEY) or str(uuid4()))
 
-    label = "🎤 **@skeptic-agent**" if msg.speaker == "skeptic" else "🎓 **@expert-agent**"
+    label = (
+        "🎤 **@skeptic-agent**" if msg.speaker == "skeptic" else "🎓 **@expert-agent**"
+    )
     accum["lines"].append(f"{label}\n{msg.reply_text}")
     ctx.storage.set(_DEBATE_ACCUM_KEY, json.dumps(accum))
 
-    user_address  = accum["user"]
-    a_hint        = accum.get("a_hint", "")
-    b_hint        = accum.get("b_hint", "")
-    topic         = msg.topic_title
-    total         = len(accum["lines"])
-    next_turn     = msg.turn + 1
-    is_final      = next_turn >= msg.max_turns
+    user_address = accum["user"]
+    a_hint = accum.get("a_hint", "")
+    b_hint = accum.get("b_hint", "")
+    topic = msg.topic_title
+    total = len(accum["lines"])
+    next_turn = msg.turn + 1
+    is_final = next_turn >= msg.max_turns
 
     if is_final:
         # Deliver the COMPLETE debate transcript in one message
@@ -1007,14 +1117,20 @@ async def handle_debate_response(ctx: Context, sender: str, msg: DebateResponse)
         )
         await ctx.send(user_address, _chat(full_text))
         ctx.storage.set(_ACTIVE_DEBATE_KEY, "")
-        ctx.logger.info(f"[DebateResponse] Debate finished — {msg.max_turns} turns delivered.")
+        ctx.logger.info(
+            f"[DebateResponse] Debate finished — {msg.max_turns} turns delivered."
+        )
     else:
-        next_speaker      = "expert" if msg.speaker == "skeptic" else "skeptic"
-        next_label        = "🎓 @expert-agent" if next_speaker == "expert" else "🎤 @skeptic-agent"
-        next_personality  = b_hint if next_speaker == "expert" else a_hint
+        next_speaker = "expert" if msg.speaker == "skeptic" else "skeptic"
+        next_label = (
+            "🎓 @expert-agent" if next_speaker == "expert" else "🎤 @skeptic-agent"
+        )
+        next_personality = b_hint if next_speaker == "expert" else a_hint
 
         # Progress-only update — no debate content, keeps the chat clean
-        speaker_done = "🎤 @skeptic-agent" if msg.speaker == "skeptic" else "🎓 @expert-agent"
+        speaker_done = (
+            "🎤 @skeptic-agent" if msg.speaker == "skeptic" else "🎓 @expert-agent"
+        )
         progress_bar = "".join("█" if i < total else "░" for i in range(msg.max_turns))
         progress_text = (
             f"## 🎭 Live Debate — *{topic}*\n\n"
@@ -1023,7 +1139,9 @@ async def handle_debate_response(ctx: Context, sender: str, msg: DebateResponse)
             f"⏳ *{next_label} is responding…*"
         )
         await ctx.send(user_address, _chat_open(progress_text, debate_msg_id))
-        ctx.logger.info(f"[DebateResponse] Turn {msg.turn} delivered. Waiting 8 s for turn {next_turn}…")
+        ctx.logger.info(
+            f"[DebateResponse] Turn {msg.turn} delivered. Waiting 8 s for turn {next_turn}…"
+        )
 
         await asyncio.sleep(8)
 
@@ -1036,36 +1154,44 @@ async def handle_debate_response(ctx: Context, sender: str, msg: DebateResponse)
         debate_history = "\n".join(history_lines)
 
         next_host = HOST_B_ADDRESS if next_speaker == "expert" else HOST_A_ADDRESS
-        await ctx.send(next_host, DebateTurn(
-            session_id=msg.session_id,
-            topic_title=msg.topic_title,
-            core_thesis=msg.core_thesis,
-            key_metrics=msg.key_metrics,
-            controversial_point=msg.controversial_point,
-            document_snippet=msg.document_snippet,
-            user_address=user_address,
-            turn=next_turn,
-            max_turns=msg.max_turns,
-            previous_statement=msg.reply_text,
-            speaker_personality=next_personality,
-            debate_history=debate_history,
-        ))
+        await ctx.send(
+            next_host,
+            DebateTurn(
+                session_id=msg.session_id,
+                topic_title=msg.topic_title,
+                core_thesis=msg.core_thesis,
+                key_metrics=msg.key_metrics,
+                controversial_point=msg.controversial_point,
+                document_snippet=msg.document_snippet,
+                user_address=user_address,
+                turn=next_turn,
+                max_turns=msg.max_turns,
+                previous_statement=msg.reply_text,
+                speaker_personality=next_personality,
+                debate_history=debate_history,
+            ),
+        )
         ctx.logger.info(
             f"[DebateResponse] DebateTurn {next_turn} → "
             f"{'HostB' if next_speaker == 'expert' else 'HostA'}"
         )
 
+
 # ── ASI:One Chat Protocol ─────────────────────────────────────────────────────
+
 
 @chat_proto.on_message(ChatMessage)
 async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
     await ctx.send(
         sender,
-        ChatAcknowledgement(timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id),
+        ChatAcknowledgement(
+            timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id
+        ),
     )
 
     # ── Message deduplication (Agentverse retries the same msg_id) ────────────
     import time as _time
+
     msg_key = str(msg.msg_id)
     try:
         seen_raw = ctx.storage.get(_SEEN_MSG_IDS_KEY) or "[]"
@@ -1102,31 +1228,46 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
         combined_lower = combined_text.lower()
 
         # Personality selection: "A:2 B:3"
-        m = _PERSONALITY_SET_RE.search(combined_text)
-        if m:
-            if not await _gate_with_payment(ctx, sender, "Host Personality Customization"):
+        personality_match = _PERSONALITY_SET_RE.search(combined_text)
+        if personality_match:
+            if not await _gate_with_payment(
+                ctx, sender, "Host Personality Customization"
+            ):
                 return
-            a_key, b_key = m.group(1), m.group(2)
+            a_key, b_key = personality_match.group(1), personality_match.group(2)
             a_name, a_hint = _PERSONALITY_PRESETS["host_a"][a_key]
             b_name, b_hint = _PERSONALITY_PRESETS["host_b"][b_key]
-            ctx.storage.set(_PERSONALITIES_KEY, json.dumps({
-                "a": a_key, "b": b_key,
-                "a_name": a_name, "a_hint": a_hint,
-                "b_name": b_name, "b_hint": b_hint,
-            }))
+            ctx.storage.set(
+                _PERSONALITIES_KEY,
+                json.dumps(
+                    {
+                        "a": a_key,
+                        "b": b_key,
+                        "a_name": a_name,
+                        "a_hint": a_hint,
+                        "b_name": b_name,
+                        "b_hint": b_hint,
+                    }
+                ),
+            )
             ctx.logger.info(f"[Personalities] Set A={a_name}, B={b_name}")
-            await ctx.send(sender, _chat(
-                f"✅ **Host personalities updated!**\n\n"
-                f"🎤 **@skeptic-agent** → *{a_name}*\n"
-                f"🎓 **@expert-agent** → *{b_name}*\n\n"
-                f"These apply to all Q&A responses and the next debate.\n"
-                f"Type `debate` to watch them go head-to-head with the new styles."
-            ))
+            await ctx.send(
+                sender,
+                _chat(
+                    f"✅ **Host personalities updated!**\n\n"
+                    f"🎤 **@skeptic-agent** → *{a_name}*\n"
+                    f"🎓 **@expert-agent** → *{b_name}*\n\n"
+                    f"These apply to all Q&A responses and the next debate.\n"
+                    f"Type `debate` to watch them go head-to-head with the new styles."
+                ),
+            )
             return
 
         # Personality picker menu
         if any(t in combined_lower for t in _PERSONALITY_TRIGGERS):
-            if not await _gate_with_payment(ctx, sender, "Host Personality Customization"):
+            if not await _gate_with_payment(
+                ctx, sender, "Host Personality Customization"
+            ):
                 return
             await ctx.send(sender, _chat(_PERSONALITY_MENU))
             return
@@ -1158,16 +1299,18 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
         # PDF sent as an attachment from ASI:One
         if isinstance(item, ResourceContent):
             if isinstance(item.resource, list) and not item.resource:
-                ctx.logger.warning("[Chat] ResourceContent had empty resource list; skipping item.")
+                ctx.logger.warning(
+                    "[Chat] ResourceContent had empty resource list; skipping item."
+                )
                 continue
             resource = (
-                item.resource[0]
-                if isinstance(item.resource, list)
-                else item.resource
+                item.resource[0] if isinstance(item.resource, list) else item.resource
             )
             try:
                 document_text = _resource_to_text(resource)
-                ctx.logger.info(f"[Chat] PDF attachment received via ResourceContent ({len(document_text):,} chars)")
+                ctx.logger.info(
+                    f"[Chat] PDF attachment received via ResourceContent ({len(document_text):,} chars)"
+                )
             except Exception as e:
                 ctx.logger.error(f"ResourceContent PDF read error: {e}")
             break
@@ -1185,41 +1328,55 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
                 break
 
     if not document_text:
-        await ctx.send(sender, _chat(
-            "Hi! I'm the PDF Podcast Agent.\n\n"
-            "Send me either:\n"
-            "  • The full pasted text of your PDF, or\n"
-            "  • An absolute server-side path to a .pdf file\n\n"
-            "I'll turn it into a 2-host debate podcast!"
-        ))
+        await ctx.send(
+            sender,
+            _chat(
+                "Hi! I'm the PDF Podcast Agent.\n\n"
+                "Send me either:\n"
+                "  • The full pasted text of your PDF, or\n"
+                "  • An absolute server-side path to a .pdf file\n\n"
+                "I'll turn it into a 2-host debate podcast!"
+            ),
+        )
         return
 
     session_id = str(uuid4())
 
-    await ctx.send(sender, _chat(
-        f"Starting pipeline — session `{session_id[:8]}`\n"
-        f"Steps: Extractor → Scriptwriter → Voice Studio\n"
-        f"Usually 30–90 s. Hang tight!"
-    ))
+    await ctx.send(
+        sender,
+        _chat(
+            f"Starting pipeline — session `{session_id[:8]}`\n"
+            f"Steps: Extractor → Scriptwriter → Voice Studio\n"
+            f"Usually 30–90 s. Hang tight!"
+        ),
+    )
 
     try:
         audio, script, insights = await _run_pipeline(ctx, document_text, session_id)
 
         # Persist session context so the live-debate trigger can use it later
-        ctx.storage.set(_LAST_SESSION_KEY, json.dumps({
-            "session_id":         session_id,
-            "topic_title":        script.topic_title,
-            "core_thesis":        insights.core_thesis,
-            "key_metrics":        insights.key_metrics,
-            "controversial_point": insights.controversial_point,
-            "document_snippet":   document_text[:3000],
-            "script_lines": [{"speaker": l.speaker, "text": l.text} for l in script.lines],
-        }))
+        ctx.storage.set(
+            _LAST_SESSION_KEY,
+            json.dumps(
+                {
+                    "session_id": session_id,
+                    "topic_title": script.topic_title,
+                    "core_thesis": insights.core_thesis,
+                    "key_metrics": insights.key_metrics,
+                    "controversial_point": insights.controversial_point,
+                    "document_snippet": document_text[:3000],
+                    "script_lines": [
+                        {"speaker": line.speaker, "text": line.text}
+                        for line in script.lines
+                    ],
+                }
+            ),
+        )
 
-        audio_url  = _audio_url(audio.audio_path)
+        audio_url = _audio_url(audio.audio_path)
         line_count = len(script.lines)
         duration_s = line_count * 12
-        duration   = f"{duration_s // 60}:{duration_s % 60:02d}"
+        duration = f"{duration_s // 60}:{duration_s % 60:02d}"
 
         # Run post-pipeline tasks concurrently
         docx_path, _ = await asyncio.gather(
@@ -1241,18 +1398,18 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
             f"> 🔥 *{insights.controversial_point[:120]}{'…' if len(insights.controversial_point) > 120 else ''}*",
             ">",
         ]
-        for l in script.lines[:3]:
-            tag = "[A]" if l.speaker == "HostA" else "[B]"
+        for line in script.lines[:3]:
+            tag = "[A]" if line.speaker == "HostA" else "[B]"
             snapshot_lines.append(
-                f"> **{tag}** {l.text[:90]}{'…' if len(l.text) > 90 else ''}"
+                f"> **{tag}** {line.text[:90]}{'…' if len(line.text) > 90 else ''}"
             )
         if line_count > 3:
             snapshot_lines.append("> …")
         snapshot = "\n".join(snapshot_lines)
 
         # ── Live Q&A section ─────────────────────────────────────────────────
-        hosts_ready   = bool(HOST_A_ADDRESS and HOST_B_ADDRESS)
-        session_paid  = _is_session_paid(ctx, session_id)
+        hosts_ready = bool(HOST_A_ADDRESS and HOST_B_ADDRESS)
+        session_paid = _is_session_paid(ctx, session_id)
         stripe_active = _stripe_enabled()
         a_name, _, b_name, _ = _load_personalities(ctx)
         price_dollars = int(os.getenv("STRIPE_LIVE_SHOW_PRICE_CENTS", "1000")) / 100
@@ -1303,31 +1460,33 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
                 "*Example: type* `A:2 B:3` *for Investigative Journalist vs Futurist.*"
             )
 
-        reply = "\n".join([
-            "## ✅ Podcast Ready!",
-            "",
-            f"## 🎙️ {script.topic_title}",
-            f"⏱️ ~{duration} &nbsp;•&nbsp; {line_count} voiced lines &nbsp;•&nbsp; 2 hosts",
-            "",
-            "---",
-            "## 🔗 Downloads",
-            f"🔊 **Listen (MP3):** {audio_url}",
-            f"📄 **Full Script (DOCX):** {docx_url}",
-            "",
-            "---",
-            "## 📋 Episode Snapshot",
-            "*Preview only — open the DOCX for the full analysis, "
-            "timestamped transcript, and extended director's cut.*",
-            "",
-            snapshot,
-            "",
-            "---",
-            # ── Change 3: single-line background note ──────────────────────
-            "🧠 *Paper context loaded into host agents.*",
-            "",
-            "---",
-            qa_section,
-        ])
+        reply = "\n".join(
+            [
+                "## ✅ Podcast Ready!",
+                "",
+                f"## 🎙️ {script.topic_title}",
+                f"⏱️ ~{duration} &nbsp;•&nbsp; {line_count} voiced lines &nbsp;•&nbsp; 2 hosts",
+                "",
+                "---",
+                "## 🔗 Downloads",
+                f"🔊 **Listen (MP3):** {audio_url}",
+                f"📄 **Full Script (DOCX):** {docx_url}",
+                "",
+                "---",
+                "## 📋 Episode Snapshot",
+                "*Preview only — open the DOCX for the full analysis, "
+                "timestamped transcript, and extended director's cut.*",
+                "",
+                snapshot,
+                "",
+                "---",
+                # ── Change 3: single-line background note ──────────────────────
+                "🧠 *Paper context loaded into host agents.*",
+                "",
+                "---",
+                qa_section,
+            ]
+        )
 
         await ctx.send(sender, _chat(reply))
 
@@ -1340,7 +1499,9 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
 async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> None:
     ctx.logger.info(f"[Orchestrator] ACK received from {sender[:20]}…")
 
+
 # ── REST endpoint (local testing) ─────────────────────────────────────────────
+
 
 @orchestrator.on_rest_post("/process", PipelineRequest, PipelineResponse)
 async def handle_rest_process(ctx: Context, req: PipelineRequest) -> PipelineResponse:
@@ -1354,19 +1515,27 @@ async def handle_rest_process(ctx: Context, req: PipelineRequest) -> PipelineRes
             document_text = _pdf_path_to_text(req.pdf_path)
         else:
             return PipelineResponse(
-                audio_base64="", audio_path="", script_json="[]",
-                topic_title="", status="error",
+                audio_base64="",
+                audio_path="",
+                script_json="[]",
+                topic_title="",
+                status="error",
                 error_message="Provide pdf_path or pdf_base64.",
             )
 
         if not document_text.strip():
             return PipelineResponse(
-                audio_base64="", audio_path="", script_json="[]",
-                topic_title="", status="error",
+                audio_base64="",
+                audio_path="",
+                script_json="[]",
+                topic_title="",
+                status="error",
                 error_message="Could not extract text from PDF.",
             )
 
-        ctx.logger.info(f"[REST] {len(document_text):,} chars extracted — running pipeline …")
+        ctx.logger.info(
+            f"[REST] {len(document_text):,} chars extracted — running pipeline …"
+        )
         audio, script, insights = await _run_pipeline(ctx, document_text, session_id)
 
         # Voice Studio no longer sends base64 over the wire to stay under the
@@ -1374,7 +1543,9 @@ async def handle_rest_process(ctx: Context, req: PipelineRequest) -> PipelineRes
         audio_b64 = audio.audio_base64
         if not audio_b64 and audio.audio_path:
             try:
-                audio_b64 = base64.b64encode(Path(audio.audio_path).read_bytes()).decode()
+                audio_b64 = base64.b64encode(
+                    Path(audio.audio_path).read_bytes()
+                ).decode()
             except Exception:
                 audio_b64 = ""
 
@@ -1382,7 +1553,8 @@ async def handle_rest_process(ctx: Context, req: PipelineRequest) -> PipelineRes
             audio_base64=audio_b64,
             audio_path=audio.audio_path,
             script_json=json.dumps(
-                [{"speaker": l.speaker, "text": l.text} for l in script.lines], indent=2
+                [{"speaker": line.speaker, "text": line.text} for line in script.lines],
+                indent=2,
             ),
             topic_title=script.topic_title,
             status="success",
@@ -1391,8 +1563,12 @@ async def handle_rest_process(ctx: Context, req: PipelineRequest) -> PipelineRes
     except Exception as exc:
         ctx.logger.error(f"[REST] error: {exc}")
         return PipelineResponse(
-            audio_base64="", audio_path="", script_json="[]",
-            topic_title="", status="error", error_message=str(exc),
+            audio_base64="",
+            audio_path="",
+            script_json="[]",
+            topic_title="",
+            status="error",
+            error_message=str(exc),
         )
 
 

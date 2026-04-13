@@ -57,7 +57,7 @@ def run_test(pdf_path: str) -> None:
         sys.exit(1)
 
     # ── Print results ─────────────────────────────────────────────────────────
-    title  = data.get("topic_title", "Untitled")
+    title = data.get("topic_title", "Untitled")
     script = json.loads(data.get("script_json", "[]"))
     audio_path = data.get("audio_path", "")
 
@@ -75,7 +75,9 @@ def run_test(pdf_path: str) -> None:
         audio_bytes = base64.b64decode(data["audio_base64"])
         out_dir = Path("output")
         out_dir.mkdir(exist_ok=True)
-        out_path = out_dir / Path(audio_path).name if audio_path else out_dir / "podcast.mp3"
+        out_path = (
+            out_dir / Path(audio_path).name if audio_path else out_dir / "podcast.mp3"
+        )
         with open(out_path, "wb") as f:
             f.write(audio_bytes)
         print(f"\n🎵  Audio saved → {out_path.resolve()}")

@@ -16,12 +16,12 @@ import os
 from uagents import Agent
 
 seeds = {
-    "ORCHESTRATOR":  os.getenv("ORCHESTRATOR_SEED",   "pdf_podcast_orchestrator_seed_v1"),
-    "EXTRACTOR":     os.getenv("EXTRACTOR_SEED",      "rag_extractor_podcast_seed_v1"),
-    "SCRIPTWRITER":  os.getenv("SCRIPTWRITER_SEED",   "podcast_scriptwriter_seed_v1"),
-    "VOICE_STUDIO":  os.getenv("VOICE_STUDIO_SEED",   "voice_studio_podcast_seed_v1"),
-    "HOST_A":        os.getenv("HOST_A_SEED",         "pdf_podcast_host_a_seed_v1"),
-    "HOST_B":        os.getenv("HOST_B_SEED",         "pdf_podcast_host_b_seed_v1"),
+    "ORCHESTRATOR": os.getenv("ORCHESTRATOR_SEED", "pdf_podcast_orchestrator_seed_v1"),
+    "EXTRACTOR": os.getenv("EXTRACTOR_SEED", "rag_extractor_podcast_seed_v1"),
+    "SCRIPTWRITER": os.getenv("SCRIPTWRITER_SEED", "podcast_scriptwriter_seed_v1"),
+    "VOICE_STUDIO": os.getenv("VOICE_STUDIO_SEED", "voice_studio_podcast_seed_v1"),
+    "HOST_A": os.getenv("HOST_A_SEED", "pdf_podcast_host_a_seed_v1"),
+    "HOST_B": os.getenv("HOST_B_SEED", "pdf_podcast_host_b_seed_v1"),
 }
 
 # Build agents just to read their addresses (no .run() called)
@@ -37,11 +37,11 @@ print("=" * 65)
 
 print()
 print("-- Paste into .env ------------------------------------------")
-print(f'EXTRACTOR_ADDRESS={agents["EXTRACTOR"].address}')
-print(f'SCRIPTWRITER_ADDRESS={agents["SCRIPTWRITER"].address}')
-print(f'VOICE_STUDIO_ADDRESS={agents["VOICE_STUDIO"].address}')
-print(f'HOST_A_ADDRESS={agents["HOST_A"].address}')
-print(f'HOST_B_ADDRESS={agents["HOST_B"].address}')
+print(f"EXTRACTOR_ADDRESS={agents['EXTRACTOR'].address}")
+print(f"SCRIPTWRITER_ADDRESS={agents['SCRIPTWRITER'].address}")
+print(f"VOICE_STUDIO_ADDRESS={agents['VOICE_STUDIO'].address}")
+print(f"HOST_A_ADDRESS={agents['HOST_A'].address}")
+print(f"HOST_B_ADDRESS={agents['HOST_B'].address}")
 print()
 print("-- Or export in PowerShell ----------------------------------")
 print(f'$env:EXTRACTOR_ADDRESS="{agents["EXTRACTOR"].address}"')

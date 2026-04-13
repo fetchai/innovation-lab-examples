@@ -17,9 +17,11 @@ Alternatively, start each agent manually in its own terminal:
 """
 
 import os
-import signal
+import contextlib
+import io
 import subprocess
 import sys
+import threading
 import time
 
 # ── Pre-flight checks ─────────────────────────────────────────────────────────
@@ -31,7 +33,6 @@ if not os.getenv("OPENAI_API_KEY"):
 
 # Compute and inject addresses so the orchestrator has them from the start
 print("Computing agent addresses …")
-import importlib.util, io, contextlib
 
 buf = io.StringIO()
 with contextlib.redirect_stdout(buf):
@@ -55,9 +56,9 @@ child_env = {**os.environ, **env_extra}
 # ── Launch subprocesses ───────────────────────────────────────────────────────
 
 agents = [
-    ("Extractor",    [sys.executable, "extractor_agent.py"]),
+    ("Extractor", [sys.executable, "extractor_agent.py"]),
     ("Scriptwriter", [sys.executable, "scriptwriter_agent.py"]),
-    ("VoiceStudio",  [sys.executable, "voice_studio_agent.py"]),
+    ("VoiceStudio", [sys.executable, "voice_studio_agent.py"]),
     ("Orchestrator", [sys.executable, "orchestrator.py"]),
 ]
 
@@ -73,18 +74,20 @@ for label, cmd in agents:
     )
     procs.append((label, p))
     print(f"[run.py] Started {label} (pid {p.pid})")
-    time.sleep(0.5)   # stagger startup slightly
+    time.sleep(0.5)  # stagger startup slightly
 
 print("\n[run.py] All agents running. Press Ctrl+C to stop.\n")
 
-# ── Stream logs from all children ─────────────────────────────────────────────
-import threading
 
 def stream(label, proc):
     for line in proc.stdout:
         print(f"[{label}] {line}", end="")
 
-threads = [threading.Thread(target=stream, args=(l, p), daemon=True) for l, p in procs]
+
+threads = [
+    threading.Thread(target=stream, args=(label, proc), daemon=True)
+    for label, proc in procs
+]
 for t in threads:
     t.start()
 

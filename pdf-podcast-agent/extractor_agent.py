@@ -16,17 +16,17 @@ import json
 import os
 
 from dotenv import load_dotenv
-load_dotenv()
-
-from uagents import Agent, Context
 from openai import AsyncOpenAI
+from uagents import Agent, Context
 
 from schemas import ExtractRequest, ResearchInsights
+
+load_dotenv()
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 EXTRACTION_MODEL = os.getenv("EXTRACTION_MODEL", "gpt-4o-mini")
-OPENAI_API_KEY   = os.getenv("OPENAI_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 _SYSTEM_PROMPT = """\
 You are an elite technical researcher. Read the provided document carefully.
@@ -64,9 +64,10 @@ client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 # ── Handlers ──────────────────────────────────────────────────────────────────
 
+
 @extractor.on_event("startup")
 async def on_startup(ctx: Context) -> None:
-    ctx.logger.info(f"[RAG Extractor] ready")
+    ctx.logger.info("[RAG Extractor] ready")
     ctx.logger.info(f"[RAG Extractor] address: {ctx.agent.address}")
 
 
@@ -83,13 +84,13 @@ async def handle_extract(ctx: Context, sender: str, msg: ExtractRequest) -> None
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user",   "content": f"Document:\n\n{text}"},
+                {"role": "user", "content": f"Document:\n\n{text}"},
             ],
             temperature=0.2,
             max_tokens=1_200,
         )
 
-        raw  = resp.choices[0].message.content
+        raw = resp.choices[0].message.content
         data = json.loads(raw)
 
         insights = ResearchInsights(

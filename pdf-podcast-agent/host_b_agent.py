@@ -15,16 +15,14 @@ Users interact by tagging @pdf_podcast_host_b in ASI:One chat:
     "@pdf_podcast_host_b  Can you explain the union-based execution result?"
 """
 
-import os
 import json
+import os
 from datetime import datetime, timezone
 from uuid import uuid4
 
 from dotenv import load_dotenv
-load_dotenv()
-
 from openai import AsyncOpenAI
-from uagents import Agent, Context
+from uagents import Agent, Context, Protocol
 
 from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
@@ -33,13 +31,14 @@ from uagents_core.contrib.protocols.chat import (
     TextContent,
     chat_protocol_spec,
 )
-from uagents import Protocol
 
 from schemas import ContextInjection, DebateTurn, DebateResponse
 
+load_dotenv()
+
 # ── Config ─────────────────────────────────────────────────────────────────────
 
-_MODEL  = os.getenv("ASI1_MODEL", "asi1-mini")
+_MODEL = os.getenv("ASI1_MODEL", "asi1-mini")
 _client = AsyncOpenAI(
     api_key=os.getenv("ASI1_API_KEY", ""),
     base_url="https://api.asi1.ai/v1",
@@ -51,8 +50,8 @@ _DEFAULT_PERSONALITY = (
     "say 'the data shows' and back it up with a specific number."
 )
 
-_LATEST_SESSION_KEY  = "__latest_session__"
-_PERSONALITY_KEY     = "__personality__"
+_LATEST_SESSION_KEY = "__latest_session__"
+_PERSONALITY_KEY = "__personality__"
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
 
@@ -62,11 +61,15 @@ host_b = Agent(
     name="pdf_podcast_host_b",
     seed=os.getenv("HOST_B_SEED", "pdf_podcast_host_b_seed_v1"),
     port=8005,
-    **({
-        "mailbox": _agentverse_key,
-    } if _agentverse_key else {
-        "endpoint": ["http://localhost:8005/submit"],
-    }),
+    **(
+        {
+            "mailbox": _agentverse_key,
+        }
+        if _agentverse_key
+        else {
+            "endpoint": ["http://localhost:8005/submit"],
+        }
+    ),
     network="testnet",
 )
 
@@ -74,27 +77,34 @@ chat_proto = Protocol(spec=chat_protocol_spec)
 
 # ── Context injection (from Orchestrator) ──────────────────────────────────────
 
+
 @host_b.on_message(ContextInjection)
 async def receive_context(ctx: Context, sender: str, msg: ContextInjection) -> None:
     """Store paper context keyed by session_id and track the latest session."""
     payload = {
-        "topic_title":         msg.topic_title,
-        "core_thesis":         msg.core_thesis,
-        "key_metrics":         msg.key_metrics,
+        "topic_title": msg.topic_title,
+        "core_thesis": msg.core_thesis,
+        "key_metrics": msg.key_metrics,
         "controversial_point": msg.controversial_point,
-        "document_snippet":    msg.document_snippet,
+        "document_snippet": msg.document_snippet,
     }
     ctx.storage.set(msg.session_id, json.dumps(payload))
     ctx.storage.set(_LATEST_SESSION_KEY, msg.session_id)
     if msg.host_b_personality:
         ctx.storage.set(_PERSONALITY_KEY, msg.host_b_personality)
-    ctx.logger.info(f"[HostB] Context stored for session {msg.session_id[:8]} — '{msg.topic_title}'")
+    ctx.logger.info(
+        f"[HostB] Context stored for session {msg.session_id[:8]} — '{msg.topic_title}'"
+    )
+
 
 # ── Debate turn (Orchestrator → HostB → Orchestrator) ────────────────────────
 
+
 @host_b.on_message(DebateTurn)
 async def handle_debate_turn(ctx: Context, sender: str, msg: DebateTurn) -> None:
-    ctx.logger.info(f"[HostB] Debate turn {msg.turn}/{msg.max_turns} — session {msg.session_id[:8]}")
+    ctx.logger.info(
+        f"[HostB] Debate turn {msg.turn}/{msg.max_turns} — session {msg.session_id[:8]}"
+    )
 
     history_block = ""
     if msg.debate_history:
@@ -107,7 +117,7 @@ async def handle_debate_turn(ctx: Context, sender: str, msg: DebateTurn) -> None
         f"Controversy: {msg.controversial_point}\n"
         f"Paper excerpt: {msg.document_snippet[:1500]}\n\n"
         f"{history_block}"
-        f"The Skeptic just said:\n\"{msg.previous_statement}\"\n\n"
+        f'The Skeptic just said:\n"{msg.previous_statement}"\n\n'
         f"This is turn {msg.turn + 1} of {msg.max_turns}.\n"
         "IMPORTANT: Do NOT repeat any argument already made in the debate history above. "
         "Respond to the Skeptic's NEW point directly. Introduce fresh evidence, a different "
@@ -115,7 +125,11 @@ async def handle_debate_turn(ctx: Context, sender: str, msg: DebateTurn) -> None
         "2-3 confident sentences."
     )
 
-    personality = msg.speaker_personality or ctx.storage.get(_PERSONALITY_KEY) or _DEFAULT_PERSONALITY
+    personality = (
+        msg.speaker_personality
+        or ctx.storage.get(_PERSONALITY_KEY)
+        or _DEFAULT_PERSONALITY
+    )
     system_prompt = (
         f"You are Host B — 'The Expert' — in a LIVE podcast debate.\n"
         f"Personality: {personality}\n"
@@ -142,19 +156,22 @@ async def handle_debate_turn(ctx: Context, sender: str, msg: DebateTurn) -> None
         reply_text = "*(The Expert is consulting the data…)*"
 
     try:
-        await ctx.send(sender, DebateResponse(
-            session_id=msg.session_id,
-            speaker="expert",
-            reply_text=reply_text,
-            turn=msg.turn,
-            max_turns=msg.max_turns,
-            user_address=msg.user_address,
-            topic_title=msg.topic_title,
-            core_thesis=msg.core_thesis,
-            key_metrics=msg.key_metrics,
-            controversial_point=msg.controversial_point,
-            document_snippet=msg.document_snippet,
-        ))
+        await ctx.send(
+            sender,
+            DebateResponse(
+                session_id=msg.session_id,
+                speaker="expert",
+                reply_text=reply_text,
+                turn=msg.turn,
+                max_turns=msg.max_turns,
+                user_address=msg.user_address,
+                topic_title=msg.topic_title,
+                core_thesis=msg.core_thesis,
+                key_metrics=msg.key_metrics,
+                controversial_point=msg.controversial_point,
+                document_snippet=msg.document_snippet,
+            ),
+        )
         ctx.logger.info(f"[HostB] DebateResponse sent for turn {msg.turn}.")
     except Exception as e:
         ctx.logger.error(f"[HostB] Failed to send DebateResponse: {e}")
@@ -162,9 +179,12 @@ async def handle_debate_turn(ctx: Context, sender: str, msg: DebateTurn) -> None
 
 # ── User Q&A (from ASI:One chat) ──────────────────────────────────────────────
 
+
 @chat_proto.on_message(ChatMessage)
 async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
-    ctx.logger.info(f"[HostB] ChatMessage from {sender[:20]}… content types: {[type(c).__name__ for c in msg.content]}")
+    ctx.logger.info(
+        f"[HostB] ChatMessage from {sender[:20]}… content types: {[type(c).__name__ for c in msg.content]}"
+    )
     await ctx.send(
         sender,
         ChatAcknowledgement(
@@ -211,7 +231,9 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
 
     user_msg = {"role": "user", "content": user_text}
     if context_str:
-        user_msg["content"] = f"[Paper context]\n{context_str}\n\n[User question]\n{user_text}"
+        user_msg["content"] = (
+            f"[Paper context]\n{context_str}\n\n[User question]\n{user_text}"
+        )
 
     try:
         resp = await _client.chat.completions.create(
@@ -236,7 +258,9 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
                 timestamp=datetime.now(timezone.utc),
                 msg_id=uuid4(),
                 content=[
-                    TextContent(type="text", text=f"**[Host B — The Expert]**\n\n{reply_text}"),
+                    TextContent(
+                        type="text", text=f"**[Host B — The Expert]**\n\n{reply_text}"
+                    ),
                     EndSessionContent(type="end-session"),
                 ],
             ),

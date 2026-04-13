@@ -22,18 +22,18 @@ from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
-load_dotenv()
-
-from uagents import Agent, Context
 from openai import AsyncOpenAI
+from uagents import Agent, Context
 
 from schemas import AudioResponse, PodcastScript
+
+load_dotenv()
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-TTS_MODEL      = os.getenv("TTS_MODEL", "tts-1")
-OUTPUT_DIR     = Path(os.getenv("OUTPUT_DIR", "output"))
+TTS_MODEL = os.getenv("TTS_MODEL", "tts-1")
+OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", "output"))
 
 VOICE_MAP = {
     "HostA": os.getenv("VOICE_HOST_A", "alloy"),
@@ -56,6 +56,7 @@ client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 async def _tts_call(text: str, voice: str) -> bytes:
     response = await client.audio.speech.create(
@@ -90,13 +91,17 @@ def _stitch_audio(chunks: list[bytes], silence_ms: int) -> bytes:
         # ffmpeg not available — raw concatenation still plays in most players
         return b"".join(chunks)
 
+
 # ── Handlers ──────────────────────────────────────────────────────────────────
+
 
 @voice_studio.on_event("startup")
 async def on_startup(ctx: Context) -> None:
-    ctx.logger.info(f"[Voice Studio] ready")
+    ctx.logger.info("[Voice Studio] ready")
     ctx.logger.info(f"[Voice Studio] address: {ctx.agent.address}")
-    ctx.logger.info(f"[Voice Studio] HostA={VOICE_MAP['HostA']}  HostB={VOICE_MAP['HostB']}  model={TTS_MODEL}")
+    ctx.logger.info(
+        f"[Voice Studio] HostA={VOICE_MAP['HostA']}  HostB={VOICE_MAP['HostB']}  model={TTS_MODEL}"
+    )
 
 
 @voice_studio.on_message(model=PodcastScript)
@@ -105,21 +110,28 @@ async def handle_voice(ctx: Context, sender: str, msg: PodcastScript) -> None:
     ctx.logger.info(f"[{sid}] Generating {len(msg.lines)} TTS chunks in parallel …")
 
     try:
-        tasks  = [_tts_call(line.text, VOICE_MAP.get(line.speaker, "alloy")) for line in msg.lines]
+        tasks = [
+            _tts_call(line.text, VOICE_MAP.get(line.speaker, "alloy"))
+            for line in msg.lines
+        ]
         chunks = await asyncio.gather(*tasks)
 
         ctx.logger.info(f"[{sid}] Stitching audio …")
         final_bytes = _stitch_audio(list(chunks), silence_ms=SILENCE_BETWEEN_LINES_MS)
 
-        timestamp  = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_title = "".join(c if c.isalnum() or c in "-_" else "_" for c in msg.topic_title)[:40]
-        filename   = f"podcast_{safe_title}_{timestamp}.mp3"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_title = "".join(
+            c if c.isalnum() or c in "-_" else "_" for c in msg.topic_title
+        )[:40]
+        filename = f"podcast_{safe_title}_{timestamp}.mp3"
         audio_path = str(OUTPUT_DIR / filename)
 
         with open(audio_path, "wb") as f:
             f.write(final_bytes)
 
-        ctx.logger.info(f"[{sid}] Saved → {audio_path}  ({len(final_bytes)/1024:.1f} KB)")
+        ctx.logger.info(
+            f"[{sid}] Saved → {audio_path}  ({len(final_bytes) / 1024:.1f} KB)"
+        )
 
         # Send path only — base64 blob (~2 MB+) exceeds Agentverse mailbox size limit.
         # The orchestrator constructs the download URL from audio_path directly.

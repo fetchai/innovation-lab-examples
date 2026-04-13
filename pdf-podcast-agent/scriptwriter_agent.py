@@ -16,17 +16,17 @@ import json
 import os
 
 from dotenv import load_dotenv
-load_dotenv()
-
-from uagents import Agent, Context
 from openai import AsyncOpenAI
+from uagents import Agent, Context
 
-from schemas import ResearchInsights, DialogueLine, PodcastScript
+from schemas import DialogueLine, PodcastScript, ResearchInsights
+
+load_dotenv()
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 SCRIPTWRITER_MODEL = os.getenv("SCRIPTWRITER_MODEL", "gpt-4o-mini")
-OPENAI_API_KEY     = os.getenv("OPENAI_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 _SYSTEM_PROMPT = """\
 You are the head writer for a popular tech podcast called "Debug Mode".
@@ -71,9 +71,10 @@ client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 # ── Handlers ──────────────────────────────────────────────────────────────────
 
+
 @scriptwriter.on_event("startup")
 async def on_startup(ctx: Context) -> None:
-    ctx.logger.info(f"[Scriptwriter] ready")
+    ctx.logger.info("[Scriptwriter] ready")
     ctx.logger.info(f"[Scriptwriter] address: {ctx.agent.address}")
 
 
@@ -94,13 +95,13 @@ async def handle_script(ctx: Context, sender: str, msg: ResearchInsights) -> Non
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user",   "content": user_content},
+                {"role": "user", "content": user_content},
             ],
             temperature=0.75,
             max_tokens=2_000,
         )
 
-        raw  = resp.choices[0].message.content
+        raw = resp.choices[0].message.content
         data = json.loads(raw)
 
         lines = [
@@ -117,7 +118,9 @@ async def handle_script(ctx: Context, sender: str, msg: ResearchInsights) -> Non
             session_id=msg.session_id,
         )
 
-        ctx.logger.info(f"[{sid}] Script done — {len(lines)} lines • '{script.topic_title}'")
+        ctx.logger.info(
+            f"[{sid}] Script done — {len(lines)} lines • '{script.topic_title}'"
+        )
         await ctx.send(sender, script)
 
     except Exception as exc:
