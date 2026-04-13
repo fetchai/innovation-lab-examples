@@ -127,7 +127,7 @@ _DEBATE_MSG_ID_KEY = (
 _PERSONALITIES_KEY = "host_personalities"
 _PAID_SESSIONS_KEY = "paid_podcast_sessions"  # JSON list of paid session IDs
 _PENDING_PAYMENTS_KEY = (
-    "pending_stripe_payments"  # JSON dict with current pending checkout info
+    "pending_stripe_payments"  # JSON dict keyed by checkout_session_id
 )
 
 _DEBATE_COOLDOWN_SECS = 30  # ignore duplicate "debate" triggers within this window
@@ -653,17 +653,21 @@ async def _gate_with_payment(ctx: Context, sender: str, feature_name: str) -> bo
             ),
         )
 
-        ctx.storage.set(
-            _PENDING_PAYMENTS_KEY,
-            json.dumps(
-                {
-                    "checkout_session_id": checkout_payload["checkout_session_id"],
-                    "podcast_session_id": podcast_session_id,
-                    "user_address": sender,
-                    "feature": feature_name,
-                }
-            ),
-        )
+        checkout_session_id = checkout_payload["checkout_session_id"]
+        raw_pending = ctx.storage.get(_PENDING_PAYMENTS_KEY) or "{}"
+        try:
+            pending_by_checkout = json.loads(raw_pending)
+            if not isinstance(pending_by_checkout, dict):
+                pending_by_checkout = {}
+        except Exception:
+            pending_by_checkout = {}
+
+        pending_by_checkout[checkout_session_id] = {
+            "podcast_session_id": podcast_session_id,
+            "user_address": sender,
+            "feature": feature_name,
+        }
+        ctx.storage.set(_PENDING_PAYMENTS_KEY, json.dumps(pending_by_checkout))
 
         req = RequestPayment(
             accepted_funds=[
@@ -1012,12 +1016,30 @@ async def on_commit_payment(ctx: Context, sender: str, msg: CommitPayment) -> No
     await ctx.send(sender, CompletePayment(transaction_id=checkout_session_id))
     ctx.logger.info(f"[Payment] CompletePayment sent for {checkout_session_id[:20]}...")
 
-    # Determine which podcast session this checkout belongs to
+    # Determine which podcast session this checkout belongs to.
+    # Pending payments are keyed by checkout_session_id to avoid races between
+    # concurrent users paying at the same time.
     raw_pending = ctx.storage.get(_PENDING_PAYMENTS_KEY) or "{}"
     try:
-        pending_info = json.loads(raw_pending)
-        podcast_session_id = pending_info.get("podcast_session_id", "")
+        pending_data = json.loads(raw_pending)
+        if not isinstance(pending_data, dict):
+            pending_data = {}
     except Exception:
+        pending_data = {}
+
+    pending_info = pending_data.get(checkout_session_id)
+    if not pending_info and {"checkout_session_id", "podcast_session_id"}.issubset(
+        pending_data.keys()
+    ):
+        # Backward compatibility for older single-pending-payment shape.
+        legacy_checkout = pending_data.get("checkout_session_id")
+        if legacy_checkout == checkout_session_id:
+            pending_info = pending_data
+
+    podcast_session_id = ""
+    if isinstance(pending_info, dict):
+        podcast_session_id = pending_info.get("podcast_session_id", "")
+    if not isinstance(podcast_session_id, str):
         podcast_session_id = ""
 
     if not podcast_session_id:
@@ -1042,7 +1064,9 @@ async def on_commit_payment(ctx: Context, sender: str, msg: CommitPayment) -> No
         ctx.storage.set(_PAID_SESSIONS_KEY, json.dumps(paid_ids))
         ctx.logger.info(f"[Payment] Session {podcast_session_id[:8]} marked as paid.")
 
-    ctx.storage.set(_PENDING_PAYMENTS_KEY, "{}")
+    if checkout_session_id in pending_data:
+        pending_data.pop(checkout_session_id, None)
+        ctx.storage.set(_PENDING_PAYMENTS_KEY, json.dumps(pending_data))
 
     await ctx.send(
         sender,
