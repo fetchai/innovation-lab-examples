@@ -161,7 +161,7 @@ User uploads PDF to ASI:One
 ### Payment flow
 
 1. User types **"debate"** or **"customize"** in chat
-2. Orchestrator sends `RequestPayment` with embedded Stripe Checkout (`ui_mode="embedded_page"`)
+2. Orchestrator sends `RequestPayment` with embedded Stripe Checkout (`ui_mode="embedded"`)
 3. User completes payment in the Stripe overlay
 4. ASI:One sends `CommitPayment` → Orchestrator verifies → sends `CompletePayment`
 5. User types **"continue debate"** to start the live show

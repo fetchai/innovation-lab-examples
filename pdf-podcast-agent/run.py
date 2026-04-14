@@ -1,8 +1,8 @@
 """
 run.py – Convenience launcher (optional)
 =========================================
-Starts all four agents in SEPARATE subprocesses (one per agent), so you
-get clean, isolated logs for each one — just like running 4 terminals by hand.
+Starts all six agents in SEPARATE subprocesses (one per agent), so you
+get clean, isolated logs for each one — just like running 6 terminals by hand.
 
 Usage:
     python run.py
@@ -13,12 +13,12 @@ Alternatively, start each agent manually in its own terminal:
     Terminal 1:  python extractor_agent.py
     Terminal 2:  python scriptwriter_agent.py
     Terminal 3:  python voice_studio_agent.py
-    Terminal 4:  python orchestrator.py       (start LAST)
+    Terminal 4:  python host_a_agent.py
+    Terminal 5:  python host_b_agent.py
+    Terminal 6:  python orchestrator.py       (start LAST)
 """
 
 import os
-import contextlib
-import io
 import subprocess
 import sys
 import threading
@@ -34,11 +34,13 @@ if not os.getenv("OPENAI_API_KEY"):
 # Compute and inject addresses so the orchestrator has them from the start
 print("Computing agent addresses …")
 
-buf = io.StringIO()
-with contextlib.redirect_stdout(buf):
-    exec(open("get_addresses.py").read())
-
-output = buf.getvalue()
+result = subprocess.run(
+    [sys.executable, "get_addresses.py"],
+    capture_output=True,
+    text=True,
+    check=True,
+)
+output = result.stdout
 print(output)
 
 # Parse the env-var lines from get_addresses output
@@ -50,6 +52,10 @@ for line in output.splitlines():
         env_extra["SCRIPTWRITER_ADDRESS"] = line.split("=", 1)[1]
     elif line.startswith("VOICE_STUDIO_ADDRESS="):
         env_extra["VOICE_STUDIO_ADDRESS"] = line.split("=", 1)[1]
+    elif line.startswith("HOST_A_ADDRESS="):
+        env_extra["HOST_A_ADDRESS"] = line.split("=", 1)[1]
+    elif line.startswith("HOST_B_ADDRESS="):
+        env_extra["HOST_B_ADDRESS"] = line.split("=", 1)[1]
 
 child_env = {**os.environ, **env_extra}
 
@@ -59,6 +65,8 @@ agents = [
     ("Extractor", [sys.executable, "extractor_agent.py"]),
     ("Scriptwriter", [sys.executable, "scriptwriter_agent.py"]),
     ("VoiceStudio", [sys.executable, "voice_studio_agent.py"]),
+    ("HostA", [sys.executable, "host_a_agent.py"]),
+    ("HostB", [sys.executable, "host_b_agent.py"]),
     ("Orchestrator", [sys.executable, "orchestrator.py"]),
 ]
 

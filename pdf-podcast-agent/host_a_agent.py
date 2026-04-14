@@ -1,7 +1,7 @@
 """
 Host A – The Skeptic  (Post-Show Q&A Agent)
 ============================================
-Run in its own terminal AFTER the Orchestrator has started:
+Run in its own terminal BEFORE the Orchestrator starts:
 
     python host_a_agent.py
 
@@ -58,21 +58,25 @@ _PERSONALITY_KEY = "__personality__"
 
 _agentverse_key = os.getenv("AGENTVERSE_API_KEY", "")
 
-host_a = Agent(
-    name="pdf_podcast_host_a",
-    seed=os.getenv("HOST_A_SEED", "pdf_podcast_host_a_seed_v1"),
-    port=8004,
-    **(
-        {
-            "mailbox": _agentverse_key,
-        }
-        if _agentverse_key
-        else {
-            "endpoint": ["http://localhost:8004/submit"],
-        }
-    ),
-    network="testnet",
-)
+if _agentverse_key:
+    host_a = Agent(
+        name="pdf_podcast_host_a",
+        seed=os.getenv("HOST_A_SEED", "pdf_podcast_host_a_seed_v1"),
+        port=8004,
+        mailbox=True,
+        agentverse="https://agentverse.ai",
+        handle_messages_concurrently=True,
+        network="testnet",
+    )
+else:
+    host_a = Agent(
+        name="pdf_podcast_host_a",
+        seed=os.getenv("HOST_A_SEED", "pdf_podcast_host_a_seed_v1"),
+        port=8004,
+        endpoint=["http://localhost:8004/submit"],
+        handle_messages_concurrently=True,
+        network="testnet",
+    )
 
 chat_proto = Protocol(spec=chat_protocol_spec)
 

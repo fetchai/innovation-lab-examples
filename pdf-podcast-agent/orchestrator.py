@@ -797,6 +797,7 @@ async def _run_pipeline(
 # ── Live debate (relay: HostA → Orchestrator → HostB → …, one growing bubble) ─
 
 _MAX_DEBATE_TURNS = 8  # total lines (4 from each host)
+_DEBATE_TURN_DELAY_SECS = int(os.getenv("DEBATE_TURN_DELAY_SECS", "8"))
 
 
 async def _run_live_debate(ctx: Context, sender: str) -> None:
@@ -804,7 +805,7 @@ async def _run_live_debate(ctx: Context, sender: str) -> None:
 
     The orchestrator sends a DebateTurn to Host A, Host A replies with
     DebateResponse, the orchestrator appends it to the growing transcript and
-    then (after a 5-second pause) sends the next DebateTurn to the other host.
+    then (after a short pacing pause) sends the next DebateTurn to the other host.
     Every DebateResponse updates the *same* chat bubble with the full accumulated
     transcript so far — giving a "live-streaming" effect.
     """
@@ -1164,10 +1165,11 @@ async def handle_debate_response(
         )
         await ctx.send(user_address, _chat_open(progress_text, debate_msg_id))
         ctx.logger.info(
-            f"[DebateResponse] Turn {msg.turn} delivered. Waiting 8 s for turn {next_turn}…"
+            f"[DebateResponse] Turn {msg.turn} delivered. Waiting {_DEBATE_TURN_DELAY_SECS} s for turn {next_turn}…"
         )
 
-        await asyncio.sleep(8)
+        # Keep a human-paced cadence in the "live" stream while preserving turn order.
+        await asyncio.sleep(_DEBATE_TURN_DELAY_SECS)
 
         # Build a plain-text debate history from all accumulated lines
         history_lines = []

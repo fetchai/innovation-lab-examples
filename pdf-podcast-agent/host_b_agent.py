@@ -1,7 +1,7 @@
 """
 Host B – The Expert  (Post-Show Q&A Agent)
 ==========================================
-Run in its own terminal AFTER the Orchestrator has started:
+Run in its own terminal BEFORE the Orchestrator starts:
 
     python host_b_agent.py
 
@@ -57,21 +57,25 @@ _PERSONALITY_KEY = "__personality__"
 
 _agentverse_key = os.getenv("AGENTVERSE_API_KEY", "")
 
-host_b = Agent(
-    name="pdf_podcast_host_b",
-    seed=os.getenv("HOST_B_SEED", "pdf_podcast_host_b_seed_v1"),
-    port=8005,
-    **(
-        {
-            "mailbox": _agentverse_key,
-        }
-        if _agentverse_key
-        else {
-            "endpoint": ["http://localhost:8005/submit"],
-        }
-    ),
-    network="testnet",
-)
+if _agentverse_key:
+    host_b = Agent(
+        name="pdf_podcast_host_b",
+        seed=os.getenv("HOST_B_SEED", "pdf_podcast_host_b_seed_v1"),
+        port=8005,
+        mailbox=True,
+        agentverse="https://agentverse.ai",
+        handle_messages_concurrently=True,
+        network="testnet",
+    )
+else:
+    host_b = Agent(
+        name="pdf_podcast_host_b",
+        seed=os.getenv("HOST_B_SEED", "pdf_podcast_host_b_seed_v1"),
+        port=8005,
+        endpoint=["http://localhost:8005/submit"],
+        handle_messages_concurrently=True,
+        network="testnet",
+    )
 
 chat_proto = Protocol(spec=chat_protocol_spec)
 
