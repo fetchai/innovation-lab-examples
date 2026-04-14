@@ -134,7 +134,10 @@ jobs:
             echo "No Python files changed; skipping typecheck."
             exit 0
           fi
-          echo "$CHANGED_PY" | tr '\n' '\0' | xargs -0 mypy --ignore-missing-imports --follow-imports=silent --explicit-package-bases
+          while IFS= read -r py_file; do
+            [ -z "$py_file" ] && continue
+            mypy --ignore-missing-imports --follow-imports=silent --explicit-package-bases "$py_file"
+          done <<< "$CHANGED_PY"
 
   validate-architecture:
     runs-on: ubuntu-latest
