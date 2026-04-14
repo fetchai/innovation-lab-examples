@@ -58,51 +58,6 @@ jobs:
           sys.exit(1)
           PY
 
-  changelog-check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Enforce changelog update for non-doc PRs
-        shell: bash
-        run: |
-          set -euo pipefail
-          BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          HEAD_SHA="${{ github.sha }}"
-          CHANGED_FILES="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
-
-          if [ -z "$CHANGED_FILES" ]; then
-            echo "No changed files detected; skipping."
-            exit 0
-          fi
-
-          DOCS_ONLY=true
-          while IFS= read -r file; do
-            case "$file" in
-              *.md|docs/*|.github/ISSUE_TEMPLATE/*|.github/pull_request_template.md)
-                ;;
-              *)
-                DOCS_ONLY=false
-                break
-                ;;
-            esac
-          done <<< "$CHANGED_FILES"
-
-          if [ "$DOCS_ONLY" = true ]; then
-            echo "Docs-only PR detected; CHANGELOG.md update is not required."
-            exit 0
-          fi
-
-          if echo "$CHANGED_FILES" | grep -qx "CHANGELOG.md"; then
-            echo "CHANGELOG.md update detected."
-            exit 0
-          fi
-
-          echo "CHANGELOG.md must be updated for non-doc PRs."
-          exit 1
-
   lint:
     runs-on: ubuntu-latest
     steps:

@@ -1,6 +1,6 @@
 # generalrag.py
-import re
 from hyperon import MeTTa, E, S, ValueAtom
+
 
 class GeneralRAG:
     def __init__(self, metta_instance: MeTTa):
@@ -9,29 +9,41 @@ class GeneralRAG:
     def query_capability(self, capability):
         """Find capabilities linked to a concept."""
         capability = capability.strip('"')
-        query_str = f'!(match &self (capability {capability} $feature) $feature)'
+        query_str = f"!(match &self (capability {capability} $feature) $feature)"
         results = self.metta.run(query_str)
         print(results, query_str)
 
-        unique_features = list(set(str(r[0]) for r in results if r and len(r) > 0)) if results else []
+        unique_features = (
+            list(set(str(r[0]) for r in results if r and len(r) > 0)) if results else []
+        )
         return unique_features
 
     def get_solution(self, problem):
         """Find solutions for a problem."""
         problem = problem.strip('"')
-        query_str = f'!(match &self (solution {problem} $solution) $solution)'
+        query_str = f"!(match &self (solution {problem} $solution) $solution)"
         results = self.metta.run(query_str)
         print(results, query_str)
-        return [r[0].get_object().value for r in results if r and len(r) > 0] if results else []
+        return (
+            [r[0].get_object().value for r in results if r and len(r) > 0]
+            if results
+            else []
+        )
 
     def get_consideration(self, topic):
         """Find considerations/limitations for a topic."""
         topic = topic.strip('"')
-        query_str = f'!(match &self (consideration {topic} $consideration) $consideration)'
+        query_str = (
+            f"!(match &self (consideration {topic} $consideration) $consideration)"
+        )
         results = self.metta.run(query_str)
         print(results, query_str)
 
-        return [r[0].get_object().value for r in results if r and len(r) > 0] if results else []
+        return (
+            [r[0].get_object().value for r in results if r and len(r) > 0]
+            if results
+            else []
+        )
 
     def query_faq(self, question):
         """Retrieve FAQ answers."""
@@ -47,17 +59,21 @@ class GeneralRAG:
             object_value = ValueAtom(object_value)
         self.metta.space().add_atom(E(S(relation_type), S(subject), object_value))
         return f"Added {relation_type}: {subject} → {object_value}"
-    
+
     def get_specific_models(self, model: str):
         """get specific instances of models from the knowldege graphs"""
-        query_str = f'!(match &self (specificInstance {model} $specific_model) $specific_model)'
+        query_str = (
+            f"!(match &self (specificInstance {model} $specific_model) $specific_model)"
+        )
         results = self.metta.run(query_str)
+        if not results:
+            return None
         return results.pop()
-    
-    def query_all_specific_capabilities(self, model:str):
+
+    def query_all_specific_capabilities(self, model: str):
         """query the capabilities of all specific_instances of a model"""
-        query_str = f'!(match &self (, (specificInstance {model} $specificInstance) (capability $specificInstance $specificCapability)) ($specificInstance $specificCapability))'
+        query_str = f"!(match &self (, (specificInstance {model} $specificInstance) (capability $specificInstance $specificCapability)) ($specificInstance $specificCapability))"
         results = self.metta.run(query_str)
+        if not results:
+            return None
         return results.pop()
-
-

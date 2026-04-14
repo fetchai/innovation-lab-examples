@@ -5,6 +5,16 @@ version: "3.8"
 #
 # Full multi-agent bureau (recommended):
 #   docker-compose --profile bureau up --build
+# Three modes (uncomment the profiles you want):
+#
+#   Full multi-agent bureau (recommended):
+#     docker-compose --profile bureau up --build
+#
+#   REST API only (no uAgents, no workers):
+#     docker-compose --profile rest up --build
+#
+#   Both:
+#     docker-compose --profile bureau --profile rest up --build
 #
 # Required: copy .env.example → .env and fill in keys before running.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -100,6 +110,26 @@ services:
       timeout: 10s
       retries: 5
       start_period: 40s
+
+# ── REST API (optional — Agentverse-independent HTTP interface) ────────────────
+  whisperer-rest:
+    <<: *base
+    profiles: [rest]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: appliance-auto-whisperer-rest
+    environment:
+      - PORT=8000
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python3", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
 # ── Reports file server (downloadable Excel spreadsheets) ─────────────────────
   reports-server:

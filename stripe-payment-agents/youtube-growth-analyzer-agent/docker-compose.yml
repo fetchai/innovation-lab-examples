@@ -1,0 +1,45 @@
+# Local / deployment parity: use the same AGENT_SEED and AGENTVERSE_API_TOKEN as bare-metal runs
+# so the agent address and mailbox registration match. Reference:
+# https://github.com/rajashekarcs2023/nexus-socal
+#
+# Run: docker compose up --build
+# Check: curl -s http://127.0.0.1:${AGENT_PORT:-8012}/agent_info
+
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: youtube-growth-analyzer-agent
+    restart: unless-stopped
+    ports:
+      - "${AGENT_PORT:-8012}:${AGENT_PORT:-8012}"
+    env_file:
+      - .env
+    environment:
+      PYTHONUNBUFFERED: "1"
+      # Same port inside container as host mapping (override in .env if needed)
+      AGENT_PORT: "${AGENT_PORT:-8012}"
+    # Helps when the container cannot resolve public hostnames (avoids
+    # "nodename nor servname provided" for agentverse.ai). Remove if your network forbids public DNS.
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os,socket; p=int(os.environ.get('AGENT_PORT','8012')); s=socket.socket(); s.settimeout(3); s.connect(('127.0.0.1',p)); s.close()",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - agent-network
+
+networks:
+  agent-network:
+    driver: bridge

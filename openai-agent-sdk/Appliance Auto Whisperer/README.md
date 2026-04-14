@@ -99,15 +99,3 @@ python workers/tutorial_agent.py
 python diagnostic_bureau.py
 ```
 
-## Docker (Bureau Mode)
-
-```bash
-docker compose --profile bureau up --build
-```
-
-This starts parts-agent, tutorial-agent, orchestrator, and reports server.
-
-## Notes
-
-- This example is focused on the **uAgents bureau workflow**.
-- FastAPI/REST-only scaffolding has been removed to keep the repo clean and aligned with the agent architecture.

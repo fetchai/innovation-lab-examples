@@ -1,0 +1,19 @@
+# Environment and Secrets
+.env
+
+# Agent Data and Persistence
+*_data.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+build/
+dist/
+*.egg-info/
+
+# IDEs
+.vscode/
+.idea/

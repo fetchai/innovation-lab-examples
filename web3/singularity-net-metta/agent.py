@@ -27,7 +27,7 @@ from metta.utils import LLM, process_query
 load_dotenv()
 
 # Initialize agent
-agent = Agent(name="Medical MeTTa Agent", port=8005, mailbox=True, publish_agent_details=True)
+agent = Agent(name="Medical MeTTa Agent", seed="medical-metta-agent-seed-1", port=8005, mailbox=True, publish_agent_details=True)
 
 class MedicalQuery(Model):
     query: str
@@ -77,7 +77,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 
                 # Format the response
                 if isinstance(response, dict):
-                    answer_text = f"**{response.get('selected_question', user_query)}**\n\n{response.get('humanized_answer', 'I apologize, but I could not process your query.')}"
+                    answer_text = response.get('humanized_answer', 'I apologize, but I could not process your query.')
                 else:
                     answer_text = str(response)
                 

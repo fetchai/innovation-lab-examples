@@ -2,6 +2,9 @@
         docker-build-bureau \
         docker-up docker-down docker-logs \
         smoke
+        docker-build docker-build-bureau \
+        docker-up docker-down docker-logs \
+        docker-up-rest smoke
 
 install:
 	python -m pip install -r requirements.txt
@@ -20,6 +23,9 @@ lint:
 	python -m ruff check app tests
 
 # ── Docker ────────────────────────────────────────────────────────────────────
+
+docker-build:
+	docker build -t appliance-auto-whisperer:local .
 
 docker-build-bureau:
 	docker build -f Dockerfile.bureau -t repair-orchestrator-bureau:local .

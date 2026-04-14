@@ -53,4 +53,3 @@ services:
       #   startCommand: bash docker-entrypoint.sh
       # and set WORKER_READY_WAIT=10
 
-# This example deploys the bureau/orchestrator path only.

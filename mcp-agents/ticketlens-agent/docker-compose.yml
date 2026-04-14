@@ -1,0 +1,38 @@
+services:
+  # Main Agent Service
+  ticketlens-agent:
+    build: .
+    container_name: ticketlens-agent
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10mb"
+        max-file: "3"
+    networks:
+      - agent-network
+
+  # Testing Service
+  tester:
+    build: .
+    container_name: ticketlens-tester
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    # Override the default command to run pytest instead
+    command: pytest tests/ -v
+    profiles:
+      - test
+    networks:
+      - agent-network
+
+networks:
+  agent-network:
+    driver: bridge

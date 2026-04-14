@@ -1,0 +1,8 @@
+uagents
+mcp
+openai
+python-dotenv
+pytest
+pytest-asyncio
+pytest-mock
+httpx
