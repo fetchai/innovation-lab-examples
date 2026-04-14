@@ -2,8 +2,8 @@
 # Install with: pip install -r requirements.txt
 
 # ── Fetch.ai uAgents framework ────────────────────────────────────────────────
-uagents>=0.21.1
-uagents-core>=0.3.0
+uagents>=0.24.1
+uagents-core>=0.4.4
 
 # ── OpenAI (LLM + TTS) ────────────────────────────────────────────────────────
 openai>=1.30.0
