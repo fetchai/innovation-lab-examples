@@ -28,6 +28,12 @@ dev = [
 [tool.ruff.lint.per-file-ignores]
 "scripts/local_test.py" = ["E402"]
 
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+follow_imports = "silent"
+disable_error_code = ["import-untyped"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

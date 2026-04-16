@@ -14,7 +14,7 @@ Execution rules (from the design doc):
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from shared.schemas import (
     ExecutionResult,
@@ -110,6 +110,7 @@ def execute_plan(plan: TaskPlan) -> ExecutionResult:
             step_results.append(sr)
             overall_status = TaskStatus.PARTIAL
             logger.error("Unknown action '%s' – skipping", step.action)
+            previous_output = None
             continue
 
         try:
@@ -117,10 +118,11 @@ def execute_plan(plan: TaskPlan) -> ExecutionResult:
             import inspect
 
             sig = inspect.signature(handler)
+            handler_fn = cast(Callable[..., dict[str, Any]], handler)
             if len(sig.parameters) >= 2:
-                output = handler(step.params, previous_output)
+                output = handler_fn(step.params, previous_output)
             else:
-                output = handler(step.params)
+                output = handler_fn(step.params)
 
             sr = StepResult(
                 action=step.action,
@@ -139,6 +141,9 @@ def execute_plan(plan: TaskPlan) -> ExecutionResult:
             )
             overall_status = TaskStatus.PARTIAL
             # Do not abort – report per-step and continue (design doc §6)
+            # Clear pipeline context so the next step does not receive stale output
+            # from a prior successful step after this failure.
+            previous_output = None
 
         step_results.append(sr)
 

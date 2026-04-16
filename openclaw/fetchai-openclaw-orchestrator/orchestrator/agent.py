@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -60,21 +61,21 @@ from uagents import Agent  # noqa: E402
 
 _USE_MAILBOX = os.getenv("USE_MAILBOX", "true").lower() in ("1", "true", "yes")
 
+_orchestrator_connect: dict[str, Any] = (
+    {"mailbox": True}
+    if _USE_MAILBOX
+    else {
+        "endpoint": [
+            f"http://127.0.0.1:{os.getenv('ORCHESTRATOR_PORT', '8200')}/submit"
+        ],
+    }
+)
+
 agent = Agent(
     name="openclaw-orchestrator",
     seed=_SEED or "openclaw-orchestrator-dev-seed",
     port=int(os.getenv("ORCHESTRATOR_PORT", "8200")),
-    **(
-        {
-            "mailbox": True,
-        }
-        if _USE_MAILBOX
-        else {
-            "endpoint": [
-                f"http://127.0.0.1:{os.getenv('ORCHESTRATOR_PORT', '8200')}/submit"
-            ],
-        }
-    ),
+    **_orchestrator_connect,
     network=_NETWORK,
 )
 

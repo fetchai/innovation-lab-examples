@@ -128,7 +128,7 @@ def _count_lines_by_language(repo_path: str) -> dict[str, int]:
         ".lua": "Lua",
         ".vue": "Vue",
     }
-    languages: dict[str, int] = {}
+    lang_line_counts: dict[str, int] = {}
     for dirpath, dirnames, filenames in os.walk(repo_path):
         # Skip hidden directories and common non-source dirs
         dirnames[:] = [
@@ -146,14 +146,14 @@ def _count_lines_by_language(repo_path: str) -> dict[str, int]:
                 try:
                     with open(fpath, "r", errors="ignore") as f:
                         line_count = sum(1 for _ in f)
-                    languages[lang] = languages.get(lang, 0) + line_count
+                    lang_line_counts[lang] = lang_line_counts.get(lang, 0) + line_count
                 except Exception:
                     pass
 
-    return dict(sorted(languages.items(), key=lambda x: -x[1]))
+    return dict(sorted(lang_line_counts.items(), key=lambda x: -x[1]))
 
 
-def _count_files(repo_path: str) -> dict[str, int]:
+def _count_files(repo_path: str) -> dict[str, Any]:
     """Count total files, directories, and file types."""
     total_files = 0
     total_dirs = 0
