@@ -87,6 +87,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [fetch-hackathon-quickstarter](fetch-hackathon-quickstarter/) | Hackathon-ready template with orchestrator + worker agents | Python, uAgents | 🟢 Beginner |
+| [openclaw/](openclaw/) | **OpenClaw** — connector + orchestrator (`fetchai-openclaw-orchestrator`) and Agentverse caller skill (`agentverse-caller`) | Python, Shell, OpenClaw, Agentverse, uAgents | 🟢–🟡 |
 | [av-script-example](av-script-example/) | Agentverse script deployment example | Python, uAgents | 🟢 Beginner |
 | [asi-cloud-agent](asi-cloud-agent/) | Basic ASI Cloud agent deployment | Python, uAgents | 🟢 Beginner |
 | [deploy-agent-on-av](deploy-agent-on-av/) | Deploy agents on Agentverse via Render | Python, uAgents, Render | 🟢 Beginner |
