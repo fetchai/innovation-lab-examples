@@ -1,0 +1,3 @@
+scripts/.seed
+__pycache__/
+*.pyc
