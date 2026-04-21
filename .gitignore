@@ -81,3 +81,4 @@ dmypy.json
 *.bak
 *.swp
 
+.DS_Store
