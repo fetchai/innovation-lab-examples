@@ -6,6 +6,7 @@ Reads STRIPE_* from the environment. Optionally merges values from the project
 `.env` file (same pattern as innovation-lab-examples) so keys work when the
 process is started without a shell that sourced `.env`.
 """
+
 from __future__ import annotations
 
 import os
@@ -42,12 +43,16 @@ def _cfg() -> dict:
         amount_cents = int(_env_or_dotenv("STRIPE_AMOUNT_CENTS", "50"))
     except ValueError:
         amount_cents = 50
-    currency = (_env_or_dotenv("STRIPE_CURRENCY", "usd") or "usd").lower().strip() or "usd"
+    currency = (
+        _env_or_dotenv("STRIPE_CURRENCY", "usd") or "usd"
+    ).lower().strip() or "usd"
     product_name = (
-        _env_or_dotenv("STRIPE_PRODUCT_NAME", "Restaurant discovery") or "Restaurant discovery"
+        _env_or_dotenv("STRIPE_PRODUCT_NAME", "Restaurant discovery")
+        or "Restaurant discovery"
     ).strip()
     success_url = (
-        _env_or_dotenv("STRIPE_SUCCESS_URL", "https://agentverse.ai") or "https://agentverse.ai"
+        _env_or_dotenv("STRIPE_SUCCESS_URL", "https://agentverse.ai")
+        or "https://agentverse.ai"
     ).rstrip("/")
     return {
         "secret_key": secret_key,

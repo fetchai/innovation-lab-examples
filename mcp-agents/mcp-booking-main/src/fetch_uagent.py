@@ -67,6 +67,7 @@ MAILBOX_ENABLED = os.getenv("FETCH_UAGENT_MAILBOX", "true").lower() in {
 
 FREE_REQUEST_LIMIT = int(os.getenv("FREE_REQUEST_LIMIT", "3"))
 
+
 # Agentverse chat can use a different `sender` per message; per-sender counters then never
 # reach the limit. Use "global" (default) for one shared quota, or "sender" for strict per-peer.
 def _paywall_state_key(sender: str) -> str:
@@ -163,7 +164,9 @@ async def _emit_request_payment(ctx: Context, sender: str, checkout: dict) -> No
     amount_cents = get_amount_cents()
     amount_usd = f"{amount_cents / 100:.2f}"
     req = RequestPayment(
-        accepted_funds=[Funds(currency="USD", amount=amount_usd, payment_method="stripe")],
+        accepted_funds=[
+            Funds(currency="USD", amount=amount_usd, payment_method="stripe")
+        ],
         recipient=str(ctx.agent.address),
         description=f"Pay ${amount_usd} to continue using restaurant discovery.",
         metadata={"stripe": checkout, "service": "restaurant_discovery"},
@@ -220,6 +223,19 @@ def _chat_text_message(text: str) -> ChatMessage:
         msg_id=uuid4(),
         content=[TextContent(type="text", text=text)],
     )
+
+
+def _get_chat_user_text(msg: ChatMessage) -> str:
+    """Extract user text from ChatMessage.content (TextContent items)."""
+    parts: list[str] = []
+    for item in msg.content or []:
+        if isinstance(item, TextContent):
+            parts.append((item.text or "").strip())
+        elif hasattr(item, "text"):
+            t = getattr(item, "text", None)
+            if t is not None:
+                parts.append(str(t).strip())
+    return " ".join(p for p in parts if p).strip()
 
 
 agent_kwargs = {
@@ -295,7 +311,8 @@ async def handle_request(ctx: Context, sender: str, msg: RequestMessage) -> None
             await ctx.send(sender, ResponseMessage(text=result.text))
         else:
             await ctx.send(
-                sender, ResponseMessage(text=f"Failed to get recommendations: {result.text}")
+                sender,
+                ResponseMessage(text=f"Failed to get recommendations: {result.text}"),
             )
         return
 
@@ -321,14 +338,13 @@ async def handle_request(ctx: Context, sender: str, msg: RequestMessage) -> None
         await ctx.send(sender, ResponseMessage(text=result.text))
     else:
         await ctx.send(
-            sender, ResponseMessage(text=f"Failed to get recommendations: {result.text}")
+            sender,
+            ResponseMessage(text=f"Failed to get recommendations: {result.text}"),
         )
 
 
 @chat_protocol.on_message(ChatAcknowledgement)
-async def handle_chat_ack(
-    ctx: Context, sender: str, msg: ChatAcknowledgement
-) -> None:
+async def handle_chat_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> None:
     ctx.logger.info(
         "Got chat acknowledgement from %s for msg_id=%s",
         sender,
@@ -347,7 +363,7 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
             ),
         )
 
-    query = msg.text().strip() if hasattr(msg, "text") else ""
+    query = _get_chat_user_text(msg)
     if not query:
         await ctx.send(sender, _chat_text_message("Please send a text query."))
         return
@@ -363,7 +379,9 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
             if pending:
                 result = await recommend(pending)
                 response_text = (
-                    result.text if result.ok else f"Failed to get recommendations: {result.text}"
+                    result.text
+                    if result.ok
+                    else f"Failed to get recommendations: {result.text}"
                 )
                 await ctx.send(sender, _chat_text_message(response_text))
                 return
@@ -371,7 +389,9 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage) -> No
     if state.paid_unlocked:
         result = await recommend(query)
         response_text = (
-            result.text if result.ok else f"Failed to get recommendations: {result.text}"
+            result.text
+            if result.ok
+            else f"Failed to get recommendations: {result.text}"
         )
         await ctx.send(sender, _chat_text_message(response_text))
         return
@@ -407,14 +427,18 @@ async def handle_commit_payment(ctx: Context, sender: str, msg: CommitPayment) -
     if msg.funds.payment_method != "stripe" or not msg.transaction_id:
         await ctx.send(
             sender,
-            RejectPayment(reason="Unsupported payment method (expected stripe checkout session id)."),
+            RejectPayment(
+                reason="Unsupported payment method (expected stripe checkout session id)."
+            ),
         )
         return
 
     if not verify_checkout_session_paid(msg.transaction_id):
         await ctx.send(
             sender,
-            RejectPayment(reason="Stripe payment not completed yet. Please finish checkout."),
+            RejectPayment(
+                reason="Stripe payment not completed yet. Please finish checkout."
+            ),
         )
         return
 
@@ -427,7 +451,9 @@ async def handle_commit_payment(ctx: Context, sender: str, msg: CommitPayment) -
     if pending:
         result = await recommend(pending)
         response_text = (
-            result.text if result.ok else f"Failed to get recommendations: {result.text}"
+            result.text
+            if result.ok
+            else f"Failed to get recommendations: {result.text}"
         )
         await ctx.send(sender, _chat_text_message(response_text))
     else:
