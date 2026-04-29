@@ -1,0 +1,10 @@
+uagents
+uagents-core
+openai
+youtube-transcript-api
+googlemaps
+python-dotenv
+fpdf2
+openpyxl
+requests
+stripe>=8.0.0
