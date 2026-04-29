@@ -60,8 +60,8 @@ _MIN_RATING_FLOOR = 3.0
 # ── Normalisation / dedupe ───────────────────────────────────────────────────
 
 _PARENS_RE = re.compile(r"\s*\([^)]*\)\s*")
-_PUNCT_RE  = re.compile(r"[^\w\s]")
-_WS_RE     = re.compile(r"\s+")
+_PUNCT_RE = re.compile(r"[^\w\s]")
+_WS_RE = re.compile(r"\s+")
 
 
 def _normalise(name: str) -> str:
@@ -96,10 +96,13 @@ def _build_groups(videos: list) -> dict:
             key = _normalise(raw)
             if not key:
                 continue
-            entry = groups.setdefault(key, {
-                "display_candidates": {},  # { original_text: count }
-                "video_indices": set(),
-            })
+            entry = groups.setdefault(
+                key,
+                {
+                    "display_candidates": {},  # { original_text: count }
+                    "video_indices": set(),
+                },
+            )
             entry["display_candidates"][raw] = (
                 entry["display_candidates"].get(raw, 0) + 1
             )
@@ -119,6 +122,7 @@ def _build_groups(videos: list) -> dict:
 
 # ── Places lookup ────────────────────────────────────────────────────────────
 
+
 def _lookup_place(name: str) -> dict | None:
     """Return a validated Place dict for *name*, or None if not found."""
     try:
@@ -129,12 +133,12 @@ def _lookup_place(name: str) -> dict | None:
         photos = place.get("photos") or []
         photo_ref = photos[0].get("photo_reference", "") if photos else ""
         return {
-            "name":     place.get("name", name),
-            "address":  place.get("formatted_address", ""),
-            "lat":      place["geometry"]["location"]["lat"],
-            "lng":      place["geometry"]["location"]["lng"],
+            "name": place.get("name", name),
+            "address": place.get("formatted_address", ""),
+            "lat": place["geometry"]["location"]["lat"],
+            "lng": place["geometry"]["location"]["lng"],
             "place_id": place.get("place_id", ""),
-            "rating":   float(place.get("rating", 0.0) or 0.0),
+            "rating": float(place.get("rating", 0.0) or 0.0),
             "photo_reference": photo_ref,
         }
     except Exception:
@@ -172,6 +176,7 @@ def _maps_url_for(stops: list) -> str:
 
 # ── Scoring ──────────────────────────────────────────────────────────────────
 
+
 def _score(frequency: int, rating: float, max_freq: int) -> float:
     """60% consensus, 40% rating. Range: 0-100."""
     if max_freq <= 0:
@@ -183,28 +188,34 @@ def _score(frequency: int, rating: float, max_freq: int) -> float:
 
 # ── Handler ──────────────────────────────────────────────────────────────────
 
+
 @agent.on_message(AggregateRequest)
 async def handle_aggregate(ctx: Context, sender: str, msg: AggregateRequest):
     videos = msg.videos or []
     total_raw = sum(len(v.get("locations") or []) for v in videos)
-    ctx.logger.info(
-        f"Aggregating {total_raw} raw mentions from {len(videos)} video(s)"
-    )
+    ctx.logger.info(f"Aggregating {total_raw} raw mentions from {len(videos)} video(s)")
 
     if not videos:
-        await ctx.send(sender, AggregateResponse(
-            success=False, error="No videos provided to aggregator.",
-        ))
+        await ctx.send(
+            sender,
+            AggregateResponse(
+                success=False,
+                error="No videos provided to aggregator.",
+            ),
+        )
         return
 
     groups = _build_groups(videos)
     ctx.logger.info(f"Deduped to {len(groups)} unique location names")
 
     if not groups:
-        await ctx.send(sender, AggregateResponse(
-            success=False,
-            error="No location names found across the supplied videos.",
-        ))
+        await ctx.send(
+            sender,
+            AggregateResponse(
+                success=False,
+                error="No location names found across the supplied videos.",
+            ),
+        )
         return
 
     # Look up Google Places for every unique name — in parallel.
@@ -216,16 +227,18 @@ async def handle_aggregate(ctx: Context, sender: str, msg: AggregateRequest):
             place_results = list(pool.map(_lookup_place, display_names))
     except Exception as e:
         ctx.logger.error(f"Aggregator Places lookup failed: {e}")
-        await ctx.send(sender, AggregateResponse(
-            success=False, error=f"Google Places error: {e}",
-        ))
+        await ctx.send(
+            sender,
+            AggregateResponse(
+                success=False,
+                error=f"Google Places error: {e}",
+            ),
+        )
         return
 
     # Compute max frequency for normalisation BEFORE filtering — we want
     # consistent scoring across the whole batch.
-    max_freq = max(
-        (len(groups[k]["video_indices"]) for k in keys), default=1
-    )
+    max_freq = max((len(groups[k]["video_indices"]) for k in keys), default=1)
 
     ranked: list = []
     skipped = 0
@@ -242,24 +255,29 @@ async def handle_aggregate(ctx: Context, sender: str, msg: AggregateRequest):
             skipped += 1
             continue
 
-        ranked.append({
-            **place,
-            "frequency": freq,
-            "mentioned_in_videos": meta["video_indices"],
-            "score": _score(freq, place["rating"], max_freq),
-        })
+        ranked.append(
+            {
+                **place,
+                "frequency": freq,
+                "mentioned_in_videos": meta["video_indices"],
+                "score": _score(freq, place["rating"], max_freq),
+            }
+        )
 
     ranked.sort(key=lambda s: s["score"], reverse=True)
     ranked = ranked[:_MAX_RANKED_STOPS]
 
     if not ranked:
-        await ctx.send(sender, AggregateResponse(
-            success=False,
-            error=(
-                "All candidate locations failed validation in Google Places "
-                "or fell below the rating floor."
+        await ctx.send(
+            sender,
+            AggregateResponse(
+                success=False,
+                error=(
+                    "All candidate locations failed validation in Google Places "
+                    "or fell below the rating floor."
+                ),
             ),
-        ))
+        )
         return
 
     maps_url = _maps_url_for(ranked[:9])  # Maps caps waypoints at ~9
@@ -269,14 +287,17 @@ async def handle_aggregate(ctx: Context, sender: str, msg: AggregateRequest):
         f"Top: {ranked[0]['name']} (score {ranked[0]['score']})"
     )
 
-    await ctx.send(sender, AggregateResponse(
-        success=True,
-        ranked_stops=ranked,
-        total_unique_locations=len(groups),
-        total_raw_mentions=total_raw,
-        skipped_count=skipped,
-        maps_url=maps_url,
-    ))
+    await ctx.send(
+        sender,
+        AggregateResponse(
+            success=True,
+            ranked_stops=ranked,
+            total_unique_locations=len(groups),
+            total_raw_mentions=total_raw,
+            skipped_count=skipped,
+            maps_url=maps_url,
+        ),
+    )
 
 
 if __name__ == "__main__":

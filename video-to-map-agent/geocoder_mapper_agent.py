@@ -52,13 +52,15 @@ async def handle_geocode(ctx: Context, sender: str, msg: GeocodeRequest):
             result = gmaps.places(query=name)
             if result.get("status") == "OK" and result.get("results"):
                 place = result["results"][0]
-                validated.append({
-                    "name": place["name"],
-                    "address": place["formatted_address"],
-                    "lat": place["geometry"]["location"]["lat"],
-                    "lng": place["geometry"]["location"]["lng"],
-                    "place_id": place["place_id"],
-                })
+                validated.append(
+                    {
+                        "name": place["name"],
+                        "address": place["formatted_address"],
+                        "lat": place["geometry"]["location"]["lat"],
+                        "lng": place["geometry"]["location"]["lng"],
+                        "place_id": place["place_id"],
+                    }
+                )
                 ctx.logger.info(f"Validated: {place['name']}")
             else:
                 ctx.logger.info(f"Could not validate: {name}")
@@ -71,11 +73,14 @@ async def handle_geocode(ctx: Context, sender: str, msg: GeocodeRequest):
     ctx.logger.info(
         f"Geocoding complete: {len(validated)} validated, {skipped} skipped"
     )
-    await ctx.send(sender, GeocodeResponse(
-        validated_stops=validated,
-        maps_url=maps_url,
-        skipped_count=skipped,
-    ))
+    await ctx.send(
+        sender,
+        GeocodeResponse(
+            validated_stops=validated,
+            maps_url=maps_url,
+            skipped_count=skipped,
+        ),
+    )
 
 
 if __name__ == "__main__":

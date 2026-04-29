@@ -4,6 +4,7 @@ from typing import List, Dict, Optional
 
 # ── Transcript ────────────────────────────────────────────────────────────────
 
+
 class TranscriptRequest(Model):
     youtube_url: str
 
@@ -19,6 +20,7 @@ class TranscriptResponse(Model):
 
 # ── Location extraction ───────────────────────────────────────────────────────
 
+
 class LocationExtractionRequest(Model):
     text: str
 
@@ -28,6 +30,7 @@ class LocationExtractionResponse(Model):
 
 
 # ── Geocoding ─────────────────────────────────────────────────────────────────
+
 
 class GeocodeRequest(Model):
     locations: List[str]
@@ -47,8 +50,10 @@ class GeocodeResponse(Model):
 # scores by (cross-video frequency × Places rating) and returns a ranked list
 # the trip planner can consume directly.
 
+
 class VideoLocations(Model):
     """One per analysed YouTube video."""
+
     video_index: int
     video_title: str = ""
     channel_name: str = ""
@@ -56,7 +61,7 @@ class VideoLocations(Model):
 
 
 class AggregateRequest(Model):
-    videos: List[Dict]   # each item shaped like VideoLocations.dict()
+    videos: List[Dict]  # each item shaped like VideoLocations.dict()
 
 
 class AggregateResponse(Model):
@@ -92,11 +97,12 @@ class AggregateResponse(Model):
 #   • If only budget_per_day → planner uses provided trip_days (default 3).
 #   • If neither → defaults of $100/day and 3 days.
 
+
 class TripPlannerRequest(Model):
     validated_stops: List[Dict]
-    budget_per_day: float = 0.0   # 0 means "not specified"
-    total_budget: float = 0.0     # 0 means "not specified"
-    trip_days: int = 0            # 0 means "let the planner decide"
+    budget_per_day: float = 0.0  # 0 means "not specified"
+    total_budget: float = 0.0  # 0 means "not specified"
+    trip_days: int = 0  # 0 means "let the planner decide"
     trip_start_date: str = ""
     preferences: str = ""
 
@@ -126,12 +132,13 @@ class TripPlannerResponse(Model):
     reasoning: str = ""
     # Echoed back so the orchestrator can tell the user "fits your budget"
     # vs "tight" vs "would need more days".
-    budget_assessment: str = ""   # "fits" | "tight" | "over"
-    derived_trip_days: int = 0    # the day count the planner actually used
+    budget_assessment: str = ""  # "fits" | "tight" | "over"
+    derived_trip_days: int = 0  # the day count the planner actually used
     error: Optional[str] = None
 
 
 # ── Weather monitor ───────────────────────────────────────────────────────────
+
 
 class WeatherMonitorRequest(Model):
     stops: List[Dict]
@@ -151,6 +158,7 @@ class WeatherSnapshotRequest(Model):
     """Ask the weather agent for a one-shot forecast for each stop on the
     trip's start date. Distinct from WeatherMonitorRequest, which starts a
     daily background watch; this one returns immediately."""
+
     stops: List[Dict]
     trip_start_date: str
 
@@ -178,6 +186,7 @@ class WeatherSnapshotResponse(Model):
 # The PDF generator now renders a day-by-day itinerary instead of a flat list
 # of stops. `planned_days` matches TripPlannerResponse.days exactly.
 
+
 class PDFRequest(Model):
     planned_days: List[Dict]
     maps_url: str
@@ -196,13 +205,14 @@ class PDFRequest(Model):
 class PDFResponse(Model):
     success: bool
     pdf_filename: Optional[str] = None
-    pdf_path: Optional[str] = None     # absolute path; needed to attach it to chat
+    pdf_path: Optional[str] = None  # absolute path; needed to attach it to chat
     error: Optional[str] = None
 
 
 # ── Excel generation ──────────────────────────────────────────────────────────
 # Parallel to the PDF agent: takes the same curated inputs and produces a
 # multi-sheet workbook the traveller can use as a live planning tool.
+
 
 class ExcelRequest(Model):
     planned_days: List[Dict]
@@ -220,5 +230,5 @@ class ExcelRequest(Model):
 class ExcelResponse(Model):
     success: bool
     excel_filename: Optional[str] = None
-    excel_path: Optional[str] = None   # absolute path; handy for the weather agent
+    excel_path: Optional[str] = None  # absolute path; handy for the weather agent
     error: Optional[str] = None

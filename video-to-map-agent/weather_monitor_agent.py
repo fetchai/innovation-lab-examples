@@ -11,8 +11,10 @@ from uagents_core.contrib.protocols.chat import (
     EndSessionContent,
 )
 from shared_models import (
-    WeatherMonitorRequest, WeatherMonitorResponse,
-    WeatherSnapshotRequest, WeatherSnapshotResponse,
+    WeatherMonitorRequest,
+    WeatherMonitorResponse,
+    WeatherSnapshotRequest,
+    WeatherSnapshotResponse,
 )
 
 # openpyxl is used only to append daily check rows to an existing workbook.
@@ -34,7 +36,7 @@ agent = Agent(
 )
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
-WEATHER_BASE   = "https://weather.googleapis.com/v1"
+WEATHER_BASE = "https://weather.googleapis.com/v1"
 
 
 def get_daily_forecast(lat: float, lng: float, target_date: str) -> dict:
@@ -78,42 +80,36 @@ def get_public_alerts(lat: float, lng: float) -> list:
 def is_bad_forecast(day: dict) -> tuple:
     if not day:
         return False, ""
-    daytime       = day.get("daytimeForecast", {})
+    daytime = day.get("daytimeForecast", {})
     condition_type = daytime.get("weatherCondition", {}).get("type", "")
     condition_desc = (
-        daytime.get("weatherCondition", {})
-        .get("description", {})
-        .get("text", "")
+        daytime.get("weatherCondition", {}).get("description", {}).get("text", "")
     )
-    precip_prob   = (
-        daytime.get("precipitation", {})
-        .get("probability", {})
-        .get("percent", 0) or 0
+    precip_prob = (
+        daytime.get("precipitation", {}).get("probability", {}).get("percent", 0) or 0
     )
-    precip_mm     = (
-        daytime.get("precipitation", {})
-        .get("qpf", {})
-        .get("quantity", 0) or 0
-    )
-    thunder_prob  = daytime.get("thunderstormProbability", 0) or 0
-    wind_speed    = (
-        daytime.get("wind", {})
-        .get("speed", {})
-        .get("value", 0) or 0
-    )
+    precip_mm = daytime.get("precipitation", {}).get("qpf", {}).get("quantity", 0) or 0
+    thunder_prob = daytime.get("thunderstormProbability", 0) or 0
+    wind_speed = daytime.get("wind", {}).get("speed", {}).get("value", 0) or 0
 
     bad_types = {
-        "HEAVY_RAIN", "THUNDERSTORM", "TORNADO", "HURRICANE",
-        "BLIZZARD", "HEAVY_SNOW", "TROPICAL_STORM",
-        "FREEZING_RAIN", "ICE_STORM", "HAIL",
+        "HEAVY_RAIN",
+        "THUNDERSTORM",
+        "TORNADO",
+        "HURRICANE",
+        "BLIZZARD",
+        "HEAVY_SNOW",
+        "TROPICAL_STORM",
+        "FREEZING_RAIN",
+        "ICE_STORM",
+        "HAIL",
     }
 
     if condition_type in bad_types:
         return True, f"{condition_desc} forecast"
     if precip_prob >= 75 and precip_mm >= 15:
         return True, (
-            f"{condition_desc} — {precip_prob}% chance, "
-            f"{precip_mm:.0f}mm expected"
+            f"{condition_desc} — {precip_prob}% chance, " f"{precip_mm:.0f}mm expected"
         )
     if thunder_prob >= 60:
         return True, f"High thunderstorm probability ({thunder_prob}%)"
@@ -123,20 +119,18 @@ def is_bad_forecast(day: dict) -> tuple:
 
 
 @agent.on_message(WeatherMonitorRequest)
-async def handle_monitor_request(
-    ctx: Context, sender: str, msg: WeatherMonitorRequest
-):
+async def handle_monitor_request(ctx: Context, sender: str, msg: WeatherMonitorRequest):
     ctx.logger.info(
         f"Weather monitoring started: {len(msg.stops)} stops, "
         f"trip date {msg.trip_start_date}"
     )
     stored = ctx.storage.get("trips") or {}
     stored[msg.user_sender_address] = {
-        "stops":               msg.stops,
-        "trip_start_date":     msg.trip_start_date,
+        "stops": msg.stops,
+        "trip_start_date": msg.trip_start_date,
         "user_sender_address": msg.user_sender_address,
-        "alerted_stops":       [],
-        "excel_path":          msg.excel_path,
+        "alerted_stops": [],
+        "excel_path": msg.excel_path,
     }
     ctx.storage.set("trips", stored)
     await ctx.send(sender, WeatherMonitorResponse(status="monitoring_started"))
@@ -180,8 +174,7 @@ def _forecast_summary_text(f: dict) -> str:
     return " | ".join(parts) if parts else "Details unavailable"
 
 
-def _append_log_rows(excel_path: str, trip_date: str,
-                     per_stop_rows: list) -> None:
+def _append_log_rows(excel_path: str, trip_date: str, per_stop_rows: list) -> None:
     """Append one row per stop to the 'Weather Log' sheet of the workbook.
 
     per_stop_rows: list of dicts with keys
@@ -222,16 +215,21 @@ def _append_log_rows(excel_path: str, trip_date: str,
                 cell = ws.cell(row=row, column=col_idx, value=v)
                 cell.font = Font(name="Calibri", size=10, color="193228")
                 cell.alignment = Alignment(
-                    horizontal="left", vertical="center",
+                    horizontal="left",
+                    vertical="center",
                     wrap_text=(col_idx in (5, 6, 7)),
                 )
                 cell.border = _EXCEL_BORDER
             if entry.get("alert"):
                 ws.cell(row=row, column=6).fill = PatternFill(
-                    "solid", fgColor="FEE2E2",
+                    "solid",
+                    fgColor="FEE2E2",
                 )
                 ws.cell(row=row, column=6).font = Font(
-                    name="Calibri", size=10, bold=True, color="B91C1C",
+                    name="Calibri",
+                    size=10,
+                    bold=True,
+                    color="B91C1C",
                 )
             row += 1
 
@@ -252,12 +250,12 @@ async def daily_weather_check(ctx: Context):
     updated = dict(stored)
 
     for user_addr, trip in stored.items():
-        stops      = trip["stops"]
-        trip_date  = trip["trip_start_date"]
-        alerted    = list(trip.get("alerted_stops", []))
+        stops = trip["stops"]
+        trip_date = trip["trip_start_date"]
+        alerted = list(trip.get("alerted_stops", []))
         excel_path = trip.get("excel_path")
         new_alerts = []
-        log_rows   = []  # one per stop, for the Excel log sheet
+        log_rows = []  # one per stop, for the Excel log sheet
 
         for i, stop in enumerate(stops):
             lat = stop["lat"]
@@ -271,40 +269,45 @@ async def daily_weather_check(ctx: Context):
             forecast_entry = _build_forecast_entry(stop, trip_date)
             summary = _forecast_summary_text(forecast_entry)
             alert_text = (
-                forecast_entry.get("warning", "")
-                if forecast_entry.get("bad") else ""
+                forecast_entry.get("warning", "") if forecast_entry.get("bad") else ""
             )
 
             # Re-check public alerts — overrides forecast verdict.
             active_alerts = get_public_alerts(lat, lng)
             if active_alerts and not alert_text:
                 alert_text = active_alerts[0].get(
-                    "alertTitle", "Active weather alert",
+                    "alertTitle",
+                    "Active weather alert",
                 )
                 forecast_entry["bad"] = True
 
             recommendation = (
                 "Consider rescheduling or an alternative"
-                if forecast_entry.get("bad") else "OK to proceed"
+                if forecast_entry.get("bad")
+                else "OK to proceed"
             )
             if not forecast_entry.get("available"):
                 recommendation = "Check back closer to the trip date"
 
-            log_rows.append({
-                "name":           stop_name,
-                "location":       f"{lat:.5f}, {lng:.5f}",
-                "forecast":       summary,
-                "alert":          alert_text,
-                "recommendation": recommendation,
-            })
+            log_rows.append(
+                {
+                    "name": stop_name,
+                    "location": f"{lat:.5f}, {lng:.5f}",
+                    "forecast": summary,
+                    "alert": alert_text,
+                    "recommendation": recommendation,
+                }
+            )
 
             # Fire a chat alert only for newly-discovered bad stops.
             if forecast_entry.get("bad") and stop_key not in alerted:
-                new_alerts.append({
-                    "index":  i + 1,
-                    "name":   stop_name,
-                    "reason": alert_text or forecast_entry.get("warning", ""),
-                })
+                new_alerts.append(
+                    {
+                        "index": i + 1,
+                        "name": stop_name,
+                        "reason": alert_text or forecast_entry.get("warning", ""),
+                    }
+                )
                 alerted.append(stop_key)
 
         # Write the per-stop log to the excel workbook regardless of
@@ -345,6 +348,7 @@ async def daily_weather_check(ctx: Context):
 
 # ── Initial snapshot (synchronous, one-shot) ──────────────────────────────────
 
+
 def _build_forecast_entry(stop: dict, trip_date: str) -> dict:
     """Fetch the forecast for one stop and flatten the Google Weather
     response into a small, PDF/chat-friendly dict."""
@@ -355,17 +359,24 @@ def _build_forecast_entry(stop: dict, trip_date: str) -> dict:
     if not day:
         return {
             "name": stop.get("name", ""),
-            "lat": lat, "lng": lng,
+            "lat": lat,
+            "lng": lng,
             "available": False,
-            "condition": "", "high_c": None, "low_c": None,
-            "precip_percent": 0, "wind_kmh": 0.0,
+            "condition": "",
+            "high_c": None,
+            "low_c": None,
+            "precip_percent": 0,
+            "wind_kmh": 0.0,
             "thunderstorm_percent": 0,
-            "bad": False, "warning": "",
+            "bad": False,
+            "warning": "",
         }
 
     daytime = day.get("daytimeForecast", {}) or {}
     cond = daytime.get("weatherCondition", {}) or {}
-    cond_text = (cond.get("description", {}) or {}).get("text") or cond.get("type", "") or ""
+    cond_text = (
+        (cond.get("description", {}) or {}).get("text") or cond.get("type", "") or ""
+    )
 
     def _num(obj, *keys):
         """Safely walk a nested dict and coerce the leaf to a number."""
@@ -381,7 +392,7 @@ def _build_forecast_entry(stop: dict, trip_date: str) -> dict:
             return None
 
     high_c = _num(day, "maxTemperature", "degrees")
-    low_c  = _num(day, "minTemperature", "degrees")
+    low_c = _num(day, "minTemperature", "degrees")
     precip_percent = int(_num(daytime, "precipitation", "probability", "percent") or 0)
     wind_kmh = _num(daytime, "wind", "speed", "value") or 0.0
     thunder_percent = int(_num(daytime, "thunderstormProbability") or 0)
@@ -390,7 +401,8 @@ def _build_forecast_entry(stop: dict, trip_date: str) -> dict:
 
     return {
         "name": stop.get("name", ""),
-        "lat": lat, "lng": lng,
+        "lat": lat,
+        "lng": lng,
         "available": True,
         "condition": cond_text,
         "high_c": high_c,
@@ -412,24 +424,34 @@ async def handle_weather_snapshot(
         f"{msg.trip_start_date}"
     )
     if not msg.stops:
-        await ctx.send(sender, WeatherSnapshotResponse(
-            success=False, error="No stops provided.",
-        ))
+        await ctx.send(
+            sender,
+            WeatherSnapshotResponse(
+                success=False,
+                error="No stops provided.",
+            ),
+        )
         return
 
     try:
         # Google Weather calls are I/O-bound — fan out so a 10-stop snapshot
         # takes ~1s instead of ~10s.
         with ThreadPoolExecutor(max_workers=8) as pool:
-            forecasts = list(pool.map(
-                lambda s: _build_forecast_entry(s, msg.trip_start_date),
-                msg.stops,
-            ))
+            forecasts = list(
+                pool.map(
+                    lambda s: _build_forecast_entry(s, msg.trip_start_date),
+                    msg.stops,
+                )
+            )
     except Exception as e:
         ctx.logger.error(f"Snapshot error: {e}")
-        await ctx.send(sender, WeatherSnapshotResponse(
-            success=False, error=str(e),
-        ))
+        await ctx.send(
+            sender,
+            WeatherSnapshotResponse(
+                success=False,
+                error=str(e),
+            ),
+        )
         return
 
     unavailable = sum(1 for f in forecasts if not f["available"])
@@ -438,9 +460,13 @@ async def handle_weather_snapshot(
         f"Snapshot ready: {len(forecasts)} stop(s), "
         f"{bad} flagged, {unavailable} unavailable."
     )
-    await ctx.send(sender, WeatherSnapshotResponse(
-        success=True, forecasts=forecasts,
-    ))
+    await ctx.send(
+        sender,
+        WeatherSnapshotResponse(
+            success=True,
+            forecasts=forecasts,
+        ),
+    )
 
 
 if __name__ == "__main__":

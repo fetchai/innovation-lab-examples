@@ -122,8 +122,10 @@ def _resolve_budget_and_days(
     have_days = trip_days and trip_days > 0
 
     if have_per_day and have_days:
-        return budget_per_day, trip_days, (
-            f"using your ${budget_per_day:.0f}/day x {trip_days} days"
+        return (
+            budget_per_day,
+            trip_days,
+            (f"using your ${budget_per_day:.0f}/day x {trip_days} days"),
         )
 
     if have_total and not have_days:
@@ -132,27 +134,35 @@ def _resolve_budget_and_days(
         est_daily = 80.0
         days = max(1, min(7, round(total_budget / est_daily)))
         per_day = total_budget / days
-        return per_day, days, (
-            f"derived {days} day(s) from ${total_budget:.0f} total "
-            f"(~${per_day:.0f}/day)"
+        return (
+            per_day,
+            days,
+            (
+                f"derived {days} day(s) from ${total_budget:.0f} total "
+                f"(~${per_day:.0f}/day)"
+            ),
         )
 
     if have_total and have_days:
         per_day = total_budget / trip_days
-        return per_day, trip_days, (
-            f"using ${total_budget:.0f} total over {trip_days} days "
-            f"(~${per_day:.0f}/day)"
+        return (
+            per_day,
+            trip_days,
+            (
+                f"using ${total_budget:.0f} total over {trip_days} days "
+                f"(~${per_day:.0f}/day)"
+            ),
         )
 
     if have_per_day:
-        return budget_per_day, 3, (
-            f"using ${budget_per_day:.0f}/day, defaulting to 3 days"
+        return (
+            budget_per_day,
+            3,
+            (f"using ${budget_per_day:.0f}/day, defaulting to 3 days"),
         )
 
     if have_days:
-        return 100.0, trip_days, (
-            f"using {trip_days} days at default $100/day"
-        )
+        return 100.0, trip_days, (f"using {trip_days} days at default $100/day")
 
     return 100.0, 3, "using defaults (3 days at $100/day)"
 
@@ -196,7 +206,8 @@ def _curate_with_asi1(
         "  - google_rating: Google Places average rating (0-5).\n"
         "  - consensus_score: precomputed 0-100 blend of the above. "
         "Higher is better. Strongly prefer high-score stops.\n"
-        if has_scores else ""
+        if has_scores
+        else ""
     )
 
     user_prompt = (
@@ -276,7 +287,7 @@ def _merge_plan_with_geocoded(
     """
     by_name = {s["name"].lower(): s for s in validated_stops}
 
-    hydrated_days = []
+    hydrated_days: list[dict] = []
     for day in plan.get("days", []):
         day_stops_in = day.get("stops", [])
         day_stops_out = []
@@ -287,7 +298,8 @@ def _merge_plan_with_geocoded(
                 # name substring match. Skip if we can't find one.
                 candidate = next(
                     (
-                        v for v in validated_stops
+                        v
+                        for v in validated_stops
                         if v["name"].lower() in (s.get("name") or "").lower()
                         or (s.get("name") or "").lower() in v["name"].lower()
                     ),
@@ -297,31 +309,37 @@ def _merge_plan_with_geocoded(
                     continue
                 src = candidate
 
-            day_stops_out.append({
-                "name": src["name"],
-                "address": src.get("address", ""),
-                "lat": src["lat"],
-                "lng": src["lng"],
-                "place_id": src.get("place_id", ""),
-                "activity": s.get("activity", "") or "",
-                "duration_hours": int(s.get("duration_hours", 2) or 2),
-                "nearby_restaurants": [],
-                "frequency": int(src.get("frequency", 1) or 1),
-                "rating": float(src.get("rating", 0.0) or 0.0),
-                "score": float(src.get("score", 0.0) or 0.0),
-                "mentioned_in_videos": list(src.get("mentioned_in_videos", []) or []),
-                "photo_reference": src.get("photo_reference", ""),
-            })
+            day_stops_out.append(
+                {
+                    "name": src["name"],
+                    "address": src.get("address", ""),
+                    "lat": src["lat"],
+                    "lng": src["lng"],
+                    "place_id": src.get("place_id", ""),
+                    "activity": s.get("activity", "") or "",
+                    "duration_hours": int(s.get("duration_hours", 2) or 2),
+                    "nearby_restaurants": [],
+                    "frequency": int(src.get("frequency", 1) or 1),
+                    "rating": float(src.get("rating", 0.0) or 0.0),
+                    "score": float(src.get("score", 0.0) or 0.0),
+                    "mentioned_in_videos": list(
+                        src.get("mentioned_in_videos", []) or []
+                    ),
+                    "photo_reference": src.get("photo_reference", ""),
+                }
+            )
 
         if not day_stops_out:
             continue
 
-        hydrated_days.append({
-            "day_number": int(day.get("day_number", len(hydrated_days) + 1)),
-            "theme": (day.get("theme") or "").strip() or "Road Trip Day",
-            "estimated_cost_usd": float(day.get("estimated_cost_usd", 0.0) or 0.0),
-            "stops": day_stops_out,
-        })
+        hydrated_days.append(
+            {
+                "day_number": int(day.get("day_number", len(hydrated_days) + 1)),
+                "theme": (day.get("theme") or "").strip() or "Road Trip Day",
+                "estimated_cost_usd": float(day.get("estimated_cost_usd", 0.0) or 0.0),
+                "stops": day_stops_out,
+            }
+        )
 
     return hydrated_days
 
@@ -335,20 +353,25 @@ def _enrich_with_restaurants(hydrated_days: list, dietary_keyword: str) -> None:
         return
 
     with ThreadPoolExecutor(max_workers=8) as pool:
-        results = list(pool.map(
-            lambda stop: _find_nearby_restaurants(stop, dietary_keyword),
-            all_stops,
-        ))
+        results = list(
+            pool.map(
+                lambda stop: _find_nearby_restaurants(stop, dietary_keyword),
+                all_stops,
+            )
+        )
 
     for stop, restaurants in zip(all_stops, results):
         stop["nearby_restaurants"] = restaurants
 
 
-def _assess_budget(total_cost: float, total_budget: float,
-                   budget_per_day: float, days: int) -> str:
+def _assess_budget(
+    total_cost: float, total_budget: float, budget_per_day: float, days: int
+) -> str:
     """Return one of: 'fits' | 'tight' | 'over' | '' (no budget given)."""
-    target = total_budget if total_budget and total_budget > 0 else (
-        budget_per_day * days if budget_per_day > 0 else 0
+    target = (
+        total_budget
+        if total_budget and total_budget > 0
+        else (budget_per_day * days if budget_per_day > 0 else 0)
     )
     if target <= 0:
         return ""
@@ -362,7 +385,9 @@ def _assess_budget(total_cost: float, total_budget: float,
 @agent.on_message(TripPlannerRequest)
 async def handle_trip_planner(ctx: Context, sender: str, msg: TripPlannerRequest):
     eff_per_day, eff_days, source_label = _resolve_budget_and_days(
-        msg.budget_per_day, msg.total_budget, msg.trip_days,
+        msg.budget_per_day,
+        msg.total_budget,
+        msg.trip_days,
     )
     ctx.logger.info(
         f"Planning trip: {len(msg.validated_stops)} candidate stops, "
@@ -371,10 +396,13 @@ async def handle_trip_planner(ctx: Context, sender: str, msg: TripPlannerRequest
     )
 
     if not msg.validated_stops:
-        await ctx.send(sender, TripPlannerResponse(
-            success=False,
-            error="No validated stops were provided to the trip planner.",
-        ))
+        await ctx.send(
+            sender,
+            TripPlannerResponse(
+                success=False,
+                error="No validated stops were provided to the trip planner.",
+            ),
+        )
         return
 
     try:
@@ -386,18 +414,24 @@ async def handle_trip_planner(ctx: Context, sender: str, msg: TripPlannerRequest
         )
     except Exception as e:
         ctx.logger.error(f"ASI1 curation failed: {e}")
-        await ctx.send(sender, TripPlannerResponse(
-            success=False,
-            error=f"ASI1 curation failed: {e}",
-        ))
+        await ctx.send(
+            sender,
+            TripPlannerResponse(
+                success=False,
+                error=f"ASI1 curation failed: {e}",
+            ),
+        )
         return
 
     hydrated_days = _merge_plan_with_geocoded(plan, msg.validated_stops)
     if not hydrated_days:
-        await ctx.send(sender, TripPlannerResponse(
-            success=False,
-            error="ASI1 returned a plan with no recognisable stops.",
-        ))
+        await ctx.send(
+            sender,
+            TripPlannerResponse(
+                success=False,
+                error="ASI1 returned a plan with no recognisable stops.",
+            ),
+        )
         return
 
     dietary_keyword = _detect_dietary_keyword(msg.preferences)
@@ -413,27 +447,34 @@ async def handle_trip_planner(ctx: Context, sender: str, msg: TripPlannerRequest
     reasoning = (plan.get("reasoning") or "").strip()
     if source_label:
         reasoning = (
-            f"{reasoning} Budget plan: {source_label}." if reasoning
+            f"{reasoning} Budget plan: {source_label}."
+            if reasoning
             else f"Budget plan: {source_label}."
         )
 
     actual_days = len(hydrated_days)
     assessment = _assess_budget(
-        total_cost, msg.total_budget, eff_per_day, actual_days,
+        total_cost,
+        msg.total_budget,
+        eff_per_day,
+        actual_days,
     )
 
     ctx.logger.info(
         f"Plan ready: {actual_days} day(s), total est. ${total_cost:.0f} "
         f"(budget assessment: {assessment or 'n/a'})."
     )
-    await ctx.send(sender, TripPlannerResponse(
-        success=True,
-        days=hydrated_days,
-        total_estimated_cost=total_cost,
-        reasoning=reasoning,
-        budget_assessment=assessment,
-        derived_trip_days=actual_days,
-    ))
+    await ctx.send(
+        sender,
+        TripPlannerResponse(
+            success=True,
+            days=hydrated_days,
+            total_estimated_cost=total_cost,
+            reasoning=reasoning,
+            budget_assessment=assessment,
+            derived_trip_days=actual_days,
+        ),
+    )
 
 
 if __name__ == "__main__":

@@ -50,9 +50,7 @@ def get_video_metadata(video_id: str) -> dict:
             "title": snippet.get("title", ""),
             "channel": snippet.get("channelTitle", ""),
             "thumbnail_url": (
-                snippet.get("thumbnails", {})
-                .get("high", {})
-                .get("url", "")
+                snippet.get("thumbnails", {}).get("high", {}).get("url", "")
             ),
             "published_at": snippet.get("publishedAt", ""),
         }
@@ -66,10 +64,13 @@ async def handle_transcript(ctx: Context, sender: str, msg: TranscriptRequest):
 
     video_id = extract_video_id(msg.youtube_url)
     if not video_id:
-        await ctx.send(sender, TranscriptResponse(
-            success=False,
-            error="Invalid YouTube URL — expected youtube.com/watch?v=... or youtu.be/..."
-        ))
+        await ctx.send(
+            sender,
+            TranscriptResponse(
+                success=False,
+                error="Invalid YouTube URL — expected youtube.com/watch?v=... or youtu.be/...",
+            ),
+        )
         return
 
     metadata = get_video_metadata(video_id)
@@ -86,26 +87,29 @@ async def handle_transcript(ctx: Context, sender: str, msg: TranscriptRequest):
         )
         transcript = " ".join(snippet.text for snippet in fetched)
         ctx.logger.info(f"Transcript fetched: {len(transcript):,} chars")
-        await ctx.send(sender, TranscriptResponse(
-            success=True,
-            transcript=transcript,
-            video_title=metadata.get("title", ""),
-            channel_name=metadata.get("channel", ""),
-            thumbnail_url=metadata.get("thumbnail_url", ""),
-        ))
+        await ctx.send(
+            sender,
+            TranscriptResponse(
+                success=True,
+                transcript=transcript,
+                video_title=metadata.get("title", ""),
+                channel_name=metadata.get("channel", ""),
+                thumbnail_url=metadata.get("thumbnail_url", ""),
+            ),
+        )
     except (TranscriptsDisabled, NoTranscriptFound):
-        await ctx.send(sender, TranscriptResponse(
-            success=False,
-            error="No English captions available on this video.",
-            video_title=metadata.get("title", ""),
-            channel_name=metadata.get("channel", ""),
-        ))
+        await ctx.send(
+            sender,
+            TranscriptResponse(
+                success=False,
+                error="No English captions available on this video.",
+                video_title=metadata.get("title", ""),
+                channel_name=metadata.get("channel", ""),
+            ),
+        )
     except Exception as e:
         ctx.logger.error(f"Transcript error: {e}")
-        await ctx.send(sender, TranscriptResponse(
-            success=False,
-            error=str(e)
-        ))
+        await ctx.send(sender, TranscriptResponse(success=False, error=str(e)))
 
 
 if __name__ == "__main__":

@@ -43,25 +43,32 @@ from uagents_core.contrib.protocols.payment import (
 )
 from uagents_core.storage import ExternalStorage
 from shared_models import (
-    TranscriptRequest,    TranscriptResponse,
-    LocationExtractionRequest, LocationExtractionResponse,
-    AggregateRequest,     AggregateResponse,
-    TripPlannerRequest,   TripPlannerResponse,
-    WeatherMonitorRequest, WeatherMonitorResponse,
-    WeatherSnapshotRequest, WeatherSnapshotResponse,
-    PDFRequest,           PDFResponse,
-    ExcelRequest,         ExcelResponse,
+    TranscriptRequest,
+    TranscriptResponse,
+    LocationExtractionRequest,
+    LocationExtractionResponse,
+    AggregateRequest,
+    AggregateResponse,
+    TripPlannerRequest,
+    TripPlannerResponse,
+    WeatherMonitorRequest,
+    WeatherSnapshotRequest,
+    WeatherSnapshotResponse,
+    PDFRequest,
+    PDFResponse,
+    ExcelRequest,
+    ExcelResponse,
 )
 
 load_dotenv()
 
-TRANSCRIPT_AGENT_ADDR   = os.getenv("TRANSCRIPT_AGENT_ADDR")
-LOCATION_AGENT_ADDR     = os.getenv("LOCATION_AGENT_ADDR")
-AGGREGATOR_AGENT_ADDR   = os.getenv("AGGREGATOR_AGENT_ADDR")
+TRANSCRIPT_AGENT_ADDR = os.getenv("TRANSCRIPT_AGENT_ADDR")
+LOCATION_AGENT_ADDR = os.getenv("LOCATION_AGENT_ADDR")
+AGGREGATOR_AGENT_ADDR = os.getenv("AGGREGATOR_AGENT_ADDR")
 TRIP_PLANNER_AGENT_ADDR = os.getenv("TRIP_PLANNER_AGENT_ADDR")
-WEATHER_AGENT_ADDR      = os.getenv("WEATHER_AGENT_ADDR")
-PDF_AGENT_ADDR          = os.getenv("PDF_AGENT_ADDR")
-EXCEL_AGENT_ADDR        = os.getenv("EXCEL_AGENT_ADDR")
+WEATHER_AGENT_ADDR = os.getenv("WEATHER_AGENT_ADDR")
+PDF_AGENT_ADDR = os.getenv("PDF_AGENT_ADDR")
+EXCEL_AGENT_ADDR = os.getenv("EXCEL_AGENT_ADDR")
 
 # Cap per the product spec — the user can paste 1-4 URLs in a single chat.
 _MAX_URLS_PER_REQUEST = 4
@@ -109,12 +116,13 @@ def _start_files_server() -> None:
         server = HTTPServer(("0.0.0.0", _FILES_SERVER_PORT), handler)
         server.serve_forever()
     except OSError as e:  # port already in use — non-fatal
-        print(f"[Files] could not start HTTP server on "
-              f"{_FILES_SERVER_PORT}: {e}")
+        print(f"[Files] could not start HTTP server on " f"{_FILES_SERVER_PORT}: {e}")
 
 
 threading.Thread(
-    target=_start_files_server, daemon=True, name="files-server",
+    target=_start_files_server,
+    daemon=True,
+    name="files-server",
 ).start()
 
 
@@ -136,14 +144,15 @@ def _file_url(file_path: str | None) -> str | None:
         return f"{_FILES_PUBLIC_BASE}/{name}"
     return f"http://{_FILES_SERVER_HOST}:{_FILES_SERVER_PORT}/{name}"
 
+
 # Google Static Maps API — used to render a PNG preview of the curated
 # driving route that we attach to the final chat response. The user sees
 # the visual route inline and can click the accompanying "Open in Google
 # Maps" link to launch the fully interactive JavaScript map.
 _GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "").strip()
-_STATIC_MAP_SIZE    = os.getenv("STATIC_MAP_SIZE", "640x400")
-_STATIC_MAP_SCALE   = os.getenv("STATIC_MAP_SCALE", "2")   # 2 = retina/HiDPI
-_STATIC_MAP_MAXLBL  = 9   # Google caps numeric labels at 1..9 per marker
+_STATIC_MAP_SIZE = os.getenv("STATIC_MAP_SIZE", "640x400")
+_STATIC_MAP_SCALE = os.getenv("STATIC_MAP_SCALE", "2")  # 2 = retina/HiDPI
+_STATIC_MAP_MAXLBL = 9  # Google caps numeric labels at 1..9 per marker
 
 _agent_kwargs: dict = dict(
     name="travel_map_orchestrator",
@@ -182,9 +191,7 @@ async def _log_routing_mode(ctx: Context) -> None:
         f"  pdf                {PDF_AGENT_ADDR or '(not set)'}\n"
         f"  excel              {EXCEL_AGENT_ADDR or '(not set)'}"
     )
-    base = _FILES_PUBLIC_BASE or (
-        f"http://{_FILES_SERVER_HOST}:{_FILES_SERVER_PORT}"
-    )
+    base = _FILES_PUBLIC_BASE or (f"http://{_FILES_SERVER_HOST}:{_FILES_SERVER_PORT}")
     ctx.logger.info(
         f"[Files] serving output/ on {base} "
         f"(PDF + Excel + map PNG become clickable markdown links in chat)"
@@ -199,6 +206,7 @@ async def _log_routing_mode(ctx: Context) -> None:
             "[Orchestrator] Stripe paywall DISABLED (STRIPE_SECRET_KEY not "
             "set). Pipeline runs free of charge."
         )
+
 
 asi1_client = OpenAI(
     base_url="https://api.asi1.ai/v1",
@@ -220,14 +228,14 @@ chat_proto = Protocol(spec=chat_protocol_spec)
 #      releases the saved pending state into the real pipeline.
 # If STRIPE_SECRET_KEY is unset the gate is a no-op and the pipeline runs
 # immediately on every chat message (free/dev mode).
-_STRIPE_SECRET_KEY   = os.getenv("STRIPE_SECRET_KEY", "").strip()
-_STRIPE_PUBLISHABLE  = os.getenv("STRIPE_PUBLISHABLE_KEY", "").strip()
-_STRIPE_PRICE_CENTS  = int(os.getenv("STRIPE_PRICE_CENTS", "299"))
-_STRIPE_CURRENCY     = (os.getenv("STRIPE_CURRENCY", "usd") or "usd").strip().lower()
+_STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
+_STRIPE_PUBLISHABLE = os.getenv("STRIPE_PUBLISHABLE_KEY", "").strip()
+_STRIPE_PRICE_CENTS = int(os.getenv("STRIPE_PRICE_CENTS", "299"))
+_STRIPE_CURRENCY = (os.getenv("STRIPE_CURRENCY", "usd") or "usd").strip().lower()
 _STRIPE_PRODUCT_NAME = (
     os.getenv("STRIPE_PRODUCT_NAME", "Travel Map Agent - Trip Plan") or ""
 ).strip() or "Travel Map Agent - Trip Plan"
-_STRIPE_SUCCESS_URL  = (
+_STRIPE_SUCCESS_URL = (
     os.getenv("STRIPE_SUCCESS_URL", "https://asi1.ai") or "https://asi1.ai"
 ).strip()
 _STRIPE_CHECKOUT_EXPIRES_S = max(
@@ -236,7 +244,7 @@ _STRIPE_CHECKOUT_EXPIRES_S = max(
 # Pending-payment state lives in `ctx.storage` under this key-prefix so
 # multiple users in parallel don't collide. Entries expire after
 # STRIPE_CHECKOUT_EXPIRES_SECONDS (matches the Stripe checkout TTL).
-_PENDING_KEY_PREFIX  = "travel_pending_payment:"
+_PENDING_KEY_PREFIX = "travel_pending_payment:"
 
 
 def _stripe_enabled() -> bool:
@@ -249,7 +257,10 @@ def _price_display() -> str:
 
 
 def _create_embedded_checkout(
-    *, user_address: str, chat_session_id: str, description: str,
+    *,
+    user_address: str,
+    chat_session_id: str,
+    description: str,
 ) -> dict:
     """Create a Stripe embedded Checkout Session and return the payload
     that goes into ``RequestPayment.metadata["stripe"]``.
@@ -275,17 +286,19 @@ def _create_embedded_checkout(
         payment_method_types=["card"],
         return_url=return_url,
         expires_at=expires_at,
-        line_items=[{
-            "price_data": {
-                "currency": _STRIPE_CURRENCY,
-                "unit_amount": _STRIPE_PRICE_CENTS,
-                "product_data": {
-                    "name": _STRIPE_PRODUCT_NAME,
-                    "description": description[:500],
+        line_items=[
+            {
+                "price_data": {
+                    "currency": _STRIPE_CURRENCY,
+                    "unit_amount": _STRIPE_PRICE_CENTS,
+                    "product_data": {
+                        "name": _STRIPE_PRODUCT_NAME,
+                        "description": description[:500],
+                    },
                 },
-            },
-            "quantity": 1,
-        }],
+                "quantity": 1,
+            }
+        ],
         metadata={
             "user_address": user_address,
             "chat_session_id": chat_session_id,
@@ -347,10 +360,10 @@ def _clear_pending(ctx: Context, sender: str) -> None:
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+
 def extract_text(msg: ChatMessage) -> str:
     return " ".join(
-        item.text for item in msg.content
-        if isinstance(item, TextContent)
+        item.text for item in msg.content if isinstance(item, TextContent)
     ).strip()
 
 
@@ -397,7 +410,7 @@ def _coerce_money(v) -> float:
 
 
 def parse_user_input(user_text: str) -> dict:
-    today        = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now().strftime("%Y-%m-%d")
     default_date = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
 
     # URLs are deterministic — pull them with regex, don't trust ASI1.
@@ -419,7 +432,7 @@ def parse_user_input(user_text: str) -> dict:
                 {
                     "role": "user",
                     "content": (
-                        f"Extract from: \"{user_text}\"\n"
+                        f'Extract from: "{user_text}"\n'
                         f"Today is {today}.\n\n"
                         "Return this exact JSON structure:\n"
                         "{\n"
@@ -438,8 +451,8 @@ def parse_user_input(user_text: str) -> dict:
             ],
         )
         raw = (
-            resp.choices[0].message.content
-            .strip()
+            resp.choices[0]
+            .message.content.strip()
             .replace("```json", "")
             .replace("```", "")
             .strip()
@@ -447,17 +460,17 @@ def parse_user_input(user_text: str) -> dict:
         parsed = json.loads(raw)
     except Exception:
         parsed = {
-            "trip_date":      default_date,
-            "trip_title":     "Road Trip Itinerary",
-            "preferences":    "",
+            "trip_date": default_date,
+            "trip_title": "Road Trip Itinerary",
+            "preferences": "",
             "budget_per_day": 0.0,
-            "total_budget":   0.0,
-            "trip_days":      0,
+            "total_budget": 0.0,
+            "trip_days": 0,
         }
 
     parsed["youtube_urls"] = urls
     parsed["budget_per_day"] = _coerce_money(parsed.get("budget_per_day"))
-    parsed["total_budget"]   = _coerce_money(parsed.get("total_budget"))
+    parsed["total_budget"] = _coerce_money(parsed.get("total_budget"))
     try:
         parsed["trip_days"] = max(0, int(float(parsed.get("trip_days", 0) or 0)))
     except Exception:
@@ -569,8 +582,7 @@ def _inject_stop_photos(text: str, photo_urls: dict[str, str]) -> str:
     for name, url in photo_urls.items():
         target = f"- **{name}**"
         replacement = (
-            f'- <img src="{url}" width="64" height="48" '
-            f'alt="{name}"> **{name}**'
+            f'- <img src="{url}" width="64" height="48" ' f'alt="{name}"> **{name}**'
         )
         text = text.replace(target, replacement)
     return text
@@ -606,7 +618,8 @@ def format_final_response(
             )
 
     consensus_block = _format_consensus_block(
-        planner_resp.days, len(video_summaries),
+        planner_resp.days,
+        len(video_summaries),
     )
 
     # Pull forecasts into a name-indexed dict for fast lookup.
@@ -635,9 +648,7 @@ def format_final_response(
                 weather_part = f" [{_short_forecast(fc)}]"
             else:
                 weather_part = ""
-            day_lines.append(
-                f"  - {s.get('name', '')}: {activity}{weather_part}"
-            )
+            day_lines.append(f"  - {s.get('name', '')}: {activity}{weather_part}")
     plan_text = "\n".join(day_lines)
 
     # Budget reconciliation summary (e.g. "fits your $200 budget").
@@ -790,8 +801,7 @@ def format_final_response(
             for s in day.get("stops", []):
                 fc = forecasts_by_name.get(s.get("name", ""))
                 weather_tag = (
-                    f" [{_short_forecast(fc)}]"
-                    if fc and fc.get("available") else ""
+                    f" [{_short_forecast(fc)}]" if fc and fc.get("available") else ""
                 )
                 lines.append(
                     f"- **{s.get('name', '')}** — "
@@ -803,9 +813,7 @@ def format_final_response(
                     if rests:
                         r = rests[0]
                         rating = r.get("rating")
-                        rating_part = (
-                            f" ({rating}★)" if rating else ""
-                        )
+                        rating_part = f" ({rating}★)" if rating else ""
                         lines.append(
                             f"- _Vegetarian-friendly_: "
                             f"{r.get('name', '')}{rating_part}"
@@ -816,9 +824,7 @@ def format_final_response(
         lines += ["", "## Initial weather check"]
         if bad_stops:
             for f in bad_stops:
-                lines.append(
-                    f"- **{f.get('name', '')}**: {f.get('warning', '')}"
-                )
+                lines.append(f"- **{f.get('name', '')}**: {f.get('warning', '')}")
             lines.append("")
             lines.append("Consider rescheduling or swapping these.")
         else:
@@ -894,14 +900,14 @@ def _upload_file_as_resource(
             write=False,
         )
     except Exception as e:
-        ctx.logger.error(
-            "ExternalStorage upload failed for %s: %s", filename, e
-        )
+        ctx.logger.error("ExternalStorage upload failed for %s: %s", filename, e)
         return None
 
     ctx.logger.info(
         "Uploaded %s to Agentverse storage as asset_id=%s (%d bytes)",
-        filename, asset_id, len(data),
+        filename,
+        asset_id,
+        len(data),
     )
     metadata = {
         "mime_type": mime_type,
@@ -923,6 +929,7 @@ def _upload_file_as_resource(
 
 
 # ── Google Static Maps preview ────────────────────────────────────────────────
+
 
 def _build_static_map_url(stops: list) -> str | None:
     """Build a Google Static Maps API URL rendering the curated route
@@ -1010,14 +1017,19 @@ def _upload_static_map_as_resource(
     if not png:
         return None
     import tempfile
+
     with tempfile.NamedTemporaryFile(
-        suffix=".png", delete=False, prefix="trip_map_",
+        suffix=".png",
+        delete=False,
+        prefix="trip_map_",
     ) as tmp:
         tmp.write(png)
         tmp_path = tmp.name
     try:
         return _upload_file_as_resource(
-            ctx, sender, tmp_path,
+            ctx,
+            sender,
+            tmp_path,
             filename=f"trip_map_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png",
             mime_type="image/png",
             role="trip-map-preview",
@@ -1045,13 +1057,12 @@ def _resolve_place_photo_url(photo_reference: str, max_width: int = 150) -> str 
     """
     if not _GOOGLE_MAPS_API_KEY or not photo_reference:
         return None
-    api_url = (
-        "https://maps.googleapis.com/maps/api/place/photo?"
-        + urlencode({
+    api_url = "https://maps.googleapis.com/maps/api/place/photo?" + urlencode(
+        {
             "maxwidth": max_width,
             "photo_reference": photo_reference,
             "key": _GOOGLE_MAPS_API_KEY,
-        })
+        }
     )
     try:
         resp = requests.head(api_url, allow_redirects=True, timeout=10)
@@ -1091,16 +1102,14 @@ async def send_final(
 
 # ── chat protocol handler ─────────────────────────────────────────────────────
 
+
 @chat_proto.on_message(ChatAcknowledgement)
 async def handle_chat_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
-    ctx.logger.info(
-        "Chat ack from %s for msg_id=%s", sender, msg.acknowledged_msg_id
-    )
+    ctx.logger.info("Chat ack from %s for msg_id=%s", sender, msg.acknowledged_msg_id)
 
 
 @chat_proto.on_message(ChatMessage)
 async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
-
     # rule 1 — ChatAcknowledgement MUST be first
     await ctx.send(
         sender,
@@ -1136,8 +1145,8 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         return
 
     # step 1 — parse user input with ASI1 (URLs via deterministic regex)
-    parsed          = parse_user_input(user_text)
-    youtube_urls    = parsed.get("youtube_urls", []) or []
+    parsed = parse_user_input(user_text)
+    youtube_urls = parsed.get("youtube_urls", []) or []
 
     # If we're mid-checkout for this user, decide whether the new message
     # is (a) a nudge/retry → resend the same RequestPayment, or (b) a fresh
@@ -1159,9 +1168,12 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         fee_note = (
             f"\n\nNote: generating a trip plan costs {_price_display()} "
             "(Stripe checkout appears in chat when you send your URLs)."
-            if _stripe_enabled() else ""
+            if _stripe_enabled()
+            else ""
         )
-        await send_final(ctx, sender,
+        await send_final(
+            ctx,
+            sender,
             "Hi! I'm the Travel Map Agent.\n\n"
             "Drop 1-4 YouTube travel vlog URLs in one message and I'll "
             "merge them into a single road trip - the more videos you give "
@@ -1173,7 +1185,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             "  'Here are 3 California vlogs - https://youtu.be/A "
             "https://youtu.be/B https://youtu.be/C. Budget $400, "
             "love hiking.'"
-            f"{fee_note}"
+            f"{fee_note}",
         )
         return
 
@@ -1211,47 +1223,65 @@ async def _gate_with_payment(ctx: Context, sender: str, parsed: dict) -> None:
     except Exception as exc:
         ctx.logger.error(f"[Payment] Stripe checkout create failed: {exc}")
         await send_final(
-            ctx, sender,
+            ctx,
+            sender,
             "Payment service is temporarily unavailable. Please try again "
-            f"in a minute. (Error: {exc})"
+            f"in a minute. (Error: {exc})",
         )
         return
 
-    _save_pending(ctx, sender, {
-        "checkout_session_id": checkout["checkout_session_id"],
-        "parsed": parsed,
-        "created_at": int(time.time()),
-        "expires_at": int(time.time()) + _STRIPE_CHECKOUT_EXPIRES_S,
-    })
+    _save_pending(
+        ctx,
+        sender,
+        {
+            "checkout_session_id": checkout["checkout_session_id"],
+            "parsed": parsed,
+            "created_at": int(time.time()),
+            "expires_at": int(time.time()) + _STRIPE_CHECKOUT_EXPIRES_S,
+        },
+    )
 
-    await ctx.send(sender, RequestPayment(
-        accepted_funds=[Funds(
-            currency=_STRIPE_CURRENCY.upper(),
-            amount=f"{_STRIPE_PRICE_CENTS / 100:.2f}",
-            payment_method="stripe",
-        )],
-        recipient=str(ctx.agent.address),
-        deadline_seconds=_STRIPE_CHECKOUT_EXPIRES_S,
-        reference=str(ctx.session),
-        description=(
-            f"Pay {_price_display()} to generate your curated trip plan "
-            f"from {len(urls)} video{'s' if len(urls) != 1 else ''}."
+    await ctx.send(
+        sender,
+        RequestPayment(
+            accepted_funds=[
+                Funds(
+                    currency=_STRIPE_CURRENCY.upper(),
+                    amount=f"{_STRIPE_PRICE_CENTS / 100:.2f}",
+                    payment_method="stripe",
+                )
+            ],
+            recipient=str(ctx.agent.address),
+            deadline_seconds=_STRIPE_CHECKOUT_EXPIRES_S,
+            reference=str(ctx.session),
+            description=(
+                f"Pay {_price_display()} to generate your curated trip plan "
+                f"from {len(urls)} video{'s' if len(urls) != 1 else ''}."
+            ),
+            metadata={"stripe": checkout, "service": "travel_map_agent"},
         ),
-        metadata={"stripe": checkout, "service": "travel_map_agent"},
-    ))
-    await ctx.send(sender, ChatMessage(
-        msg_id=uuid4(),
-        timestamp=datetime.now(timezone.utc),
-        content=[TextContent(type="text", text=(
-            f"Your {_count_description(urls)} road trip plan costs "
-            f"{_price_display()}. Complete the Stripe checkout above to "
-            "release the workflow.\n\n"
-            "Once paid I'll fetch transcripts, merge locations across "
-            "videos, curate the best stops, plan day-by-day routing, "
-            "pull weather forecasts, and deliver a PDF + Excel guide "
-            "right here in chat."
-        ))],
-    ))
+    )
+    await ctx.send(
+        sender,
+        ChatMessage(
+            msg_id=uuid4(),
+            timestamp=datetime.now(timezone.utc),
+            content=[
+                TextContent(
+                    type="text",
+                    text=(
+                        f"Your {_count_description(urls)} road trip plan costs "
+                        f"{_price_display()}. Complete the Stripe checkout above to "
+                        "release the workflow.\n\n"
+                        "Once paid I'll fetch transcripts, merge locations across "
+                        "videos, curate the best stops, plan day-by-day routing, "
+                        "pull weather forecasts, and deliver a PDF + Excel guide "
+                        "right here in chat."
+                    ),
+                )
+            ],
+        ),
+    )
     ctx.logger.info(
         f"[Payment] RequestPayment sent "
         f"(checkout={checkout['checkout_session_id'][:20]}..., "
@@ -1319,14 +1349,13 @@ async def _resend_pending_payment(ctx: Context, sender: str, pending: dict) -> N
                 _create_embedded_checkout,
                 user_address=sender,
                 chat_session_id=str(ctx.session),
-                description=(
-                    f"Retry: curate a {_count_description(urls)} road trip."
-                ),
+                description=(f"Retry: curate a {_count_description(urls)} road trip."),
             )
         except Exception as exc:
             ctx.logger.error(f"[Payment] Retry checkout create failed: {exc}")
             await send_final(
-                ctx, sender,
+                ctx,
+                sender,
                 "I couldn't re-open the Stripe checkout just now — please "
                 "try again in a moment.",
             )
@@ -1344,35 +1373,48 @@ async def _resend_pending_payment(ctx: Context, sender: str, pending: dict) -> N
             "amount_cents": _STRIPE_PRICE_CENTS,
             "ui_mode": "embedded_page",
         }
-    await ctx.send(sender, RequestPayment(
-        accepted_funds=[Funds(
-            currency=_STRIPE_CURRENCY.upper(),
-            amount=f"{_STRIPE_PRICE_CENTS / 100:.2f}",
-            payment_method="stripe",
-        )],
-        recipient=str(ctx.agent.address),
-        deadline_seconds=_STRIPE_CHECKOUT_EXPIRES_S,
-        reference=str(ctx.session),
-        description=(
-            f"Pay {_price_display()} to generate your trip plan from "
-            f"{len(urls)} video{'s' if len(urls) != 1 else ''}."
+    await ctx.send(
+        sender,
+        RequestPayment(
+            accepted_funds=[
+                Funds(
+                    currency=_STRIPE_CURRENCY.upper(),
+                    amount=f"{_STRIPE_PRICE_CENTS / 100:.2f}",
+                    payment_method="stripe",
+                )
+            ],
+            recipient=str(ctx.agent.address),
+            deadline_seconds=_STRIPE_CHECKOUT_EXPIRES_S,
+            reference=str(ctx.session),
+            description=(
+                f"Pay {_price_display()} to generate your trip plan from "
+                f"{len(urls)} video{'s' if len(urls) != 1 else ''}."
+            ),
+            metadata={"stripe": checkout_payload, "service": "travel_map_agent"},
         ),
-        metadata={"stripe": checkout_payload, "service": "travel_map_agent"},
-    ))
+    )
     ctx.logger.info(
         f"[Payment] RequestPayment RESENT "
         f"(checkout={checkout_payload['checkout_session_id'][:20]}..., "
         f"ui_mode={checkout_payload['ui_mode']}, "
         f"has_secret={bool(checkout_payload.get('client_secret'))})"
     )
-    await ctx.send(sender, ChatMessage(
-        msg_id=uuid4(),
-        timestamp=datetime.now(timezone.utc),
-        content=[TextContent(type="text", text=(
-            f"Still waiting on payment — complete the Stripe checkout "
-            f"above to release your trip plan ({_price_display()})."
-        ))],
-    ))
+    await ctx.send(
+        sender,
+        ChatMessage(
+            msg_id=uuid4(),
+            timestamp=datetime.now(timezone.utc),
+            content=[
+                TextContent(
+                    type="text",
+                    text=(
+                        f"Still waiting on payment — complete the Stripe checkout "
+                        f"above to release your trip plan ({_price_display()})."
+                    ),
+                )
+            ],
+        ),
+    )
 
 
 def _count_description(urls: list) -> str:
@@ -1389,26 +1431,30 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
     Called directly when Stripe is disabled, or from on_commit_payment
     once a checkout has been verified as paid.
     """
-    youtube_urls    = parsed.get("youtube_urls", []) or []
-    trip_date       = parsed.get("trip_date")
-    trip_title      = parsed.get("trip_title", "Road Trip Itinerary")
-    preferences     = parsed.get("preferences", "")
-    budget_per_day  = float(parsed.get("budget_per_day", 0.0) or 0.0)
-    total_budget    = float(parsed.get("total_budget", 0.0) or 0.0)
-    trip_days       = int(parsed.get("trip_days", 0) or 0)
+    youtube_urls = parsed.get("youtube_urls", []) or []
+    trip_date: str = str(parsed.get("trip_date") or "")
+    trip_title = parsed.get("trip_title", "Road Trip Itinerary")
+    preferences = parsed.get("preferences", "")
+    budget_per_day = float(parsed.get("budget_per_day", 0.0) or 0.0)
+    total_budget = float(parsed.get("total_budget", 0.0) or 0.0)
+    trip_days = int(parsed.get("trip_days", 0) or 0)
 
     if not youtube_urls:
         # Sanity guard — the caller should have filtered these out already.
-        await send_final(ctx, sender,
+        await send_final(
+            ctx,
+            sender,
             "No YouTube URLs found in the saved request. Please resend "
             "with your travel vlog links included.",
         )
         return
 
     # step 2 — fan out transcript + location extraction across N videos
-    await send_status(ctx, sender,
+    await send_status(
+        ctx,
+        sender,
         f"Processing {len(youtube_urls)} video(s) in parallel: "
-        "fetching transcripts and extracting locations..."
+        "fetching transcripts and extracting locations...",
     )
 
     async def _process_one_video(idx: int, url: str) -> dict:
@@ -1436,14 +1482,15 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
             return result
         if not isinstance(tr_resp, TranscriptResponse) or not tr_resp.success:
             result["error"] = (
-                tr_resp.error if isinstance(tr_resp, TranscriptResponse)
+                tr_resp.error
+                if isinstance(tr_resp, TranscriptResponse)
                 else "transcript agent did not respond"
             )
             return result
 
-        result["video_title"]      = tr_resp.video_title  or ""
-        result["channel_name"]     = tr_resp.channel_name or ""
-        result["thumbnail_url"]    = tr_resp.thumbnail_url or ""
+        result["video_title"] = tr_resp.video_title or ""
+        result["channel_name"] = tr_resp.channel_name or ""
+        result["thumbnail_url"] = tr_resp.thumbnail_url or ""
         result["transcript_chars"] = len(tr_resp.transcript or "")
 
         try:
@@ -1469,26 +1516,28 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
     failed = [v for v in video_results if v["error"] or not v["locations"]]
     if not successful:
         msgs = "; ".join(
-            f"{v['url']}: {v['error'] or 'no locations extracted'}"
-            for v in failed
+            f"{v['url']}: {v['error'] or 'no locations extracted'}" for v in failed
         )
-        await send_final(ctx, sender,
-            f"Couldn't get usable locations from any of your videos.\n\n{msgs}"
+        await send_final(
+            ctx,
+            sender,
+            f"Couldn't get usable locations from any of your videos.\n\n{msgs}",
         )
         return
 
     total_extracted = sum(len(v["locations"]) for v in successful)
     ctx.logger.info(
         f"Extracted {total_extracted} raw locations across "
-        f"{len(successful)} video(s)"
-        + (f" ({len(failed)} failed)" if failed else "")
+        f"{len(successful)} video(s)" + (f" ({len(failed)} failed)" if failed else "")
     )
 
     # step 3 — aggregator agent (dedupe + Places lookup + score)
     if not AGGREGATOR_AGENT_ADDR:
-        await send_final(ctx, sender,
+        await send_final(
+            ctx,
+            sender,
             "Aggregator agent address is not configured. "
-            "Start aggregator_agent.py and set AGGREGATOR_AGENT_ADDR in .env."
+            "Start aggregator_agent.py and set AGGREGATOR_AGENT_ADDR in .env.",
         )
         return
 
@@ -1504,17 +1553,20 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
         return
     if not isinstance(agg_resp, AggregateResponse) or not agg_resp.success:
         err = (
-            agg_resp.error if isinstance(agg_resp, AggregateResponse)
+            agg_resp.error
+            if isinstance(agg_resp, AggregateResponse)
             else f"no response (status={_status})"
         )
         await send_final(ctx, sender, f"Aggregator failed: {err}")
         return
 
     if not agg_resp.ranked_stops:
-        await send_final(ctx, sender,
+        await send_final(
+            ctx,
+            sender,
             "None of the extracted locations could be validated in "
             "Google Places after deduping. Try videos with more specific "
-            "place names."
+            "place names.",
         )
         return
 
@@ -1524,18 +1576,18 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
 
     # step 4 — trip planner agent (curates + clusters + adds restaurants)
     if not TRIP_PLANNER_AGENT_ADDR:
-        await send_final(ctx, sender,
+        await send_final(
+            ctx,
+            sender,
             "Trip planner agent address is not configured. "
-            "Start trip_planner_agent.py and set TRIP_PLANNER_AGENT_ADDR in .env."
+            "Start trip_planner_agent.py and set TRIP_PLANNER_AGENT_ADDR in .env.",
         )
         return
 
     budget_summary = (
-        f"${total_budget:.0f} total" if total_budget > 0
-        else (
-            f"${budget_per_day:.0f}/day" if budget_per_day > 0
-            else "default budget"
-        )
+        f"${total_budget:.0f} total"
+        if total_budget > 0
+        else (f"${budget_per_day:.0f}/day" if budget_per_day > 0 else "default budget")
     )
     ctx.logger.info(
         f"Ranked {len(agg_resp.ranked_stops)} unique stops "
@@ -1563,9 +1615,11 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
         await send_final(ctx, sender, f"Trip planner failed (status={_status})")
         return
     if not planner_resp.success or not planner_resp.days:
-        await send_final(ctx, sender,
+        await send_final(
+            ctx,
+            sender,
             f"Trip planner couldn't build a plan: "
-            f"{planner_resp.error or 'unknown error'}"
+            f"{planner_resp.error or 'unknown error'}",
         )
         return
 
@@ -1594,7 +1648,10 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
             response_type=WeatherSnapshotResponse,
             timeout=60,
         )
-        if isinstance(snapshot_resp_raw, WeatherSnapshotResponse) and snapshot_resp_raw.success:
+        if (
+            isinstance(snapshot_resp_raw, WeatherSnapshotResponse)
+            and snapshot_resp_raw.success
+        ):
             snapshot_resp = snapshot_resp_raw
             initial_forecasts_by_name = {
                 f.get("name", ""): f for f in snapshot_resp.forecasts
@@ -1646,7 +1703,9 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
             timeout=180,
         )
         if not isinstance(pdf_resp, PDFResponse):
-            raise RuntimeError(f"PDF agent returned no valid response (status={_status})")
+            raise RuntimeError(
+                f"PDF agent returned no valid response (status={_status})"
+            )
     except Exception as e:
         ctx.logger.error(f"PDF agent timed out: {e}")
         pdf_resp = PDFResponse(success=False, error=str(e))
@@ -1670,10 +1729,12 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
                     trip_start_date=trip_date,
                     total_estimated_cost=planner_resp.total_estimated_cost,
                     budget_per_day=(
-                        budget_per_day if budget_per_day > 0
+                        budget_per_day
+                        if budget_per_day > 0
                         else (
                             total_budget / max(1, planner_resp.derived_trip_days)
-                            if total_budget > 0 else 100.0
+                            if total_budget > 0
+                            else 100.0
                         )
                     ),
                     video_title=cover_video_title,
@@ -1726,7 +1787,9 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
         ctx.logger.info("Rendering the route map preview...")
         try:
             png = await asyncio.to_thread(
-                _fetch_static_map_png, ctx, curated_stops,
+                _fetch_static_map_png,
+                ctx,
+                curated_stops,
             )
         except Exception as exc:
             ctx.logger.warning(f"[Map] PNG fetch failed: {exc}")
@@ -1760,7 +1823,8 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
             try:
                 map_resource = await asyncio.to_thread(
                     _upload_file_as_resource,
-                    ctx, sender,
+                    ctx,
+                    sender,
                     str(_OUTPUT_DIR / map_filename),
                     filename=map_filename,
                     mime_type="image/png",
@@ -1782,10 +1846,9 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
                     await asyncio.sleep(2)
         if not map_resource and len(map_png_bytes) <= 900_000:
             ctx.logger.info("[Map] Falling back to base64 data URI")
-            map_data_uri = (
-                "data:image/png;base64,"
-                + base64.b64encode(map_png_bytes).decode("ascii")
-            )
+            map_data_uri = "data:image/png;base64," + base64.b64encode(
+                map_png_bytes
+            ).decode("ascii")
 
     # step 10b — resolve public HTTPS photo URLs for each unique stop
     # so they can be embedded inline in the Markdown text.
@@ -1800,13 +1863,12 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
                 unique_stops.append(s)
 
         if unique_stops:
-            ctx.logger.info(
-                f"Resolving photo URLs for {len(unique_stops)} stop(s)..."
-            )
+            ctx.logger.info(f"Resolving photo URLs for {len(unique_stops)} stop(s)...")
 
             async def _resolve_url(stop: dict) -> tuple[str, str | None]:
                 url = await asyncio.to_thread(
-                    _resolve_place_photo_url, stop["photo_reference"],
+                    _resolve_place_photo_url,
+                    stop["photo_reference"],
                 )
                 return stop["name"], url
 
@@ -1817,9 +1879,7 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
             for r in results:
                 if isinstance(r, tuple) and r[1]:
                     photo_urls[r[0]] = r[1]
-            ctx.logger.info(
-                f"Resolved {len(photo_urls)} place photo URL(s)"
-            )
+            ctx.logger.info(f"Resolved {len(photo_urls)} place photo URL(s)")
 
     # step 11 — format final reply with ASI1
     final_text = format_final_response(
@@ -1827,7 +1887,7 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
         pdf_filename,
         trip_date,
         preferences,
-        successful,                         # video summaries (list of dicts)
+        successful,  # video summaries (list of dicts)
         snapshot_resp,
         user_total_budget=total_budget,
     )
@@ -1865,8 +1925,7 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
     else:
         links_block += [
             "",
-            f"- **Route map**: [open Google Maps directions]"
-            f"({fallback_maps_url})",
+            f"- **Route map**: [open Google Maps directions]" f"({fallback_maps_url})",
         ]
     if pdf_url:
         links_block.append(
@@ -1874,8 +1933,7 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
         )
     elif pdf_filename and pdf_filename != "N/A":
         links_block.append(
-            f"- **PDF travel guide** saved locally at "
-            f"`output/{pdf_filename}`"
+            f"- **PDF travel guide** saved locally at " f"`output/{pdf_filename}`"
         )
     if excel_url:
         links_block.append(
@@ -1939,27 +1997,37 @@ async def on_commit_payment(ctx: Context, sender: str, msg: CommitPayment) -> No
     release the saved pending state into the real workflow.
     """
     if msg.funds.payment_method != "stripe" or not msg.transaction_id:
-        await ctx.send(sender, RejectPayment(
-            reason="Unsupported payment method (expected stripe).",
-        ))
+        await ctx.send(
+            sender,
+            RejectPayment(
+                reason="Unsupported payment method (expected stripe).",
+            ),
+        )
         return
 
     checkout_session_id = msg.transaction_id
     try:
         paid = await asyncio.to_thread(
-            _verify_checkout_session_paid, checkout_session_id,
+            _verify_checkout_session_paid,
+            checkout_session_id,
         )
     except Exception as exc:
         ctx.logger.error(f"[Payment] Stripe verify error: {exc}")
-        await ctx.send(sender, RejectPayment(
-            reason="Could not verify payment with Stripe. Please try again.",
-        ))
+        await ctx.send(
+            sender,
+            RejectPayment(
+                reason="Could not verify payment with Stripe. Please try again.",
+            ),
+        )
         return
 
     if not paid:
-        await ctx.send(sender, RejectPayment(
-            reason="Stripe payment not completed yet. Please finish checkout.",
-        ))
+        await ctx.send(
+            sender,
+            RejectPayment(
+                reason="Stripe payment not completed yet. Please finish checkout.",
+            ),
+        )
         return
 
     await ctx.send(sender, CompletePayment(transaction_id=checkout_session_id))
@@ -1980,48 +2048,70 @@ async def on_commit_payment(ctx: Context, sender: str, msg: CommitPayment) -> No
             "[Payment] Paid checkout has no matching pending state "
             f"(checkout={checkout_session_id[:20]}...). Asking user to retry."
         )
-        await ctx.send(sender, ChatMessage(
-            msg_id=uuid4(),
-            timestamp=datetime.now(timezone.utc),
-            content=[TextContent(type="text", text=(
-                "Payment received, but I couldn't find the original trip "
-                "request linked to this checkout. Please resend your "
-                "YouTube URLs and preferences and I'll rerun the plan on "
-                "your already-paid credit."
-            ))],
-        ))
+        await ctx.send(
+            sender,
+            ChatMessage(
+                msg_id=uuid4(),
+                timestamp=datetime.now(timezone.utc),
+                content=[
+                    TextContent(
+                        type="text",
+                        text=(
+                            "Payment received, but I couldn't find the original trip "
+                            "request linked to this checkout. Please resend your "
+                            "YouTube URLs and preferences and I'll rerun the plan on "
+                            "your already-paid credit."
+                        ),
+                    )
+                ],
+            ),
+        )
         return
 
     parsed = pending.get("parsed") or {}
     _clear_pending(ctx, sender)
 
-    await ctx.send(sender, ChatMessage(
-        msg_id=uuid4(),
-        timestamp=datetime.now(timezone.utc),
-        content=[TextContent(type="text", text=(
-            f"Payment confirmed ({_price_display()}). Releasing the "
-            "workflow now — hang tight while I process your videos."
-        ))],
-    ))
+    await ctx.send(
+        sender,
+        ChatMessage(
+            msg_id=uuid4(),
+            timestamp=datetime.now(timezone.utc),
+            content=[
+                TextContent(
+                    type="text",
+                    text=(
+                        f"Payment confirmed ({_price_display()}). Releasing the "
+                        "workflow now — hang tight while I process your videos."
+                    ),
+                )
+            ],
+        ),
+    )
     await _run_travel_pipeline(ctx, sender, parsed)
 
 
 @payment_proto.on_message(RejectPayment)
 async def on_reject_payment(ctx: Context, sender: str, msg: RejectPayment) -> None:
     """User cancelled or the UI rejected the payment."""
-    ctx.logger.info(
-        f"[Payment] Payment rejected by {sender[:20]}...: {msg.reason}"
-    )
+    ctx.logger.info(f"[Payment] Payment rejected by {sender[:20]}...: {msg.reason}")
     _clear_pending(ctx, sender)
-    await ctx.send(sender, ChatMessage(
-        msg_id=uuid4(),
-        timestamp=datetime.now(timezone.utc),
-        content=[TextContent(type="text", text=(
-            f"Payment was cancelled or rejected. {msg.reason or ''}\n\n"
-            "Send me another message with your YouTube URLs whenever "
-            "you're ready to try again."
-        ).strip())],
-    ))
+    await ctx.send(
+        sender,
+        ChatMessage(
+            msg_id=uuid4(),
+            timestamp=datetime.now(timezone.utc),
+            content=[
+                TextContent(
+                    type="text",
+                    text=(
+                        f"Payment was cancelled or rejected. {msg.reason or ''}\n\n"
+                        "Send me another message with your YouTube URLs whenever "
+                        "you're ready to try again."
+                    ).strip(),
+                )
+            ],
+        ),
+    )
 
 
 agent.include(chat_proto, publish_manifest=True)

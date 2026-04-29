@@ -7,4 +7,5 @@ python-dotenv
 fpdf2
 openpyxl
 requests
+types-requests
 stripe>=8.0.0

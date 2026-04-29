@@ -42,15 +42,15 @@ agent = Agent(
 
 # ── Colour palette (matches the PDF teal/coral theme) ────────────────────────
 
-TEAL_HEX        = "1E9E75"
-TEAL_LIGHT_HEX  = "D1F0E4"
-CORAL_HEX       = "F5C4B3"
-DARK_HEX        = "193228"
-GREY_HEX        = "6B7280"
+TEAL_HEX = "1E9E75"
+TEAL_LIGHT_HEX = "D1F0E4"
+CORAL_HEX = "F5C4B3"
+DARK_HEX = "193228"
+GREY_HEX = "6B7280"
 
 _HEADER_FILL = PatternFill("solid", fgColor=TEAL_HEX)
 _HEADER_FONT = Font(name="Calibri", bold=True, color="FFFFFF", size=11)
-_TITLE_FONT  = Font(name="Calibri", bold=True, size=16, color=DARK_HEX)
+_TITLE_FONT = Font(name="Calibri", bold=True, size=16, color=DARK_HEX)
 _SUBTITLE_FONT = Font(name="Calibri", italic=True, size=10, color=GREY_HEX)
 _LABEL_FONT = Font(name="Calibri", bold=True, size=10, color=DARK_HEX)
 _DAY_BAND_FILL = PatternFill("solid", fgColor="FFEFE6")
@@ -67,6 +67,7 @@ _THIN_BORDER = Border(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _set_col_widths(ws, widths: dict) -> None:
     for col_letter, width in widths.items():
         ws.column_dimensions[col_letter].width = width
@@ -77,7 +78,9 @@ def _write_header_row(ws, row: int, headers: list) -> None:
         cell = ws.cell(row=row, column=col_idx, value=header)
         cell.fill = _HEADER_FILL
         cell.font = _HEADER_FONT
-        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.alignment = Alignment(
+            horizontal="center", vertical="center", wrap_text=True
+        )
         cell.border = _THIN_BORDER
     ws.row_dimensions[row].height = 22
 
@@ -85,7 +88,9 @@ def _write_header_row(ws, row: int, headers: list) -> None:
 def _format_data_cell(cell, *, bold=False, align="left", wrap=False):
     cell.font = Font(name="Calibri", size=10, bold=bold, color=DARK_HEX)
     cell.alignment = Alignment(
-        horizontal=align, vertical="center", wrap_text=wrap,
+        horizontal=align,
+        vertical="center",
+        wrap_text=wrap,
     )
     cell.border = _THIN_BORDER
 
@@ -161,6 +166,7 @@ def _recommendation(f: dict) -> str:
 
 # ── Sheet builders ────────────────────────────────────────────────────────────
 
+
 def _build_cover_header(ws, msg: ExcelRequest) -> int:
     """Write title/meta block at the top of Sheet 1. Returns next free row."""
     ws.merge_cells("A1:H1")
@@ -202,8 +208,14 @@ def _build_itinerary_sheet(ws, msg: ExcelRequest) -> None:
     header_row = _build_cover_header(ws, msg)
 
     headers = [
-        "Day", "Theme", "Stop #", "Place Name", "Activity",
-        "Duration (hrs)", "Est. Cost ($)", "GPS",
+        "Day",
+        "Theme",
+        "Stop #",
+        "Place Name",
+        "Activity",
+        "Duration (hrs)",
+        "Est. Cost ($)",
+        "GPS",
     ]
     _write_header_row(ws, header_row, headers)
 
@@ -235,10 +247,19 @@ def _build_itinerary_sheet(ws, msg: ExcelRequest) -> None:
         ref = f"A{table_start}:{get_column_letter(len(headers))}{table_end}"
         _add_table(ws, ref, "ItineraryTable")
 
-    _set_col_widths(ws, {
-        "A": 6, "B": 22, "C": 8, "D": 30, "E": 28,
-        "F": 14, "G": 14, "H": 22,
-    })
+    _set_col_widths(
+        ws,
+        {
+            "A": 6,
+            "B": 22,
+            "C": 8,
+            "D": 30,
+            "E": 28,
+            "F": 14,
+            "G": 14,
+            "H": 22,
+        },
+    )
     ws.freeze_panes = f"A{header_row + 1}"
 
 
@@ -258,8 +279,12 @@ def _build_restaurants_sheet(ws, msg: ExcelRequest) -> None:
     ws["A2"].font = _SUBTITLE_FONT
 
     headers = [
-        "Stop", "Restaurant Name", "Rating", "Address",
-        "Dietary Match", "Place Lat,Lng",
+        "Stop",
+        "Restaurant Name",
+        "Rating",
+        "Address",
+        "Dietary Match",
+        "Place Lat,Lng",
     ]
     header_row = 4
     _write_header_row(ws, header_row, headers)
@@ -289,7 +314,9 @@ def _build_restaurants_sheet(ws, msg: ExcelRequest) -> None:
                 any_rows = True
 
     if not any_rows:
-        ws.cell(row=row, column=1, value="(No nearby restaurants returned by Google Places)")
+        ws.cell(
+            row=row, column=1, value="(No nearby restaurants returned by Google Places)"
+        )
         ws.cell(row=row, column=1).font = Font(italic=True, color=GREY_HEX)
         row += 1
 
@@ -298,9 +325,17 @@ def _build_restaurants_sheet(ws, msg: ExcelRequest) -> None:
         ref = f"A{table_start}:{get_column_letter(len(headers))}{table_end}"
         _add_table(ws, ref, "RestaurantTable")
 
-    _set_col_widths(ws, {
-        "A": 24, "B": 32, "C": 8, "D": 40, "E": 16, "F": 22,
-    })
+    _set_col_widths(
+        ws,
+        {
+            "A": 24,
+            "B": 32,
+            "C": 8,
+            "D": 40,
+            "E": 16,
+            "F": 22,
+        },
+    )
     ws.freeze_panes = f"A{header_row + 1}"
 
 
@@ -359,11 +394,13 @@ def _build_budget_sheet(ws, msg: ExcelRequest) -> None:
     ws.cell(row=totals_row, column=2).alignment = Alignment(horizontal="right")
     if data_end >= data_start:
         ws.cell(
-            row=totals_row, column=3,
+            row=totals_row,
+            column=3,
             value=f"=SUM(C{data_start}:C{data_end})",
         )
         ws.cell(
-            row=totals_row, column=4,
+            row=totals_row,
+            column=4,
             value=f"=SUM(D{data_start}:D{data_end})",
         )
     else:
@@ -382,15 +419,23 @@ def _build_budget_sheet(ws, msg: ExcelRequest) -> None:
     ws.cell(row=var_row, column=2).font = _LABEL_FONT
     ws.cell(row=var_row, column=2).alignment = Alignment(horizontal="right")
     ws.cell(
-        row=var_row, column=4,
+        row=var_row,
+        column=4,
         value=f"=D{totals_row}-C{totals_row}",
     )
     ws.cell(row=var_row, column=4).number_format = "$#,##0.00;[Red]-$#,##0.00"
     ws.cell(row=var_row, column=4).border = _THIN_BORDER
 
-    _set_col_widths(ws, {
-        "A": 6, "B": 30, "C": 16, "D": 16, "E": 32,
-    })
+    _set_col_widths(
+        ws,
+        {
+            "A": 6,
+            "B": 30,
+            "C": 16,
+            "D": 16,
+            "E": 32,
+        },
+    )
     ws.freeze_panes = f"A{header_row + 1}"
 
 
@@ -408,8 +453,13 @@ def _build_weather_log_sheet(ws, msg: ExcelRequest) -> None:
     ws["A2"].font = _SUBTITLE_FONT
 
     headers = [
-        "Stop", "Location", "Trip Date", "Last Checked",
-        "Forecast", "Alert", "Recommendation",
+        "Stop",
+        "Location",
+        "Trip Date",
+        "Last Checked",
+        "Forecast",
+        "Alert",
+        "Recommendation",
     ]
     header_row = 4
     _write_header_row(ws, header_row, headers)
@@ -438,10 +488,14 @@ def _build_weather_log_sheet(ws, msg: ExcelRequest) -> None:
             # Highlight alert cell red if present.
             if values[5]:
                 ws.cell(row=row, column=6).fill = PatternFill(
-                    "solid", fgColor="FEE2E2",
+                    "solid",
+                    fgColor="FEE2E2",
                 )
                 ws.cell(row=row, column=6).font = Font(
-                    name="Calibri", size=10, bold=True, color="B91C1C",
+                    name="Calibri",
+                    size=10,
+                    bold=True,
+                    color="B91C1C",
                 )
             row += 1
 
@@ -450,10 +504,18 @@ def _build_weather_log_sheet(ws, msg: ExcelRequest) -> None:
         ref = f"A{table_start}:{get_column_letter(len(headers))}{table_end}"
         _add_table(ws, ref, "WeatherLogTable")
 
-    _set_col_widths(ws, {
-        "A": 26, "B": 22, "C": 14, "D": 18,
-        "E": 36, "F": 30, "G": 34,
-    })
+    _set_col_widths(
+        ws,
+        {
+            "A": 26,
+            "B": 22,
+            "C": 14,
+            "D": 18,
+            "E": 36,
+            "F": 30,
+            "G": 34,
+        },
+    )
     ws.freeze_panes = f"A{header_row + 1}"
 
 
@@ -502,7 +564,10 @@ def _build_maps_sheet(ws, msg: ExcelRequest) -> None:
             link_cell = ws.cell(row=row, column=4)
             link_cell.hyperlink = link
             link_cell.font = Font(
-                name="Calibri", size=10, color="1E40AF", underline="single",
+                name="Calibri",
+                size=10,
+                color="1E40AF",
+                underline="single",
             )
             stop_num += 1
             row += 1
@@ -522,16 +587,28 @@ def _build_maps_sheet(ws, msg: ExcelRequest) -> None:
     if msg.maps_url:
         link_cell.hyperlink = msg.maps_url
     link_cell.font = Font(
-        name="Calibri", size=10, bold=True, color="1E40AF", underline="single",
+        name="Calibri",
+        size=10,
+        bold=True,
+        color="1E40AF",
+        underline="single",
     )
 
-    _set_col_widths(ws, {
-        "A": 8, "B": 28, "C": 40, "D": 60, "E": 30,
-    })
+    _set_col_widths(
+        ws,
+        {
+            "A": 8,
+            "B": 28,
+            "C": 40,
+            "D": 60,
+            "E": 30,
+        },
+    )
     ws.freeze_panes = f"A{header_row + 1}"
 
 
 # ── Top-level builder ─────────────────────────────────────────────────────────
+
 
 def generate_excel(msg: ExcelRequest) -> tuple[str, str]:
     wb = Workbook()
@@ -562,17 +639,23 @@ async def handle_excel(ctx: Context, sender: str, msg: ExcelRequest):
     try:
         filename, filepath = generate_excel(msg)
         ctx.logger.info(f"Excel saved: output/{filename}")
-        await ctx.send(sender, ExcelResponse(
-            success=True,
-            excel_filename=filename,
-            excel_path=filepath,
-        ))
+        await ctx.send(
+            sender,
+            ExcelResponse(
+                success=True,
+                excel_filename=filename,
+                excel_path=filepath,
+            ),
+        )
     except Exception as e:
         ctx.logger.error(f"Excel generation error: {e}")
-        await ctx.send(sender, ExcelResponse(
-            success=False,
-            error=str(e),
-        ))
+        await ctx.send(
+            sender,
+            ExcelResponse(
+                success=False,
+                error=str(e),
+            ),
+        )
 
 
 if __name__ == "__main__":
