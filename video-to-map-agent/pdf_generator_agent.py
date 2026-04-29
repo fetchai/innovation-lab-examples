@@ -11,7 +11,7 @@ into a polished PDF travel guide. Layout:
 """
 
 import os
-import requests
+import requests  # type: ignore[import-untyped]
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from io import BytesIO
@@ -466,8 +466,7 @@ def generate_pdf(msg: PDFRequest) -> tuple[str, str]:
 async def handle_pdf(ctx: Context, sender: str, msg: PDFRequest):
     total_stops = sum(len(d.get("stops", [])) for d in msg.planned_days)
     ctx.logger.info(
-        f"Generating PDF for {len(msg.planned_days)} day(s), "
-        f"{total_stops} total stops"
+        f"Generating PDF for {len(msg.planned_days)} day(s), {total_stops} total stops"
     )
     try:
         filename, filepath = generate_pdf(msg)

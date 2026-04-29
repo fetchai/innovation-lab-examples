@@ -1,5 +1,5 @@
 import os
-import requests
+import requests  # type: ignore[import-untyped]
 from urllib.parse import urlparse, parse_qs
 from dotenv import load_dotenv
 from youtube_transcript_api import (

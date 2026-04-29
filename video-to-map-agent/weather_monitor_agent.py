@@ -1,5 +1,5 @@
 import os
-import requests
+import requests  # type: ignore[import-untyped]
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -109,7 +109,7 @@ def is_bad_forecast(day: dict) -> tuple:
         return True, f"{condition_desc} forecast"
     if precip_prob >= 75 and precip_mm >= 15:
         return True, (
-            f"{condition_desc} — {precip_prob}% chance, " f"{precip_mm:.0f}mm expected"
+            f"{condition_desc} — {precip_prob}% chance, {precip_mm:.0f}mm expected"
         )
     if thunder_prob >= 60:
         return True, f"High thunderstorm probability ({thunder_prob}%)"

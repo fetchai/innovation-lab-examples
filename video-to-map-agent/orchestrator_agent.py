@@ -14,7 +14,7 @@ from urllib.parse import quote, urlencode
 from uuid import UUID, uuid4
 from dotenv import load_dotenv
 from openai import OpenAI
-import requests
+import requests  # type: ignore[import-untyped]
 
 try:
     import stripe as _stripe_lib  # type: ignore
@@ -116,7 +116,7 @@ def _start_files_server() -> None:
         server = HTTPServer(("0.0.0.0", _FILES_SERVER_PORT), handler)
         server.serve_forever()
     except OSError as e:  # port already in use — non-fatal
-        print(f"[Files] could not start HTTP server on " f"{_FILES_SERVER_PORT}: {e}")
+        print(f"[Files] could not start HTTP server on {_FILES_SERVER_PORT}: {e}")
 
 
 threading.Thread(
@@ -563,8 +563,7 @@ def _format_consensus_block(planned_days: list, total_videos: int) -> str:
         rating = float(s.get("rating", 0.0) or 0.0)
         rating_part = f" — {rating:.1f}★" if rating else ""
         lines.append(
-            f"- **{name}** — mentioned in "
-            f"{freq} of {total_videos} videos{rating_part}"
+            f"- **{name}** — mentioned in {freq} of {total_videos} videos{rating_part}"
         )
     return "\n".join(lines)
 
@@ -582,7 +581,7 @@ def _inject_stop_photos(text: str, photo_urls: dict[str, str]) -> str:
     for name, url in photo_urls.items():
         target = f"- **{name}**"
         replacement = (
-            f'- <img src="{url}" width="64" height="48" ' f'alt="{name}"> **{name}**'
+            f'- <img src="{url}" width="64" height="48" alt="{name}"> **{name}**'
         )
         text = text.replace(target, replacement)
     return text
@@ -611,7 +610,7 @@ def format_final_response(
             source_line = (
                 f"Sources: {len(video_summaries)} travel vlogs - "
                 + "; ".join(
-                    f"\"{v.get('video_title', '?')}\""
+                    f'"{v.get("video_title", "?")}"'
                     + (f" by {v['channel_name']}" if v.get("channel_name") else "")
                     for v in video_summaries
                 )
@@ -815,8 +814,7 @@ def format_final_response(
                         rating = r.get("rating")
                         rating_part = f" ({rating}★)" if rating else ""
                         lines.append(
-                            f"- _Vegetarian-friendly_: "
-                            f"{r.get('name', '')}{rating_part}"
+                            f"- _Vegetarian-friendly_: {r.get('name', '')}{rating_part}"
                         )
                         break
 
@@ -831,8 +829,7 @@ def format_final_response(
             lines.append("Conditions look workable at every stop so far.")
         lines += [
             "",
-            f"_Weather agent will keep watching all stops daily until "
-            f"{trip_date}._",
+            f"_Weather agent will keep watching all stops daily until {trip_date}._",
         ]
         return "\n".join(lines)
 
@@ -1710,7 +1707,7 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
         ctx.logger.error(f"PDF agent timed out: {e}")
         pdf_resp = PDFResponse(success=False, error=str(e))
 
-    pdf_filename = pdf_resp.pdf_filename if pdf_resp.success else "N/A"
+    pdf_filename = (pdf_resp.pdf_filename or "N/A") if pdf_resp.success else "N/A"
     pdf_path = pdf_resp.pdf_path if pdf_resp.success else None
 
     # step 8 — Excel generator agent (live planning workbook: itinerary,
@@ -1925,7 +1922,7 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
     else:
         links_block += [
             "",
-            f"- **Route map**: [open Google Maps directions]" f"({fallback_maps_url})",
+            f"- **Route map**: [open Google Maps directions]({fallback_maps_url})",
         ]
     if pdf_url:
         links_block.append(
@@ -1933,7 +1930,7 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
         )
     elif pdf_filename and pdf_filename != "N/A":
         links_block.append(
-            f"- **PDF travel guide** saved locally at " f"`output/{pdf_filename}`"
+            f"- **PDF travel guide** saved locally at `output/{pdf_filename}`"
         )
     if excel_url:
         links_block.append(
@@ -1943,8 +1940,7 @@ async def _run_travel_pipeline(ctx: Context, sender: str, parsed: dict) -> None:
         )
     elif excel_filename:
         links_block.append(
-            f"- **Excel planning workbook** saved locally at "
-            f"`output/{excel_filename}`"
+            f"- **Excel planning workbook** saved locally at `output/{excel_filename}`"
         )
 
     if len(links_block) > 2:
