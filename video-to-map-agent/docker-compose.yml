@@ -11,8 +11,6 @@ services:
       - "8090:8090"   # Built-in file server (PDF / Excel / map PNG downloads)
     env_file:
       - .env
-    environment:
-      - ORCHESTRATOR_ENDPOINT=http://orchestrator:8010/submit
     volumes:
       - map-output:/app/output
     depends_on:
