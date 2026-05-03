@@ -1,4 +1,7 @@
 .PHONY: install dev run test lint \
+        docker-build-bureau \
+        docker-up docker-down docker-logs \
+        smoke
         docker-build docker-build-bureau \
         docker-up docker-down docker-logs \
         docker-up-rest smoke
@@ -8,10 +11,10 @@ install:
 	python -m pip install -e ".[dev]"
 
 dev: install
-	python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+	python run.py
 
 run:
-	python -m uvicorn main:app --host 0.0.0.0 --port 8000
+	python diagnostic_bureau.py
 
 test:
 	python -m pytest tests -v
@@ -30,10 +33,6 @@ docker-build-bureau:
 # Full 3-agent bureau (parts-agent + tutorial-agent + orchestrator)
 docker-up:
 	docker compose --profile bureau up --build
-
-# REST API only
-docker-up-rest:
-	docker compose --profile rest up --build
 
 docker-down:
 	docker compose down

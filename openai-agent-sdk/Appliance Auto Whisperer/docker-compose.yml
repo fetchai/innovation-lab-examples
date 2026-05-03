@@ -3,6 +3,8 @@ version: "3.8"
 # ─────────────────────────────────────────────────────────────────────────────
 # Appliance Auto Whisperer — Docker Compose
 #
+# Full multi-agent bureau (recommended):
+#   docker-compose --profile bureau up --build
 # Three modes (uncomment the profiles you want):
 #
 #   Full multi-agent bureau (recommended):

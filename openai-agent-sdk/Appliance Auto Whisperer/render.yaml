@@ -53,5 +53,3 @@ services:
       #   startCommand: bash docker-entrypoint.sh
       # and set WORKER_READY_WAIT=10
 
-# Optional second service: duplicate this file or add another web service using
-# Dockerfile (uvicorn main:app) if you need the REST API alongside the bureau.
