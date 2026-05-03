@@ -22,7 +22,7 @@ class SearchSchema(BaseModel):
 
 class ExaSearchTool(BaseTool):
     name: str = "search"
-    description: str = "Search for webpages based on the query."
+    description: str = "Search the web using Exa, one of the best web search APIs for AI."
     args_schema: BaseModel = SearchSchema
     
     def _run(self, query: str) -> str:
