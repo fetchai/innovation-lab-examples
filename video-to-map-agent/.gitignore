@@ -1,0 +1,24 @@
+# Environment
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Agent state files
+agent1q*.json
+
+# Generated output (PDFs, Excel, map PNGs)
+output/
+
+# IDE
+.vscode/
+.idea/
+*.swp

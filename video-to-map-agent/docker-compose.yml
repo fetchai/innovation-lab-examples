@@ -1,0 +1,166 @@
+services:
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-map-orchestrator
+    restart: unless-stopped
+    ports:
+      - "8010:8010"   # Orchestrator agent port
+      - "8090:8090"   # Built-in file server (PDF / Excel / map PNG downloads)
+    env_file:
+      - .env
+    volumes:
+      - map-output:/app/output
+    depends_on:
+      - transcript
+      - location-extractor
+      - geocoder-mapper
+      - aggregator
+      - trip-planner
+      - weather-monitor
+      - pdf-generator
+      - excel-generator
+    command: ["python", "orchestrator_agent.py"]
+    networks:
+      - agent-network
+
+  transcript:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-map-transcript
+    restart: unless-stopped
+    ports:
+      - "8005:8005"
+    env_file:
+      - .env
+    environment:
+      - TRANSCRIPT_ENDPOINT=http://transcript:8005/submit
+    command: ["python", "transcript_agent.py"]
+    networks:
+      - agent-network
+
+  location-extractor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-map-location-extractor
+    restart: unless-stopped
+    ports:
+      - "8006:8006"
+    env_file:
+      - .env
+    environment:
+      - LOCATION_EXTRACTOR_ENDPOINT=http://location-extractor:8006/submit
+    command: ["python", "location_extractor_agent.py"]
+    networks:
+      - agent-network
+
+  geocoder-mapper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-map-geocoder
+    restart: unless-stopped
+    ports:
+      - "8007:8007"
+    env_file:
+      - .env
+    environment:
+      - GEOCODER_MAPPER_ENDPOINT=http://geocoder-mapper:8007/submit
+    command: ["python", "geocoder_mapper_agent.py"]
+    networks:
+      - agent-network
+
+  weather-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-map-weather-monitor
+    restart: unless-stopped
+    ports:
+      - "8008:8008"
+    env_file:
+      - .env
+    environment:
+      - WEATHER_MONITOR_ENDPOINT=http://weather-monitor:8008/submit
+    command: ["python", "weather_monitor_agent.py"]
+    networks:
+      - agent-network
+
+  pdf-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-map-pdf-generator
+    restart: unless-stopped
+    ports:
+      - "8009:8009"
+    env_file:
+      - .env
+    environment:
+      - PDF_GENERATOR_ENDPOINT=http://pdf-generator:8009/submit
+    volumes:
+      - map-output:/app/output
+    command: ["python", "pdf_generator_agent.py"]
+    networks:
+      - agent-network
+
+  trip-planner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-map-trip-planner
+    restart: unless-stopped
+    ports:
+      - "8011:8011"
+    env_file:
+      - .env
+    environment:
+      - TRIP_PLANNER_ENDPOINT=http://trip-planner:8011/submit
+    command: ["python", "trip_planner_agent.py"]
+    networks:
+      - agent-network
+
+  excel-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-map-excel-generator
+    restart: unless-stopped
+    ports:
+      - "8012:8012"
+    env_file:
+      - .env
+    environment:
+      - EXCEL_GENERATOR_ENDPOINT=http://excel-generator:8012/submit
+    volumes:
+      - map-output:/app/output
+    command: ["python", "excel_generator_agent.py"]
+    networks:
+      - agent-network
+
+  aggregator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-map-aggregator
+    restart: unless-stopped
+    ports:
+      - "8013:8013"
+    env_file:
+      - .env
+    environment:
+      - AGGREGATOR_ENDPOINT=http://aggregator:8013/submit
+    command: ["python", "aggregator_agent.py"]
+    networks:
+      - agent-network
+
+volumes:
+  map-output:
+
+networks:
+  agent-network:
+    driver: bridge
