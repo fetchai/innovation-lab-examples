@@ -196,7 +196,7 @@ class RAGChatAgent:
                 return "I encountered an error while searching my knowledge base. Please try again."
             
             # Use the Agno agent to generate a response
-            response = self.rag_agent.run(query)
+            response = await self.rag_agent.arun(query)
             response_content = response.content if hasattr(response, 'content') else str(response)
             
             # Add a note if the response seems generic
