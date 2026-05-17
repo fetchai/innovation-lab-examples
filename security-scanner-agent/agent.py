@@ -119,7 +119,9 @@ client_agent = Agent(name="client")
 @scanner.on_message(model=ScanRequest)
 async def handle_scan_request(ctx: Context, sender: str, msg: ScanRequest):
     """Scanner receives a request, runs the LLM scan, sends back a response."""
-    ctx.logger.info(f"Scan request received ({len(msg.code)} chars, lang={msg.language})")
+    ctx.logger.info(
+        f"Scan request received ({len(msg.code)} chars, lang={msg.language})"
+    )
     ctx.logger.info("Analyzing...")
     result = scan_code(msg)
     await ctx.send(sender, result)
@@ -151,7 +153,9 @@ async def handle_scan_result(ctx: Context, sender: str, msg: ScanResponse):
 
     for i, vuln in enumerate(msg.vulnerabilities, 1):
         ctx.logger.info("")
-        ctx.logger.info(f"#{i}  {vuln.type}  [{vuln.severity.upper()}]  line {vuln.line_number}")
+        ctx.logger.info(
+            f"#{i}  {vuln.type}  [{vuln.severity.upper()}]  line {vuln.line_number}"
+        )
         ctx.logger.info(f"    {vuln.description}")
         ctx.logger.info(f"    Fix: {vuln.suggested_fix}")
 
