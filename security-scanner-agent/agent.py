@@ -1,15 +1,27 @@
 import os
+import re
 import json
+from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
+
 from dotenv import load_dotenv
 from openai import OpenAI
-from uagents import Agent, Bureau, Context
+from uagents import Agent, Bureau, Context, Protocol
+from uagents_core.contrib.protocols.chat import (
+    ChatAcknowledgement,
+    ChatMessage,
+    EndSessionContent,
+    StartSessionContent,
+    TextContent,
+    chat_protocol_spec,
+)
 
-from models import ScanRequest, ScanResponse, Vulnerability
+from models import ScanResponse, Vulnerability
 
 
-# Load .env from the parent folder (fetchai-learning/.env)
-env_path = Path(__file__).parent.parent / ".env"
+# Load .env (from same folder when running locally inside security-scanner-agent/)
+env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 
 llm_client = OpenAI(
@@ -55,11 +67,21 @@ If no vulnerabilities, return an empty array for vulnerabilities.
 Output JSON only. No prose before or after."""
 
 
-def scan_code(request: ScanRequest) -> ScanResponse:
+# ---- Helpers ----
+
+def extract_code(text: str) -> str:
+    """Pull code out of a markdown fence if present, else return the text as-is."""
+    match = re.search(r"```(?:\w+)?\n(.*?)```", text, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return text.strip()
+
+
+def scan_code(code: str, language: str = "python") -> ScanResponse:
     """Send code to ASI:One for security review, return structured result."""
     user_message = (
-        f"Language: {request.language}\n\n"
-        f"Code:\n```{request.language}\n{request.code}\n```"
+        f"Language: {language}\n\n"
+        f"Code:\n```{language}\n{code}\n```"
     )
 
     try:
@@ -73,8 +95,7 @@ def scan_code(request: ScanRequest) -> ScanResponse:
             temperature=0.2,
         )
 
-        raw_output = response.choices[0].message.content
-        parsed = json.loads(raw_output)
+        parsed = json.loads(response.choices[0].message.content)
 
         vulnerabilities = [
             Vulnerability(**v) for v in parsed.get("vulnerabilities", [])
@@ -87,15 +108,91 @@ def scan_code(request: ScanRequest) -> ScanResponse:
         )
 
     except Exception as e:
-        return ScanResponse(
-            scan_status="error",
-            error_message=str(e),
-        )
+        return ScanResponse(scan_status="error", error_message=str(e))
 
 
-# ---- Test snippet (intentionally vulnerable) ----
-# Replace this with any code you want to scan.
-VULNERABLE_CODE = """
+def format_scan_as_markdown(scan: ScanResponse) -> str:
+    """Format a ScanResponse into a readable markdown string for chat reply."""
+    if scan.scan_status == "error":
+        return f"⚠️ **Scan failed:** {scan.error_message}"
+
+    if not scan.vulnerabilities:
+        return f"✅ **No vulnerabilities found.**\n\n**Summary:** {scan.summary}"
+
+    lines = [
+        f"**Summary:** {scan.summary}",
+        "",
+        f"**Vulnerabilities found:** {len(scan.vulnerabilities)}",
+        "",
+    ]
+    for i, vuln in enumerate(scan.vulnerabilities, 1):
+        lines.extend([
+            f"### {i}. {vuln.type} `[{vuln.severity.upper()}]`",
+            f"- **Line:** {vuln.line_number}",
+            f"- **Description:** {vuln.description}",
+            f"- **Fix:** {vuln.suggested_fix}",
+            "",
+        ])
+    return "\n".join(lines)
+
+
+def create_text_chat(text: str, end_session: bool = True) -> ChatMessage:
+    """Wrap plain text in a ChatMessage with optional end-session marker."""
+    content = [TextContent(type="text", text=text)]
+    if end_session:
+        content.append(EndSessionContent(type="end-session"))
+    return ChatMessage(
+        timestamp=datetime.utcnow(),
+        msg_id=uuid4(),
+        content=content,
+    )
+
+
+# ---- Scanner agent (chat protocol) ----
+
+scanner = Agent(name="security_scanner")
+chat_proto = Protocol(spec=chat_protocol_spec)
+
+
+@chat_proto.on_message(ChatMessage)
+async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
+    """Process incoming chat messages — extract code, scan, reply."""
+    # Always acknowledge first
+    await ctx.send(sender, ChatAcknowledgement(
+        timestamp=datetime.utcnow(),
+        acknowledged_msg_id=msg.msg_id,
+    ))
+
+    for item in msg.content:
+        if isinstance(item, StartSessionContent):
+            ctx.logger.info(f"Session started with {sender}")
+            continue
+        if isinstance(item, EndSessionContent):
+            ctx.logger.info(f"Session ended with {sender}")
+            continue
+        if isinstance(item, TextContent):
+            ctx.logger.info(f"Scan request received from {sender}")
+            code = extract_code(item.text)
+            ctx.logger.info(f"Analyzing {len(code)} chars of code...")
+            scan = scan_code(code)
+            reply = create_text_chat(format_scan_as_markdown(scan))
+            await ctx.send(sender, reply)
+
+
+@chat_proto.on_message(ChatAcknowledgement)
+async def handle_chat_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
+    """Log acknowledgements (no further action)."""
+    ctx.logger.info(f"Ack from {sender} for {msg.acknowledged_msg_id}")
+
+
+scanner.include(chat_proto, publish_manifest=True)
+
+
+# ---- Test client (sends a sample request) ----
+
+VULNERABLE_CODE_PROMPT = """Please scan this Python code for security vulnerabilities:
+
+```python
 import sqlite3
 
 def get_user(user_id):
@@ -108,61 +205,60 @@ API_KEY = "sk_live_abc123xyz789supersecret"
 def login(username, password):
     print(f"User {username} logged in with password {password}")
     return True
+```
 """
 
-
-# ---- Agents ----
-scanner = Agent(name="scanner")
-client_agent = Agent(name="client")
+test_client = Agent(name="test_client")
+client_chat_proto = Protocol(spec=chat_protocol_spec)
 
 
-@scanner.on_message(model=ScanRequest)
-async def handle_scan_request(ctx: Context, sender: str, msg: ScanRequest):
-    """Scanner receives a request, runs the LLM scan, sends back a response."""
-    ctx.logger.info(
-        f"Scan request received ({len(msg.code)} chars, lang={msg.language})"
-    )
-    ctx.logger.info("Analyzing...")
-    result = scan_code(msg)
-    await ctx.send(sender, result)
+_scan_sent = False  # Module-level flag — resets every process run
 
 
-@client_agent.on_interval(period=5.0)
-async def send_initial_scan(ctx: Context):
-    """Client sends one scan request, ~5 seconds after startup."""
-    if ctx.storage.get("scan_sent"):
-        return  # already sent, do nothing on subsequent ticks
-    ctx.logger.info("Client online. Sending sample code to scanner...")
-    request = ScanRequest(code=VULNERABLE_CODE, language="python")
-    await ctx.send(scanner.address, request)
-    ctx.storage.set("scan_sent", True)
-
-
-@client_agent.on_message(model=ScanResponse)
-async def handle_scan_result(ctx: Context, sender: str, msg: ScanResponse):
-    """Client receives the scan response, logs it nicely."""
-    if msg.scan_status == "error":
-        ctx.logger.error(f"Scan failed: {msg.error_message}")
+@test_client.on_interval(period=5.0)
+async def send_test_request(ctx: Context):
+    """Send the test scan request once, shortly after startup."""
+    global _scan_sent
+    if _scan_sent:
         return
+    _scan_sent = True
+    ctx.logger.info("Sending sample code to scanner via chat protocol...")
+    msg = ChatMessage(
+        timestamp=datetime.utcnow(),
+        msg_id=uuid4(),
+        content=[TextContent(type="text", text=VULNERABLE_CODE_PROMPT)],
+    )
+    await ctx.send(scanner.address, msg)
 
-    ctx.logger.info("")
-    ctx.logger.info("=" * 60)
-    ctx.logger.info(f"Scan complete: {msg.summary}")
-    ctx.logger.info(f"Vulnerabilities found: {len(msg.vulnerabilities)}")
-    ctx.logger.info("=" * 60)
 
-    for i, vuln in enumerate(msg.vulnerabilities, 1):
-        ctx.logger.info("")
-        ctx.logger.info(
-            f"#{i}  {vuln.type}  [{vuln.severity.upper()}]  line {vuln.line_number}"
-        )
-        ctx.logger.info(f"    {vuln.description}")
-        ctx.logger.info(f"    Fix: {vuln.suggested_fix}")
+@client_chat_proto.on_message(ChatMessage)
+async def handle_client_response(ctx: Context, sender: str, msg: ChatMessage):
+    """Receive the scanner's reply and log it."""
+    # Acknowledge first
+    await ctx.send(sender, ChatAcknowledgement(
+        timestamp=datetime.utcnow(),
+        acknowledged_msg_id=msg.msg_id,
+    ))
+    for item in msg.content:
+        if isinstance(item, TextContent):
+            ctx.logger.info("=== Scan Result ===")
+            for line in item.text.split("\n"):
+                ctx.logger.info(line)
 
+
+@client_chat_proto.on_message(ChatAcknowledgement)
+async def handle_client_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
+    pass  # silent
+
+
+test_client.include(client_chat_proto)
+
+
+# ---- Bureau (run both agents) ----
 
 bureau = Bureau()
 bureau.add(scanner)
-bureau.add(client_agent)
+bureau.add(test_client)
 
 
 if __name__ == "__main__":
