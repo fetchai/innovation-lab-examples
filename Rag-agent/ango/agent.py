@@ -1,5 +1,6 @@
-import os
+import asyncio
 import logging
+import os
 from datetime import datetime
 from uuid import uuid4
 from dotenv import load_dotenv
@@ -184,7 +185,11 @@ class RAGChatAgent:
         try:
             # First, check if we have documents in the knowledge base
             try:
-                search_results = self.knowledge.search(query, num_documents=3)
+                search_results = await asyncio.to_thread(
+                    self.knowledge.search,
+                    query,
+                    num_documents=3,
+                )
                 logger.info(f"RAG Search found {len(search_results)} relevant documents for query: '{query}'")
                 
                 if len(search_results) == 0:
@@ -196,7 +201,7 @@ class RAGChatAgent:
                 return "I encountered an error while searching my knowledge base. Please try again."
             
             # Use the Agno agent to generate a response
-            response = self.rag_agent.run(query)
+            response = await asyncio.to_thread(self.rag_agent.run, query)
             response_content = response.content if hasattr(response, 'content') else str(response)
             
             # Add a note if the response seems generic

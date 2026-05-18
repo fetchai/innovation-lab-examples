@@ -1,5 +1,7 @@
 import os
 from uuid import uuid4
+
+import aiohttp
 from uagents import Context, Protocol
 from uagents_core.contrib.protocols.payment import (
     Funds,
@@ -116,15 +118,16 @@ async def generate_image_after_payment(ctx: Context, user_address: str):
     ctx.logger.info(f"Generating image via Pollinations for prompt: {clean_prompt}")
 
     try:
-        import requests as _r
         pollinations_url = f"https://image.pollinations.ai/prompt/{quote(clean_prompt)}?width=512&height=512"
-        resp = _r.get(pollinations_url, timeout=90)
-        ctype = resp.headers.get("Content-Type", "")
-        if resp.status_code != 200 or not resp.content or not ctype.startswith("image/"):
-            await ctx.send(user_address, create_text_chat("Image generation failed"))
-            return
+        timeout = aiohttp.ClientTimeout(total=90)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(pollinations_url) as resp:
+                ctype = resp.headers.get("Content-Type", "")
+                image_bytes = await resp.read()
+                if resp.status != 200 or not image_bytes or not ctype.startswith("image/"):
+                    await ctx.send(user_address, create_text_chat("Image generation failed"))
+                    return
 
-        image_bytes: bytes = resp.content
         mime_type: str = ctype or "image/png"
 
         # Upload to Agentverse External Storage and send as resource
