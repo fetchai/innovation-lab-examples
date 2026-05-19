@@ -1,0 +1,8 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+private_keys.json
+*_data.json
+.ruff_cache/
