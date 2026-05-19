@@ -5,6 +5,7 @@ All notable changes to this repository are documented in this file.
 ## [Unreleased]
 
 ### Added
+- `pharmacy-locator-agent/`: Beginner-friendly uAgent combining ASI:One location extraction with the free OpenStreetMap Overpass API
 - `ticketlens-agent/`: Live real-time travel discovery AI agent powered by TicketLens MCP. High-precision reasoning utilizing the ASI1 LLM, persistent `uAgents` storage, and directly actionable booking deep links.
 - `openclaw/`: OpenClaw examples — `fetchai-openclaw-orchestrator` (connector + orchestrator, repo health analyzer) and `agentverse-caller` (OpenClaw skill to search and message Agentverse agents)
 - `stripe-payment-agents/youtube-growth-analyzer-agent`: Multi-agent YouTube channel analyzer with free preview and Stripe-gated premium report flow, built for Agentverse/ASI:One chat + payment protocols
