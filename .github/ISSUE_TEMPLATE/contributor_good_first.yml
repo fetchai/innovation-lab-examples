@@ -1,0 +1,42 @@
+name: Contributor — good first issue
+description: Pick up a starter task to improve docs, examples, or contributor experience.
+title: "[Contributor] "
+labels: ["good first issue", "help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing! Read [contributors/README.md](../../contributors/README.md) and [CONTRIBUTING.md](../../CONTRIBUTING.md) before you start.
+
+  - type: textarea
+    id: task
+    attributes:
+      label: Task description
+      description: What will you implement or fix?
+      value: |
+        Example tasks:
+        - Add missing `.env.example` to an example under `contributors/` or document env vars in README
+        - Fix broken setup steps in a contributor agent README
+        - Add demo screenshot under `contributors/<agent>/assets/`
+    validations:
+      required: true
+
+  - type: input
+    id: folder
+    attributes:
+      label: Target folder (if applicable)
+      placeholder: contributors/my-agent-name
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Contributor checklist
+      options:
+        - label: I will place new agents under `contributors/<agent-name>/` only
+          required: true
+        - label: I will update `contributors/CHANGELOG.md` for non-doc changes
+          required: true
+        - label: I have starred this repository
+          required: true
