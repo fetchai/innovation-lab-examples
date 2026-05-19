@@ -8,7 +8,7 @@ class Vulnerability(Model):
     severity: str
     line_number: Optional[int] = None
     description: str
-    suggested_fix: str
+    suggested_fix: Optional[str] = None
 
 
 class ScanResponse(Model):

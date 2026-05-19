@@ -130,7 +130,7 @@ def format_scan_as_markdown(scan: ScanResponse) -> str:
             f"### {i}. {vuln.type} `[{vuln.severity.upper()}]`",
             f"- **Line:** {vuln.line_number}",
             f"- **Description:** {vuln.description}",
-            f"- **Fix:** {vuln.suggested_fix}",
+            f"- **Fix:** {vuln.suggested_fix or 'No specific fix suggested'}",
             "",
         ])
     return "\n".join(lines)
@@ -150,7 +150,12 @@ def create_text_chat(text: str, end_session: bool = True) -> ChatMessage:
 
 # ---- Scanner agent (chat protocol) ----
 
-scanner = Agent(name="security_scanner")
+scanner = Agent(
+    name="security_scanner",
+    seed="mallika_scanner_2026_xyz",
+    port=8001,
+    mailbox=True,
+)
 chat_proto = Protocol(spec=chat_protocol_spec)
 
 
@@ -188,78 +193,5 @@ async def handle_chat_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
 scanner.include(chat_proto, publish_manifest=True)
 
 
-# ---- Test client (sends a sample request) ----
-
-VULNERABLE_CODE_PROMPT = """Please scan this Python code for security vulnerabilities:
-
-```python
-import sqlite3
-
-def get_user(user_id):
-    conn = sqlite3.connect("users.db")
-    query = f"SELECT * FROM users WHERE id = {user_id}"
-    return conn.execute(query).fetchone()
-
-API_KEY = "sk_live_abc123xyz789supersecret"
-
-def login(username, password):
-    print(f"User {username} logged in with password {password}")
-    return True
-```
-"""
-
-test_client = Agent(name="test_client")
-client_chat_proto = Protocol(spec=chat_protocol_spec)
-
-
-_scan_sent = False  # Module-level flag — resets every process run
-
-
-@test_client.on_interval(period=5.0)
-async def send_test_request(ctx: Context):
-    """Send the test scan request once, shortly after startup."""
-    global _scan_sent
-    if _scan_sent:
-        return
-    _scan_sent = True
-    ctx.logger.info("Sending sample code to scanner via chat protocol...")
-    msg = ChatMessage(
-        timestamp=datetime.utcnow(),
-        msg_id=uuid4(),
-        content=[TextContent(type="text", text=VULNERABLE_CODE_PROMPT)],
-    )
-    await ctx.send(scanner.address, msg)
-
-
-@client_chat_proto.on_message(ChatMessage)
-async def handle_client_response(ctx: Context, sender: str, msg: ChatMessage):
-    """Receive the scanner's reply and log it."""
-    # Acknowledge first
-    await ctx.send(sender, ChatAcknowledgement(
-        timestamp=datetime.utcnow(),
-        acknowledged_msg_id=msg.msg_id,
-    ))
-    for item in msg.content:
-        if isinstance(item, TextContent):
-            ctx.logger.info("=== Scan Result ===")
-            for line in item.text.split("\n"):
-                ctx.logger.info(line)
-
-
-@client_chat_proto.on_message(ChatAcknowledgement)
-async def handle_client_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
-    pass  # silent
-
-
-test_client.include(client_chat_proto)
-
-
-# ---- Bureau (run both agents) ----
-
-bureau = Bureau()
-bureau.add(scanner)
-bureau.add(test_client)
-
-
 if __name__ == "__main__":
-    bureau.run()
+    scanner.run()
