@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from uagents import Agent, Bureau, Context, Protocol
+from uagents import Agent, Context, Protocol
 from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
     ChatMessage,
@@ -69,6 +69,7 @@ Output JSON only. No prose before or after."""
 
 # ---- Helpers ----
 
+
 def extract_code(text: str) -> str:
     """Pull code out of a markdown fence if present, else return the text as-is."""
     match = re.search(r"```(?:\w+)?\n(.*?)```", text, re.DOTALL)
@@ -79,10 +80,7 @@ def extract_code(text: str) -> str:
 
 def scan_code(code: str, language: str = "python") -> ScanResponse:
     """Send code to ASI:One for security review, return structured result."""
-    user_message = (
-        f"Language: {language}\n\n"
-        f"Code:\n```{language}\n{code}\n```"
-    )
+    user_message = f"Language: {language}\n\nCode:\n```{language}\n{code}\n```"
 
     try:
         response = llm_client.chat.completions.create(
@@ -126,13 +124,15 @@ def format_scan_as_markdown(scan: ScanResponse) -> str:
         "",
     ]
     for i, vuln in enumerate(scan.vulnerabilities, 1):
-        lines.extend([
-            f"### {i}. {vuln.type} `[{vuln.severity.upper()}]`",
-            f"- **Line:** {vuln.line_number}",
-            f"- **Description:** {vuln.description}",
-            f"- **Fix:** {vuln.suggested_fix or 'No specific fix suggested'}",
-            "",
-        ])
+        lines.extend(
+            [
+                f"### {i}. {vuln.type} `[{vuln.severity.upper()}]`",
+                f"- **Line:** {vuln.line_number}",
+                f"- **Description:** {vuln.description}",
+                f"- **Fix:** {vuln.suggested_fix or 'No specific fix suggested'}",
+                "",
+            ]
+        )
     return "\n".join(lines)
 
 
@@ -163,10 +163,13 @@ chat_proto = Protocol(spec=chat_protocol_spec)
 async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
     """Process incoming chat messages — extract code, scan, reply."""
     # Always acknowledge first
-    await ctx.send(sender, ChatAcknowledgement(
-        timestamp=datetime.utcnow(),
-        acknowledged_msg_id=msg.msg_id,
-    ))
+    await ctx.send(
+        sender,
+        ChatAcknowledgement(
+            timestamp=datetime.utcnow(),
+            acknowledged_msg_id=msg.msg_id,
+        ),
+    )
 
     for item in msg.content:
         if isinstance(item, StartSessionContent):
