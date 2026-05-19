@@ -76,12 +76,20 @@ Your pull request must pass:
 | `stargazer-gate` | PR author has starred the repo |
 | `contributor-path-check` | New agent folders are only under `contributors/` |
 | `changelog-check` | `contributors/CHANGELOG.md` updated when you change code |
-| `review-required` | At least one approving review (Fetch.ai team) |
+| `review-required` | At least one approving review — **skipped for maintainers** |
 | `lint` / `format` / `typecheck` | Python quality on changed files |
 | `validate-architecture` | Required repo files present |
 | `test` | Runs pytest when tests exist |
 
-**PRs cannot be merged without review approval** when branch protection is enabled (see [.github/BRANCH_PROTECTION.md](../.github/BRANCH_PROTECTION.md)).
+**PRs cannot be merged without review approval** when branch protection is enabled (see [.github/BRANCH_PROTECTION.md](../.github/BRANCH_PROTECTION.md)). Maintainers with repo write access skip this check.
+
+---
+
+## Contributor badge (after your PR merges)
+
+1. Badge is added to your agent `README.md` under `contributors/<your-agent>/`
+2. You are listed in [BADGE_REGISTRY.json](./BADGE_REGISTRY.json)
+3. Install [profile-badge-sync](./profile-badge-sync/README.md) in your `GitHubUsername/GitHubUsername` repo for **automatic** profile README badge, or paste the markdown from the merge comment.
 
 ---
 

@@ -12,21 +12,27 @@ jobs:
   stargazer-gate:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout for maintainer list
+        uses: actions/checkout@v4
       - name: Validate PR author has starred this repository
         env:
           ACTOR: ${{ github.actor }}
           REPO: ${{ github.repository }}
-          TOKEN: ${{ secrets.TOKEN }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python - <<'PY'
           import json
           import os
           import sys
+          import urllib.error
           import urllib.request
+          from pathlib import Path
 
           actor = os.environ["ACTOR"]
+          actor_lc = actor.lower()
           repo = os.environ["REPO"].lower()
           token = os.environ.get("TOKEN", "")
+          owner, name = repo.split("/")
 
           headers = {
               "Accept": "application/vnd.github+json",
@@ -35,16 +41,50 @@ jobs:
           if token:
               headers["Authorization"] = f"Bearer {token}"
 
+          def is_maintainer() -> bool:
+              maintainers = set()
+              maintainers_file = Path(".github/MAINTAINERS")
+              if maintainers_file.exists():
+                  for line in maintainers_file.read_text().splitlines():
+                      line = line.strip().lstrip("@")
+                      if line and not line.startswith("#"):
+                          maintainers.add(line.lower())
+              if actor_lc in maintainers:
+                  return True
+              try:
+                  req = urllib.request.Request(
+                      f"https://api.github.com/orgs/fetchai/members/{actor}",
+                      headers=headers,
+                  )
+                  with urllib.request.urlopen(req) as response:
+                      if response.status == 204:
+                          return True
+              except urllib.error.HTTPError as e:
+                  if e.code != 404:
+                      raise
+              try:
+                  req = urllib.request.Request(
+                      f"https://api.github.com/repos/{owner}/{name}/collaborators/{actor}/permission",
+                      headers=headers,
+                  )
+                  with urllib.request.urlopen(req) as response:
+                      perm = json.loads(response.read().decode("utf-8"))
+                      return perm.get("permission") in ("admin", "maintain", "write")
+              except urllib.error.HTTPError:
+                  return False
+
+          if is_maintainer():
+              print(f"Maintainer @{actor}: stargazer gate skipped.")
+              sys.exit(0)
+
           has_starred = False
           for page in range(1, 31):
               url = f"https://api.github.com/users/{actor}/starred?per_page=100&page={page}"
               request = urllib.request.Request(url, headers=headers)
               with urllib.request.urlopen(request) as response:
                   payload = json.loads(response.read().decode("utf-8"))
-
               if not payload:
                   break
-
               if any(item.get("full_name", "").lower() == repo for item in payload):
                   has_starred = True
                   break
@@ -131,22 +171,66 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
-      - name: Require at least one approving review
+      - name: Checkout for maintainer list
+        uses: actions/checkout@v4
+      - name: Require review (skipped for maintainers)
         uses: actions/github-script@v7
         with:
           script: |
+            const fs = require("fs");
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+            const authorLc = author.toLowerCase();
             const { owner, repo } = context.repo;
-            const pull_number = context.payload.pull_request.number;
+
+            const fromMaintainersFile = () => {
+              const path = ".github/MAINTAINERS";
+              if (!fs.existsSync(path)) return false;
+              return fs
+                .readFileSync(path, "utf8")
+                .split("\n")
+                .map((l) => l.trim().replace(/^@/, ""))
+                .filter((l) => l && !l.startsWith("#"))
+                .some((u) => u.toLowerCase() === authorLc);
+            };
+
+            let isMaintainer = fromMaintainersFile();
+            if (!isMaintainer) {
+              try {
+                await github.rest.orgs.checkMembershipForUser({
+                  org: "fetchai",
+                  username: author,
+                });
+                isMaintainer = true;
+              } catch (_) {}
+            }
+            if (!isMaintainer) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner,
+                  repo,
+                  username: author,
+                });
+                isMaintainer = ["admin", "maintain", "write"].includes(data.permission);
+              } catch (_) {}
+            }
+
+            if (isMaintainer) {
+              core.info(`Maintainer @${author}: review-required skipped.`);
+              return;
+            }
+
             const reviews = await github.rest.pulls.listReviews({
               owner,
               repo,
-              pull_number,
+              pull_number: pr.number,
             });
             const approved = reviews.data.some((r) => r.state === "APPROVED");
             if (!approved) {
               core.setFailed(
                 "This PR needs at least one approving review from a maintainer before merge. " +
-                "See CONTRIBUTING.md and .github/BRANCH_PROTECTION.md."
+                  "Maintainers (Fetch.ai org / repo write access) skip this check. " +
+                  "See CONTRIBUTING.md and .github/BRANCH_PROTECTION.md."
               );
             } else {
               core.info("Review requirement satisfied.");

@@ -212,8 +212,17 @@ PRs also use a default template:
 ## Merge Policy
 
 - Direct merges to `main` are not allowed.
-- **No PR may merge without at least one approving review** from the Fetch.ai team (`@fetchai` — see [.github/CODEOWNERS](.github/CODEOWNERS)).
-- The `review-required` CI job enforces approval; maintainers must also enable branch protection — see [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md).
+- **External contributors:** PRs need at least one approving review (`review-required` CI).
+- **Maintainers** (Fetch.ai org, repo `write`/`admin`, or listed in [.github/MAINTAINERS](.github/MAINTAINERS)) **skip** `review-required` and `stargazer-gate` — you can merge your own PRs after other CI checks pass.
+- Enable branch protection on `main` — see [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md).
+
+## Contributor badges (after merge)
+
+When a **fork contributor’s PR is merged** with changes under `contributors/`:
+
+1. The [**Award Contributor Badge**](.github/workflows/award-contributor-badge.yml) workflow adds the badge to the agent README and [contributors/BADGE_REGISTRY.json](contributors/BADGE_REGISTRY.json).
+2. A comment on the PR includes markdown for your **GitHub Profile README**.
+3. For **automatic** profile README updates, install the one-time workflow from [contributors/profile-badge-sync/](contributors/profile-badge-sync/README.md) in your `username/username` repo.
 - Community users can open PRs; merge happens only after review approval and passing CI.
 - New community agent folders must be under `contributors/` (`contributor-path-check`).
 - Branch protection on `main` should require:

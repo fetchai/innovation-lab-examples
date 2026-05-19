@@ -5,6 +5,9 @@ All notable changes to this repository are documented in this file.
 ## [Unreleased]
 
 ### Added
+- Auto badge workflow [award-contributor-badge.yml](.github/workflows/award-contributor-badge.yml) for merged external contributor PRs; [BADGE_REGISTRY.json](contributors/BADGE_REGISTRY.json) and [profile-badge-sync](contributors/profile-badge-sync/) for GitHub Profile README
+- Maintainer bypass for `review-required` and `stargazer-gate` (Fetch.ai org, repo write access, [.github/MAINTAINERS](.github/MAINTAINERS))
+- GitHub issues #54–#91 for intermediate bugs, docs, and `ai-agent-idea` challenges
 - `contributors/` folder with [contributors/README.md](contributors/README.md) guide and [contributors/CHANGELOG.md](contributors/CHANGELOG.md) for community agent submissions
 - CI gates: `contributor-path-check`, `changelog-check`, and `review-required` (no merge without approval when branch protection is enabled)
 - Issue templates: contributor good-first tasks and real-time agent challenge
