@@ -6,9 +6,15 @@ Use this guide to raise clear, actionable issues for this repository.
 
 This repo is part of the **Fetch.ai Innovation Lab open-source program**. Community members can:
 
-1. **Pick labeled issues** — `good first issue`, `help wanted`, or `challenge`
+1. **Pick labeled issues** — `good first issue`, `help wanted`, `challenge`, or **`fetch-tech`** (uAgents / Agentverse / ASI:One)
 2. **Build new agents** under [`contributors/<your-agent-name>/`](contributors/README.md)
 3. **Open a PR** that passes CI and receives maintainer approval before merge
+
+### Fetch.ai stack issues (full briefs)
+
+Issues tagged **`fetch-tech`**, **`uagents`**, **`agentverse`**, or **`asi-one`** focus on Innovation Lab patterns — chat protocol, mailbox deploy, ASI:One, FET/Skyfire payments, A2A bridges, and multi-agent bureaus. Each issue includes acceptance criteria and repo references.
+
+Browse: [fetch-tech issues](https://github.com/fetchai/innovation-lab-examples/issues?q=is%3Aissue+is%3Aopen+label%3Afetch-tech)
 
 See [contributors/README.md](contributors/README.md) for the full contributor workflow.
 
