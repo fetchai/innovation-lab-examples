@@ -70,6 +70,7 @@ dmypy.json
 !requirements.txt
 !package.json
 !tsconfig.json
+!contributors/BADGE_REGISTRY.json
 !pyproject.toml
 
 # Docker
