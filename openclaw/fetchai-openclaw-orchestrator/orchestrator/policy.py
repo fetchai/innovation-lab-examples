@@ -5,6 +5,7 @@ Enforces planning-time rules *before* a task plan is dispatched:
   • User ownership validation
   • Quota / rate limits
   • Workflow allowlist
+  • scan_directory path sandbox (demo projects only by default)
   • (Future) paid feature gating
 """
 
@@ -14,6 +15,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 
+from shared.paths import is_path_under_demo
 from shared.schemas import RejectionReason, TaskPlan
 
 logger = logging.getLogger(__name__)
@@ -71,6 +73,21 @@ class FetchPolicy:
         self._timestamps[user_id].append(now)
         return None
 
+    def check_scan_paths(self, plan: TaskPlan) -> RejectionReason | None:
+        for step in plan.steps:
+            if step.action != "scan_directory":
+                continue
+            raw_path = step.params.get("path")
+            if raw_path is None:
+                continue
+            if not is_path_under_demo(str(raw_path)):
+                logger.warning(
+                    "scan_directory path '%s' is outside demo sandbox",
+                    raw_path,
+                )
+                return RejectionReason.PATH_NOT_ALLOWED
+        return None
+
     def check_plan(self, plan: TaskPlan) -> RejectionReason | None:
         if len(plan.steps) > self.max_steps_per_plan:
             logger.warning(
@@ -86,7 +103,7 @@ class FetchPolicy:
                 logger.warning("Action '%s' not in allowlist", step.action)
                 return RejectionReason.ACTION_NOT_ALLOWED
 
-        return None
+        return self.check_scan_paths(plan)
 
     def validate(self, user_id: str, plan: TaskPlan) -> RejectionReason | None:
         """Run all policy checks.  Returns *None* on success."""

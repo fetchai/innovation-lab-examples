@@ -4,6 +4,10 @@ All notable changes to this repository are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- `openclaw/fetchai-openclaw-orchestrator`: enforce `scan_directory` sandbox to `DEMO_PROJECTS_DIR` by default — orchestrator and connector policies reject paths like `~/Documents`; planner and executor normalize paths; opt-in `OPENCLAW_EXTENDED_PATHS` restores broader local paths for development
+
 ### Added
 - `security-scanner-agent/`: LLM-powered code security analysis agent that scans code snippets via ASI:One and returns structured vulnerability reports (type, severity, line number, description, suggested fix). Built on a multi-agent Bureau using the standard Agent Chat Protocol; ASI:One-compatible and discoverable on Agentverse.
 - `ticketlens-agent/`: Live real-time travel discovery AI agent powered by TicketLens MCP. High-precision reasoning utilizing the ASI1 LLM, persistent `uAgents` storage, and directly actionable booking deep links.

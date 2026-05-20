@@ -2,8 +2,9 @@
 
 import tempfile
 
-from shared.schemas import StepType, TaskPlan, TaskStatus, TaskStep
 from connector.executor import execute_plan
+from shared.paths import demo_projects_dir
+from shared.schemas import StepType, TaskPlan, TaskStatus, TaskStep
 
 
 def test_execute_summarise_text():
@@ -50,12 +51,13 @@ def test_execute_mixed_steps():
 
 
 def test_scan_directory_nonexistent_path():
+    missing = demo_projects_dir() / "_nonexistent_subdir_xyz"
     plan = TaskPlan(
         steps=[
             TaskStep(
                 type=StepType.LOCAL,
                 action="scan_directory",
-                params={"path": "/nonexistent/path/xyz"},
+                params={"path": str(missing)},
             )
         ]
     )
@@ -66,8 +68,9 @@ def test_scan_directory_nonexistent_path():
     assert "error" in scan_out
 
 
-def test_pipeline_chaining():
+def test_pipeline_chaining(monkeypatch):
     """scan_directory → generate_report should chain outputs."""
+    monkeypatch.setenv("OPENCLAW_EXTENDED_PATHS", "1")
     with tempfile.TemporaryDirectory() as tmpdir:
         plan = TaskPlan(
             steps=[
