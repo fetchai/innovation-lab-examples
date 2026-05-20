@@ -35,6 +35,10 @@ All notable changes to this repository are documented in this file.
 - Missing `README.md` for `duffel-agent`, `deploy-agent-on-av`
 
 
+### Fixed
+
+- `Crewai-agents/trip_planner/tools/calculator_tools.py`: replace unsafe `eval()` in `CalculatorTools.calculate` with AST-based math evaluation so LLM-supplied input cannot execute arbitrary Python code
+
 ### Changed
 
 - `README.md` rewritten with project overview, quickstart guide, categorized examples index table, folder structure, Docker instructions, and resource links
