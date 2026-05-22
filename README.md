@@ -72,7 +72,7 @@ innovation-lab-examples/
 │   └── ISSUE_TEMPLATE/
 │
 ├── fetch-hackathon-quickstarter/   # Start here!
-├── advance-agent-examples/         # Advanced patterns
+├── google-adk/                     # Google ADK agent patterns
 ├── gemini-quickstart/              # Google Gemini series
 ├── anthropic-quickstart/           # Claude series
 ├── ...                             # 30+ examples below
@@ -141,9 +141,10 @@ innovation-lab-examples/
 
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
-| [advance-agent-examples](advance-agent-examples/) | Advanced patterns — sub-agents, search, policy, security, SEO, due diligence | Python, uAgents, Google ADK | 🟡–🔴 Collection |
+| [google-adk](google-adk/) | Google ADK patterns — sub-agents, search, policy, security, SEO, due diligence | Python, uAgents, Google ADK | 🟡–🔴 Collection |
 | [Crewai-agents](Crewai-agents/) | CrewAI agents — trip planner, code analyzer, meeting prep, blood report | Python, CrewAI, uAgents | 🟡–🔴 Collection |
 | [ag2-agents](ag2-agents/) | AG2 framework — research synthesis, payment approval | Python, AG2, uAgents | 🔴 Advanced |
+| [video-to-map-agent](video-to-map-agent/) | Multi-video travel itinerary planner with maps, weather, PDF/Excel, and Stripe | Python, uAgents, ASI:One, Stripe, Google Maps | 🔴 Advanced |
 | [community_agent](community_agent/) | AI community growth agent for events and hackathons | Python, uAgents, ASI:One, Tavily | 🟡 Intermediate |
 
 ### 🌐 Web3 & Blockchain

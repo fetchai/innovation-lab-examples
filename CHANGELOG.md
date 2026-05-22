@@ -30,7 +30,7 @@ All notable changes to this repository are documented in this file.
 - `.dockerignore` for clean Docker builds
 - `.github/workflows/ci.yml` — push-to-main CI (lint, format, architecture, test)
 - Tagging and categorization guidelines in `CONTRIBUTING.md`
-- Missing `requirements.txt` for `community_agent`, `av-script-example`, `asi1-llm-example`, `advance-agent-examples/{search,policy,basic}_agent`
+- Missing `requirements.txt` for `community_agent`, `av-script-example`, `asi1-llm-example`, `google-adk/{search,policy,basic}_agent`
 - Missing `.env.example` for `community_agent`, `duffel-agent`, `deploy-agent-on-av`, `asi-cloud-agent`, `pdf-summariser-example`, `flight-tracker-openai-workflow-agent`, `google-genai-parallel-processing/brand-management-agent`, `Rag-agent/ango`, `asi1-llm-example`
 - Missing `README.md` for `duffel-agent`, `deploy-agent-on-av`
 
