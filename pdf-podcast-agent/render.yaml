@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: pdf-podcast-agent
+    runtime: python
+    plan: standard
+    buildCommand: |
+      pip install -r requirements.txt
+      apt-get install -y ffmpeg || true
+    startCommand: python run.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AGENTVERSE_API_KEY
+        sync: false
+      - key: ORCHESTRATOR_SEED
+        sync: false
+      - key: EXTRACTOR_SEED
+        sync: false
+      - key: SCRIPTWRITER_SEED
+        sync: false
+      - key: VOICE_STUDIO_SEED
+        sync: false
+      - key: TTS_MODEL
+        value: "tts-1"
+      - key: EXTRACTION_MODEL
+        value: "gpt-4o-mini"
+      - key: SCRIPTWRITER_MODEL
+        value: "gpt-4o-mini"
+      - key: SILENCE_MS
+        value: "400"
+      - key: OUTPUT_DIR
+        value: "/tmp/podcast_output"

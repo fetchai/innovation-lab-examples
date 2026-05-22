@@ -1,0 +1,28 @@
+# Environment & secrets
+.env
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Agent runtime state (deterministic — regenerated on startup)
+agent1q*_data.json
+
+# Generated output
+output/*.mp3
+output/*.docx
+output/*.png
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

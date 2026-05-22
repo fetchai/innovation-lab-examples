@@ -145,6 +145,7 @@ innovation-lab-examples/
 | [Crewai-agents](Crewai-agents/) | CrewAI agents — trip planner, code analyzer, meeting prep, blood report | Python, CrewAI, uAgents | 🟡–🔴 Collection |
 | [ag2-agents](ag2-agents/) | AG2 framework — research synthesis, payment approval | Python, AG2, uAgents | 🔴 Advanced |
 | [community_agent](community_agent/) | AI community growth agent for events and hackathons | Python, uAgents, ASI:One, Tavily | 🟡 Intermediate |
+| [pdf-podcast-agent](pdf-podcast-agent/) | PDF-to-podcast with live debate, Q&A, and Stripe payments | Python, uAgents, ASI:One, OpenAI TTS, Stripe | 🔴 Advanced |
 
 ### 🌐 Web3 & Blockchain
 
