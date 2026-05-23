@@ -5,6 +5,17 @@ All notable changes to this repository are documented in this file.
 ## [Unreleased]
 
 ### Added
+- Auto badge workflow [award-contributor-badge.yml](.github/workflows/award-contributor-badge.yml) for merged external contributor PRs; [BADGE_REGISTRY.json](contributors/BADGE_REGISTRY.json) and [profile-badge-sync](contributors/profile-badge-sync/) for GitHub Profile README
+- Maintainer bypass for `review-required` and `stargazer-gate` (Fetch.ai org, repo write access, [.github/MAINTAINERS](.github/MAINTAINERS))
+- GitHub issues #54–#91 for intermediate bugs, docs, and `ai-agent-idea` challenges
+- `contributors/` folder with [contributors/README.md](contributors/README.md) guide and [contributors/CHANGELOG.md](contributors/CHANGELOG.md) for community agent submissions
+- CI gates: `contributor-path-check`, `changelog-check`, and `review-required` (no merge without approval when branch protection is enabled)
+- Issue templates: contributor good-first tasks and real-time agent challenge
+- `.github/BRANCH_PROTECTION.md` maintainer setup for required reviews and status checks
+
+### Changed
+- `community_agent/` moved to `contributors/community_agent/` — all new community agents must use `contributors/<agent-name>/`
+- `CONTRIBUTING.md`, `README.md`, `ISSUES_GUIDE.md`, and PR template updated for contributor folder workflow
 - `security-scanner-agent/`: LLM-powered code security analysis agent that scans code snippets via ASI:One and returns structured vulnerability reports (type, severity, line number, description, suggested fix). Built on a multi-agent Bureau using the standard Agent Chat Protocol; ASI:One-compatible and discoverable on Agentverse.
 - `ticketlens-agent/`: Live real-time travel discovery AI agent powered by TicketLens MCP. High-precision reasoning utilizing the ASI1 LLM, persistent `uAgents` storage, and directly actionable booking deep links.
 - `openclaw/`: OpenClaw examples — `fetchai-openclaw-orchestrator` (connector + orchestrator, repo health analyzer) and `agentverse-caller` (OpenClaw skill to search and message Agentverse agents)

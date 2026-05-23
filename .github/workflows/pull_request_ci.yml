@@ -2,29 +2,37 @@ name: Pull Request CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   stargazer-gate:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout for maintainer list
+        uses: actions/checkout@v4
       - name: Validate PR author has starred this repository
         env:
           ACTOR: ${{ github.actor }}
           REPO: ${{ github.repository }}
-          TOKEN: ${{ secrets.TOKEN }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python - <<'PY'
           import json
           import os
           import sys
+          import urllib.error
           import urllib.request
+          from pathlib import Path
 
           actor = os.environ["ACTOR"]
+          actor_lc = actor.lower()
           repo = os.environ["REPO"].lower()
           token = os.environ.get("TOKEN", "")
+          owner, name = repo.split("/")
 
           headers = {
               "Accept": "application/vnd.github+json",
@@ -33,16 +41,50 @@ jobs:
           if token:
               headers["Authorization"] = f"Bearer {token}"
 
+          def is_maintainer() -> bool:
+              maintainers = set()
+              maintainers_file = Path(".github/MAINTAINERS")
+              if maintainers_file.exists():
+                  for line in maintainers_file.read_text().splitlines():
+                      line = line.strip().lstrip("@")
+                      if line and not line.startswith("#"):
+                          maintainers.add(line.lower())
+              if actor_lc in maintainers:
+                  return True
+              try:
+                  req = urllib.request.Request(
+                      f"https://api.github.com/orgs/fetchai/members/{actor}",
+                      headers=headers,
+                  )
+                  with urllib.request.urlopen(req) as response:
+                      if response.status == 204:
+                          return True
+              except urllib.error.HTTPError as e:
+                  if e.code != 404:
+                      raise
+              try:
+                  req = urllib.request.Request(
+                      f"https://api.github.com/repos/{owner}/{name}/collaborators/{actor}/permission",
+                      headers=headers,
+                  )
+                  with urllib.request.urlopen(req) as response:
+                      perm = json.loads(response.read().decode("utf-8"))
+                      return perm.get("permission") in ("admin", "maintain", "write")
+              except urllib.error.HTTPError:
+                  return False
+
+          if is_maintainer():
+              print(f"Maintainer @{actor}: stargazer gate skipped.")
+              sys.exit(0)
+
           has_starred = False
           for page in range(1, 31):
               url = f"https://api.github.com/users/{actor}/starred?per_page=100&page={page}"
               request = urllib.request.Request(url, headers=headers)
               with urllib.request.urlopen(request) as response:
                   payload = json.loads(response.read().decode("utf-8"))
-
               if not payload:
                   break
-
               if any(item.get("full_name", "").lower() == repo for item in payload):
                   has_starred = True
                   break
@@ -57,6 +99,142 @@ jobs:
           )
           sys.exit(1)
           PY
+
+  changelog-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require changelog update for code changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+          CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          if [ -z "$CHANGED" ]; then
+            echo "No files changed."
+            exit 0
+          fi
+          # Doc-only PRs skip changelog
+          NON_DOC="$(echo "$CHANGED" | grep -vE '\.(md|MD)$' || true)"
+          if [ -z "$NON_DOC" ]; then
+            echo "Documentation-only change; skipping changelog check."
+            exit 0
+          fi
+          ONLY_CONTRIBUTORS="$(echo "$NON_DOC" | grep -vE '^contributors/' || true)"
+          if [ -z "$ONLY_CONTRIBUTORS" ]; then
+            if echo "$CHANGED" | grep -q '^contributors/CHANGELOG.md$'; then
+              echo "contributors/CHANGELOG.md updated."
+              exit 0
+            fi
+            echo "Update contributors/CHANGELOG.md for changes under contributors/."
+            exit 1
+          fi
+          if echo "$CHANGED" | grep -q '^CHANGELOG.md$'; then
+            echo "CHANGELOG.md updated."
+            exit 0
+          fi
+          echo "Update CHANGELOG.md (or contributors/CHANGELOG.md for community agents)."
+          exit 1
+
+  contributor-path-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Block new top-level agent folders (use contributors/)
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.sha }}"
+          ADDED_TOP="$(git diff --name-only --diff-filter=A "$BASE_SHA" "$HEAD_SHA" | awk -F/ 'NF>1{print $1}' | sort -u)"
+          EXISTING_TOP="$(git ls-tree -d --name-only "$BASE_SHA" | sort -u)"
+          for dir in $ADDED_TOP; do
+            case "$dir" in
+              contributors|.github|docs) continue ;;
+            esac
+            if ! echo "$EXISTING_TOP" | grep -qx "$dir"; then
+              echo "New top-level folder '$dir' is not allowed for community agents."
+              echo "Add new agents under contributors/<your-agent-name>/ — see contributors/README.md"
+              exit 1
+            fi
+          done
+          echo "Contributor path check passed."
+
+  review-required:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout for maintainer list
+        uses: actions/checkout@v4
+      - name: Require review (skipped for maintainers)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+            const authorLc = author.toLowerCase();
+            const { owner, repo } = context.repo;
+
+            const fromMaintainersFile = () => {
+              const path = ".github/MAINTAINERS";
+              if (!fs.existsSync(path)) return false;
+              return fs
+                .readFileSync(path, "utf8")
+                .split("\n")
+                .map((l) => l.trim().replace(/^@/, ""))
+                .filter((l) => l && !l.startsWith("#"))
+                .some((u) => u.toLowerCase() === authorLc);
+            };
+
+            let isMaintainer = fromMaintainersFile();
+            if (!isMaintainer) {
+              try {
+                await github.rest.orgs.checkMembershipForUser({
+                  org: "fetchai",
+                  username: author,
+                });
+                isMaintainer = true;
+              } catch (_) {}
+            }
+            if (!isMaintainer) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner,
+                  repo,
+                  username: author,
+                });
+                isMaintainer = ["admin", "maintain", "write"].includes(data.permission);
+              } catch (_) {}
+            }
+
+            if (isMaintainer) {
+              core.info(`Maintainer @${author}: review-required skipped.`);
+              return;
+            }
+
+            const reviews = await github.rest.pulls.listReviews({
+              owner,
+              repo,
+              pull_number: pr.number,
+            });
+            const approved = reviews.data.some((r) => r.state === "APPROVED");
+            if (!approved) {
+              core.setFailed(
+                "This PR needs at least one approving review from a maintainer before merge. " +
+                  "Maintainers (Fetch.ai org / repo write access) skip this check. " +
+                  "See CONTRIBUTING.md and .github/BRANCH_PROTECTION.md."
+              );
+            } else {
+              core.info("Review requirement satisfied.");
+            }
 
   lint:
     runs-on: ubuntu-latest
@@ -145,7 +323,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          REQUIRED_FILES=("README.md" "CONTRIBUTING.md" "LICENSE")
+          REQUIRED_FILES=("README.md" "CONTRIBUTING.md" "LICENSE" "contributors/README.md")
           for file in "${REQUIRED_FILES[@]}"; do
             if [ ! -f "$file" ]; then
               echo "Missing required repository file: $file"
