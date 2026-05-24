@@ -13,7 +13,7 @@ Usage:
 import sys
 from uagents import Agent, Context
 
-from models import WeatherRequest, WeatherResponse   # ← shared schemas
+from models import WeatherRequest, WeatherResponse  # ← shared schemas
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -62,7 +62,6 @@ async def handle_response(ctx: Context, sender: str, msg: WeatherResponse):
         print(f"  Humidity     : {msg.humidity_percent} %")
         print(f"  Wind speed   : {msg.wind_speed_kmh} km/h")
     print()
-    
 
 
 if __name__ == "__main__":

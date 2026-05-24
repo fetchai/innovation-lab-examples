@@ -13,11 +13,13 @@ from uagents import Model
 
 class WeatherRequest(Model):
     """Sent by the client: the city name to look up."""
+
     city: str
 
 
 class WeatherResponse(Model):
     """Returned by the agent: current weather conditions."""
+
     city: str
     temperature_c: float
     feels_like_c: float
