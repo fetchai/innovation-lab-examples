@@ -3,9 +3,7 @@
 import json
 import os
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
+import requests
 from datetime import datetime
 from typing import Any
 
@@ -43,25 +41,18 @@ def _save_json_file(path: str, payload: dict[str, Any]) -> None:
 
 
 def _post_form(url: str, data: dict[str, Any]) -> dict[str, Any]:
-    encoded = urllib.parse.urlencode(data).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=encoded,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-
     try:
-        with urllib.request.urlopen(req, timeout=20) as response:
-            body = response.read().decode("utf-8")
-        return json.loads(body)
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8") if exc.fp else ""
+        response = requests.post(url, data=data, timeout=20)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as exc:
+        body = exc.response.text
         try:
-            parsed = json.loads(body) if body else {}
-        except json.JSONDecodeError:
+            parsed = exc.response.json()
+        except Exception:
             parsed = {}
         if "error" not in parsed:
-            parsed["error"] = f"http_{exc.code}"
+            parsed["error"] = f"http_{exc.response.status_code}"
         if "error_description" not in parsed and body:
             parsed["error_description"] = body
         return parsed

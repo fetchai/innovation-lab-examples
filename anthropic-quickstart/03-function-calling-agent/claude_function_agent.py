@@ -197,8 +197,12 @@ def calculate(expression: str) -> dict:
             'pow': pow,
         }
         
+        import re
+        if not re.match(r'^[0-9a-zA-Z+\-*/().\s]+$', str(expression)):
+            raise ValueError("Invalid characters in mathematical expression")
+
         # Evaluate the expression
-        result = eval(expression, {"__builtins__": {}}, safe_dict)
+        result = eval(expression, {"__builtins__": {}}, safe_dict)  # nosec B307
         
         return {
             "expression": expression,

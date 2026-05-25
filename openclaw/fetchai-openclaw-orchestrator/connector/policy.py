@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -40,7 +41,7 @@ _DEMO_DIR = os.getenv("DEMO_PROJECTS_DIR", "./demo_projects")
 DEFAULT_ALLOWED_PATHS: list[str] = [
     os.path.expanduser("~/projects"),
     os.path.expanduser("~/Documents"),
-    "/tmp",
+    tempfile.gettempdir(),
     str(Path(_DEMO_DIR).resolve()),  # demo directory (safe testing)
     str(Path(".").resolve()),  # current working directory
 ]
