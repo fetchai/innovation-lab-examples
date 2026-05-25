@@ -142,10 +142,13 @@ class GitHubDeviceFlowHandler:
                     f"{self.api_base}/user",
                     headers={'Authorization': f'token {access_token}'}
                 )
-                
+
+                # Initialize scopes to a safe default in case header is missing
+                scopes = scopes_response.headers.get('X-OAuth-Scopes', '') if scopes_response is not None else ''
+
                 # GitHub returns scopes in the X-OAuth-Scopes header
-                if 'X-OAuth-Scopes' in scopes_response.headers:
-                    scopes = scopes_response.headers['X-OAuth-Scopes']
+                if scopes_response is not None and 'X-OAuth-Scopes' in scopes_response.headers:
+                    scopes = scopes_response.headers.get('X-OAuth-Scopes', '')
                     user_info['token_scopes'] = scopes
                     print(f" Token scopes: {scopes}")
                 
@@ -533,12 +536,15 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
                                 headers={'Authorization': f'token {item.text}'}
                             )
                             
+                            # Initialize scopes to a safe default in case header is missing
+                            scopes = scopes_response.headers.get('X-OAuth-Scopes', '') if scopes_response is not None else ''
+
                             # GitHub returns scopes in the X-OAuth-Scopes header
-                            if 'X-OAuth-Scopes' in scopes_response.headers:
-                                scopes = scopes_response.headers['X-OAuth-Scopes']
+                            if scopes_response is not None and 'X-OAuth-Scopes' in scopes_response.headers:
+                                scopes = scopes_response.headers.get('X-OAuth-Scopes', '')
                                 user_info['token_scopes'] = scopes
                                 ctx.logger.info(f"Token validated with required scopes")
-                            
+
                             if 'repo' not in scopes:
                                 response_text = "❌ **Token Missing Permissions**\n\nYour token doesn't have 'repo' scope needed to create repositories.\n\nPlease create a new token at https://github.com/settings/tokens/new with these scopes:\n- ✅ repo\n- ✅ user:email\n- ✅ read:user"
                             else:
