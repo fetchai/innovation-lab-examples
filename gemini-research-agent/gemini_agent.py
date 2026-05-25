@@ -1,21 +1,19 @@
-from uagents import Agent, Context, Model
+from datetime import datetime
+from uuid import uuid4
+from uagents import Agent, Context, Protocol
+from uagents_core.contrib.protocols.chat import (
+    ChatMessage,
+    ChatAcknowledgement,
+    TextContent,
+    chat_protocol_spec,
+)
 from google import genai
 from dotenv import load_dotenv
 
 # Load environment variables (ensure GEMINI_API_KEY is in your .env)
 load_dotenv()
 
-
-# --- 1. Define the Message Data Models ---
-class ResearchRequest(Model):
-    topic: str
-
-
-class ResearchResponse(Model):
-    summary: str
-
-
-# --- 2. Initialize the Agent ---
+# --- 1. Initialize the Agent ---
 research_agent = Agent(
     name="gemini_researcher",
     port=8000,
@@ -23,44 +21,68 @@ research_agent = Agent(
     endpoint=["http://127.0.0.1:8000/submit"],
 )
 
+# Initialize the chat protocol
+chat_proto = Protocol(spec=chat_protocol_spec)
+
 # Initialize the Gemini Client
-# It will automatically pick up the GEMINI_API_KEY from the environment
 gemini_client = genai.Client()
 
-
-# --- 3. Define the Message Handler ---
-@research_agent.on_message(model=ResearchRequest, replies=ResearchResponse)
-async def handle_research_request(ctx: Context, sender: str, msg: ResearchRequest):
-    ctx.logger.info(
-        f"Received research request from {sender[-8:]} for topic: '{msg.topic}'"
+# --- 2. Define the Message Handlers ---
+@chat_proto.on_message(ChatMessage)
+async def handle_research_request(ctx: Context, sender: str, msg: ChatMessage):
+    # Send an immediate acknowledgment that the message was received
+    ack = ChatAcknowledgement(
+        timestamp=datetime.utcnow(),
+        acknowledged_msg_id=msg.msg_id
     )
+    await ctx.send(sender, ack)
 
-    try:
-        # Prompt Engineering for the Agent
-        system_instruction = "You are a concise, highly factual research assistant."
-        prompt = (
-            f"{system_instruction}\n\nProvide a structured summary about: {msg.topic}"
-        )
+    # Extract the text content from the ChatMessage
+    for item in msg.content:
+        if isinstance(item, TextContent):
+            user_query = item.text
+            ctx.logger.info(f"Received research request from {sender[-8:]} for topic: '{user_query}'")
 
-        # Call the Gemini API
-        response = gemini_client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
+            try:
+                # Prompt Engineering for the Agent
+                system_instruction = "You are a concise, highly factual research assistant."
+                prompt = (
+                    f"{system_instruction}\n\nProvide a structured summary about: {user_query}"
+                )
 
-        # Send the AI-generated response back to the sender
-        await ctx.send(sender, ResearchResponse(summary=response.text))
-        ctx.logger.info("Successfully generated and returned the research summary.")
+                # Call the Gemini API
+                response = gemini_client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt,
+                )
 
-    except Exception as e:
-        ctx.logger.error(f"Gemini API Error: {e}")
-        await ctx.send(
-            sender,
-            ResearchResponse(
-                summary=f"Agent Error: Could not process request. {str(e)}"
-            ),
-        )
+                # Package the AI-generated response into a ChatMessage
+                response_msg = ChatMessage(
+                    timestamp=datetime.utcnow(),
+                    msg_id=uuid4(),
+                    content=[TextContent(type="text", text=response.text)]
+                )
+                
+                await ctx.send(sender, response_msg)
+                ctx.logger.info("Successfully generated and returned the research summary.")
 
+            except Exception as e:
+                ctx.logger.error(f"Gemini API Error: {e}")
+                
+                # Package the error into a ChatMessage
+                error_msg = ChatMessage(
+                    timestamp=datetime.utcnow(),
+                    msg_id=uuid4(),
+                    content=[TextContent(type="text", text=f"Agent Error: Could not process request. {str(e)}")]
+                )
+                await ctx.send(sender, error_msg)
+
+@chat_proto.on_message(ChatAcknowledgement)
+async def handle_acknowledgement(ctx: Context, sender: str, msg: ChatAcknowledgement):
+    ctx.logger.info(f"Received acknowledgement from {sender} for message: {msg.acknowledged_msg_id}")
+
+# Include the protocol in your agent
+research_agent.include(chat_proto, publish_manifest=True)
 
 if __name__ == "__main__":
     research_agent.run()
