@@ -109,16 +109,16 @@ tools = [
 async def call_icp_endpoint(func_name: str, args: dict):
     if func_name == "get_current_fee_percentiles":
         url = f"{BASE_URL}/get-current-fee-percentiles"
-        response = requests.post(url, headers=HEADERS, json={})
+        response = requests.post(url, headers=HEADERS, json={}, timeout=10)
     elif func_name == "get_balance":
         url = f"{BASE_URL}/get-balance"
-        response = requests.post(url, headers=HEADERS, json={"address": args["address"]})
+        response = requests.post(url, headers=HEADERS, json={"address": args["address"]}, timeout=10)
     elif func_name == "get_utxos":
         url = f"{BASE_URL}/get-utxos"
-        response = requests.post(url, headers=HEADERS, json={"address": args["address"]})
+        response = requests.post(url, headers=HEADERS, json={"address": args["address"]}, timeout=10)
     elif func_name == "send":
         url = f"{BASE_URL}/send"
-        response = requests.post(url, headers=HEADERS, json=args)
+        response = requests.post(url, headers=HEADERS, json=args, timeout=10)
     else:
         raise ValueError(f"Unsupported function call: {func_name}")
     response.raise_for_status()
@@ -141,7 +141,8 @@ async def process_query(query: str, ctx: Context) -> str:
         response = requests.post(
             f"{ASI1_BASE_URL}/chat/completions",
             headers=ASI1_HEADERS,
-            json=payload
+            json=payload,
+            timeout=30
         )
         response.raise_for_status()
         response_json = response.json()
@@ -188,7 +189,8 @@ async def process_query(query: str, ctx: Context) -> str:
         final_response = requests.post(
             f"{ASI1_BASE_URL}/chat/completions",
             headers=ASI1_HEADERS,
-            json=final_payload
+            json=final_payload,
+            timeout=30
         )
         final_response.raise_for_status()
         final_response_json = final_response.json()

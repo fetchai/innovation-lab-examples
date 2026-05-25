@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import requests
 import json
+import os
 
 app = Flask(__name__)
 
@@ -24,7 +25,7 @@ def search_products():
         
         # Call search agent with POST request
         payload = {"query": query}
-        response = requests.post(f"{AGENTS['search']}/search", json=payload)
+        response = requests.post(f"{AGENTS['search']}/search", json=payload, timeout=10)
         response.raise_for_status()
         
         # Agent returns JSON directly
@@ -65,7 +66,7 @@ def get_product_info():
         
         # Call info agent with POST request
         payload = {"barcode": barcode}
-        response = requests.post(f"{AGENTS['info']}/product", json=payload)
+        response = requests.post(f"{AGENTS['info']}/product", json=payload, timeout=10)
         response.raise_for_status()
         
         # Agent returns JSON directly
@@ -128,4 +129,4 @@ if __name__ == '__main__':
     print("Available endpoints:")
     print("- Main interface: http://127.0.0.1:5000")
     print("- Health check: http://127.0.0.1:5000/health")
-    app.run(host='127.0.0.1', port=5000, debug=True) 
+    app.run(host='127.0.0.1', port=5000, debug=os.environ.get('FLASK_DEBUG') == '1')

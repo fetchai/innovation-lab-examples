@@ -58,8 +58,8 @@ def get_daily_forecast(lat: float, lng: float, target_date: str) -> dict:
             )
             if date_str == target_date:
                 return day
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error fetching daily forecast: {e}")
     return {}
 
 
@@ -234,9 +234,9 @@ def _append_log_rows(excel_path: str, trip_date: str, per_stop_rows: list) -> No
             row += 1
 
         wb.save(excel_path)
-    except Exception:
+    except Exception as e:
         # Never let excel bookkeeping break the actual monitoring.
-        pass
+        print(f"Error writing to excel: {e}")
 
 
 @agent.on_interval(period=86400.0)
