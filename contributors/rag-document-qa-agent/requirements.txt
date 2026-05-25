@@ -1,0 +1,8 @@
+uagents
+langchain
+langchain-google-genai
+chromadb
+sentence-transformers
+pypdf
+python-dotenv
+ruff

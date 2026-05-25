@@ -156,6 +156,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [contributors/community_agent](contributors/community_agent/) | AI community growth agent for events and hackathons | Python, uAgents, ASI:One, Tavily | 🟡 Intermediate |
+| [contributors/rag-document-qa-agent](contributors/rag-document-qa-agent/) | RAG-based document Q&A agent using Gemini 2.0 Flash | Python, uAgents, LangChain, ChromaDB, Gemini | 🟡 Intermediate |
 
 ### 🌐 Web3 & Blockchain
 
