@@ -22,15 +22,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ASI_ONE_API_KEY = (
-    os.getenv("ASI_ONE_API_KEY")
-    or os.getenv("ASI1_API_KEY")
-    or ""
+    os.getenv("ASI_ONE_API_KEY") or os.getenv("ASI1_API_KEY") or ""
 ).strip()
 ASI_ONE_MODEL = os.getenv("ASI_ONE_MODEL", "asi1")
 ASI_ONE_CHAT_URL = "https://api.asi1.ai/v1/chat/completions"
 
 
-def _chat_completion(messages: list[dict[str, str]], *, max_tokens: int = 200) -> str | None:
+def _chat_completion(
+    messages: list[dict[str, str]], *, max_tokens: int = 200
+) -> str | None:
     """Synchronous helper that performs a single chat-completion call."""
     if not ASI_ONE_API_KEY:
         return None
@@ -48,7 +48,9 @@ def _chat_completion(messages: list[dict[str, str]], *, max_tokens: int = 200) -
     }
 
     try:
-        resp = requests.post(ASI_ONE_CHAT_URL, json=payload, headers=headers, timeout=45)
+        resp = requests.post(
+            ASI_ONE_CHAT_URL, json=payload, headers=headers, timeout=45
+        )
         if not resp.ok:
             return None
         data = resp.json()
@@ -68,7 +70,11 @@ async def summarise_article(*, title: str, description: str) -> str:
     Falls back to the raw description (truncated) when ASI1 is unavailable.
     """
     raw = (description or "").strip()
-    fallback = raw[:200] + ("…" if len(raw) > 200 else "") if raw else "Tap to read the full article."
+    fallback = (
+        raw[:200] + ("…" if len(raw) > 200 else "")
+        if raw
+        else "Tap to read the full article."
+    )
 
     if not ASI_ONE_API_KEY:
         return fallback

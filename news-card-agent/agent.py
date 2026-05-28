@@ -27,7 +27,12 @@ async def startup(ctx: Context):
     ctx.logger.info("=== News Card Agent ===")
     ctx.logger.info(f"News backend: {active_backend()}")
     ctx.logger.info(
-        "ASI1 LLM: " + ("enabled" if (os.getenv("ASI_ONE_API_KEY") or os.getenv("ASI1_API_KEY")) else "disabled (fallback summaries)")
+        "ASI1 LLM: "
+        + (
+            "enabled"
+            if (os.getenv("ASI_ONE_API_KEY") or os.getenv("ASI1_API_KEY"))
+            else "disabled (fallback summaries)"
+        )
     )
     ctx.logger.info("Chat with the agent to receive a news card.")
 

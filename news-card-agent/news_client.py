@@ -132,7 +132,9 @@ def _fetch_tavily(query: str | None, limit: int) -> list[Article]:
             continue
 
         article_id = "tv_" + _short_id(url)
-        image_url = image_urls[idx] if idx < len(image_urls) else _placeholder_image(article_id)
+        image_url = (
+            image_urls[idx] if idx < len(image_urls) else _placeholder_image(article_id)
+        )
         image_url = _force_https(image_url)
 
         content = (item.get("content") or item.get("raw_content") or "").strip()
@@ -187,7 +189,9 @@ def _detect_category(query: str | None) -> str | None:
     return None
 
 
-def _fetch_newsapi(query: str | None, category: str | None, limit: int) -> list[Article]:
+def _fetch_newsapi(
+    query: str | None, category: str | None, limit: int
+) -> list[Article]:
     """Fetch articles from NewsAPI.org. Requires NEWS_API_KEY."""
     params: dict[str, Any] = {
         "pageSize": min(limit, 20),
@@ -229,7 +233,9 @@ def _fetch_newsapi(query: str | None, category: str | None, limit: int) -> list[
             continue
 
         article_id = "na_" + _short_id(url_field)
-        image_url = _force_https(raw.get("urlToImage") or _placeholder_image(article_id))
+        image_url = _force_https(
+            raw.get("urlToImage") or _placeholder_image(article_id)
+        )
 
         description = (raw.get("description") or raw.get("content") or "").strip()
         if not description:

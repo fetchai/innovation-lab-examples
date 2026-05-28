@@ -140,7 +140,8 @@ def build_article_detail_payload(article: Article) -> dict[str, Any]:
                     },
                     {
                         "type": "text",
-                        "value": article.description or "Tap the source link below to read the full article.",
+                        "value": article.description
+                        or "Tap the source link below to read the full article.",
                         "style": "body",
                     },
                     {"type": "divider"},

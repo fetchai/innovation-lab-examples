@@ -56,7 +56,9 @@ ARTICLE_KEY_PREFIX = "news:article:"
 def _store_articles(ctx: Context, articles: list[Article]) -> None:
     """Persist articles in storage so we can look them up on card click."""
     for article in articles:
-        ctx.storage.set(ARTICLE_KEY_PREFIX + article.article_id, json.dumps(article.to_dict()))
+        ctx.storage.set(
+            ARTICLE_KEY_PREFIX + article.article_id, json.dumps(article.to_dict())
+        )
 
 
 def _load_article(ctx: Context, article_id: str) -> Article | None:
@@ -80,11 +82,16 @@ async def _send_news_card(ctx: Context, sender: str, query: str) -> None:
         articles = await fetch_news(query=query)
     except Exception as exc:
         ctx.logger.exception("News fetch failed")
-        await ctx.send(sender, create_text_chat(f"Sorry, I couldn't fetch the news right now: {exc}"))
+        await ctx.send(
+            sender,
+            create_text_chat(f"Sorry, I couldn't fetch the news right now: {exc}"),
+        )
         return
 
     if not articles:
-        await ctx.send(sender, create_text_chat("No news articles found. Try a different topic?"))
+        await ctx.send(
+            sender, create_text_chat("No news articles found. Try a different topic?")
+        )
         return
 
     _store_articles(ctx, articles)
@@ -100,14 +107,17 @@ async def _send_news_card(ctx: Context, sender: str, query: str) -> None:
     preamble, *summaries_list = await asyncio.gather(preamble_task, *summary_tasks)
 
     summaries = {
-        article.article_id: summary for article, summary in zip(articles, summaries_list)
+        article.article_id: summary
+        for article, summary in zip(articles, summaries_list)
     }
 
     message = build_news_list_message(
         preamble=preamble,
         articles=articles,
         summaries=summaries,
-        title="Latest News" if not query or query.lower() in {"latest", "news"} else f"News · {query.title()}",
+        title="Latest News"
+        if not query or query.lower() in {"latest", "news"}
+        else f"News · {query.title()}",
     )
     await ctx.send(sender, message)
     ctx.logger.info(f"Sent news card with {len(articles)} articles to {sender}")
