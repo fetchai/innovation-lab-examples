@@ -8,14 +8,20 @@
 User-facing entry point for the job-application workflow. The user pastes
 a Greenhouse job link in chat and **watches the actual Greenhouse form
 fill in real time** — both as inline screenshots streamed into the chat
-and (optionally) as a visible Chromium window on the local machine. Every
-filled value is editable and the user explicitly decides when to submit
-(`submit` runs a safe dry-run; `submit live` actually posts via the
-Greenhouse boards-api).
+and (optionally) as a visible Chromium window that **stays open for the
+duration of the session** so the user can scroll, edit, or double-check
+the live form directly. Every filled value is editable from chat (chat
+edits also re-type into the live browser) and the user explicitly decides
+when to submit (`submit` runs a safe dry-run; `submit live` actually
+posts via the Greenhouse boards-api).
 
 The live-fill is powered by Playwright driving the real Greenhouse posting
 page; the form-fill is purely visual, while the actual submission still
 goes through the submitter agent's boards-api path (which is captcha-free).
+Dropdown answers ("No", "US Citizen", …) are fuzzy-mapped to the real
+Greenhouse option labels before being stored or clicked, so short
+profile-stored answers correctly resolve to long option text like
+"I have never worked at Robinhood as a full-time employee or intern".
 
 ## Why this agent
 
@@ -60,9 +66,16 @@ cp .env.example .env
 
 | Value | What happens |
 |---|---|
-| `chat` (default) | Headless Chromium fills the form; PNG screenshots stream into ASI:One as `ResourceContent` messages. |
-| `headed` | Same screenshots PLUS a visible Chromium window pops up on the user's machine. |
-| `off` | Skip Playwright entirely — chat just shows the text-only field preview panel. |
+| `chat` | Headless Chromium fills the form; PNG screenshots stream into chat. |
+| `headed` (default) | Same screenshots PLUS a visible Chromium window stays open on the agent host for the entire session — chat edits are typed into it in real time. |
+| `off` | Skip Playwright entirely — chat just shows the text-only form panel. |
+
+Screenshots are uploaded to a public host ([catbox.moe](https://catbox.moe))
+and sent as a `TextContent` with markdown image syntax — chat clients
+inline-render this much more reliably than `agent-storage://` resources.
+If catbox is unreachable the code falls back to Agentverse external
+storage and then to a plain text form panel, so the chat UX degrades
+gracefully.
 
 Boot the three helper agents first and copy each one's startup address
 (`Agent starting: ... at agent1q...`) into `form-filler-agent/.env`:
@@ -112,11 +125,15 @@ application starts more pre-filled.
 
 ## Internals
 
-- `agent.py`     — chat protocol handler + state-machine driver + Agentverse reg
-- `session.py`   — `Session` dataclass + state enum + `ctx.storage` helpers
-- `clients.py`   — wire-model copies + `ctx.send_and_receive` wrappers for the 3 helpers
-- `rendering.py` — chat formatters (job summary, form panel, field detail, submission result)
-- `commands.py`  — free-text → `Command` parser
+- `agent.py`         — chat protocol handler + state-machine driver + Agentverse reg
+- `session.py`       — `Session` dataclass + state enum + `ctx.storage` helpers
+- `clients.py`       — wire-model copies + `ctx.send_and_receive` wrappers for the 3 helpers
+- `rendering.py`     — chat formatters (job summary, form panel, field detail, submission result)
+- `commands.py`      — free-text → `Command` parser
+- `chat_llm.py`      — ASI:One natural-language → intent interpreter (so `hi`, `what's next`, `say no` all work)
+- `chat_assets.py`   — image upload helpers (public host + Agentverse storage) + chat message builders
+- `browser_filler.py`— Playwright `BrowserSession`: opens, fills, and stays open; handles native `<select>` and react-select widgets
+- `options.py`       — fuzzy match a free-text answer ("no") to the closest dropdown option label
 
 The agent never executes business logic itself — it only orchestrates
 the three helpers and renders their results. That keeps each helper
