@@ -63,8 +63,17 @@ def parse(text: str) -> Command:
     if lower in {"help", "?", "/help"}:
         return Command(kind="help", raw=raw)
 
-    if lower in {"cancel", "reset", "abort"}:
+    if lower in {"cancel", "reset", "abort", "restart", "start over"}:
         return Command(kind="cancel", raw=raw)
+
+    # Friendly greetings — handled separately so a "hi" mid-review doesn't
+    # look like an unknown form command.
+    if lower in {
+        "hi", "hello", "hey", "yo", "sup", "hii", "hiya",
+        "good morning", "good afternoon", "good evening",
+        "hi there", "hello there",
+    }:
+        return Command(kind="greet", raw=raw)
 
     if lower == "next":
         return Command(kind="next", raw=raw)

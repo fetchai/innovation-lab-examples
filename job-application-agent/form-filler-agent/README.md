@@ -6,9 +6,16 @@
 ![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
 
 User-facing entry point for the job-application workflow. The user pastes
-a Greenhouse job link in chat and **watches the form fill in real time**,
-with every value visible and editable. The user explicitly decides when
-to submit (`submit` runs a safe dry-run; `submit live` actually posts).
+a Greenhouse job link in chat and **watches the actual Greenhouse form
+fill in real time** — both as inline screenshots streamed into the chat
+and (optionally) as a visible Chromium window on the local machine. Every
+filled value is editable and the user explicitly decides when to submit
+(`submit` runs a safe dry-run; `submit live` actually posts via the
+Greenhouse boards-api).
+
+The live-fill is powered by Playwright driving the real Greenhouse posting
+page; the form-fill is purely visual, while the actual submission still
+goes through the submitter agent's boards-api path (which is captcha-free).
 
 ## Why this agent
 
@@ -44,8 +51,18 @@ helpers together while keeping the user in the loop.
 cd job-application-agent/form-filler-agent
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
+# One-time: install the Chromium build Playwright drives for the live fill.
+python -m playwright install chromium
 cp .env.example .env
 ```
+
+`LIVE_FILL_MODE` in `.env` controls the in-chat browser preview:
+
+| Value | What happens |
+|---|---|
+| `chat` (default) | Headless Chromium fills the form; PNG screenshots stream into ASI:One as `ResourceContent` messages. |
+| `headed` | Same screenshots PLUS a visible Chromium window pops up on the user's machine. |
+| `off` | Skip Playwright entirely — chat just shows the text-only field preview panel. |
 
 Boot the three helper agents first and copy each one's startup address
 (`Agent starting: ... at agent1q...`) into `form-filler-agent/.env`:

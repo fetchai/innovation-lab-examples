@@ -27,6 +27,14 @@ class ExtractJobRequest(Model):
 
 
 class ExtractJobResponse(Model):
+    """Wire response. `job_json` is the JSON-encoded `extractor.JobInfo` dump.
+
+    JSON-as-string is used (instead of a nested model or `dict`) because
+    uagents builds its message schema with pydantic v1 internals, which can't
+    introspect nested pydantic v2 BaseModel fields or `Any`. Receivers can
+    rehydrate with `JobInfo.model_validate_json(msg.job_json)`.
+    """
+
     success: bool
     error: Optional[str] = None
     job_json: Optional[str] = None

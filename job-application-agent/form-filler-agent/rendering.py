@@ -55,13 +55,43 @@ def format_job_summary(sess: Session) -> str:
     return "\n".join(lines)
 
 
-def format_panel(sess: Session) -> str:
-    """Render the form-preview panel (filled + missing).
+def format_panel_compact(sess: Session) -> str:
+    """Single-line summary of the form state — used as a caption beside
+    the live-fill screenshot so the chat doesn't double up on form
+    information. The screenshot IS the form; this is just the score."""
+    filled = sess.filled or []
+    missing = sess.missing_required or []
+    not_in_filled = [m for m in missing if not any(f["name"] == m for f in filled)]
+    total = len(filled) + len(not_in_filled)
 
-    Uses a leading-marker style instead of a fixed-width box because emoji
-    widths differ across chat clients (1 codepoint vs 2 display cells) and
-    a right border would shred the alignment. Each line still reads as a
-    clear status row.
+    head = f"**{len(filled)}/{total} fields filled**"
+    if missing:
+        labels: list[str] = []
+        for name in missing[:5]:
+            label = ""
+            for q in sess.questions:
+                for f in q.get("fields") or []:
+                    if f.get("name") == name:
+                        label = q.get("label") or ""
+                        break
+                if label:
+                    break
+            labels.append(label or name)
+        more = f" (+{len(missing) - 5} more)" if len(missing) > 5 else ""
+        return (
+            f"{head} · **Still need:** {', '.join(labels)}{more}\n"
+            f"_Reply in plain English (e.g. \"my work auth is US Citizen\") to fill anything. "
+            f"Say `submit` when ready._"
+        )
+    return f"{head} · 🎉 _All required fields filled — say `submit` whenever you're ready._"
+
+
+def format_panel(sess: Session) -> str:
+    """Detailed form-preview panel (filled + missing).
+
+    Reserved for explicit `show all` requests — the default flow uses the
+    live-fill screenshot + `format_panel_compact` because that's a much
+    better chat UX than dumping every field as text.
     """
     filled = sess.filled
     missing = sess.missing_required
