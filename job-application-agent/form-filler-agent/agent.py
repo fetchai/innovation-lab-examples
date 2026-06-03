@@ -68,9 +68,14 @@ import chat_llm  # noqa: E402
 import clients  # noqa: E402
 import rendering  # noqa: E402
 import session as session_mod  # noqa: E402
-from browser_filler import FillEvent, live_fill  # noqa: E402
+from browser_filler import BrowserSession, FillEvent  # noqa: E402
 from commands import Command, parse as parse_command  # noqa: E402
 from session import Session, State  # noqa: E402
+
+
+# Per-user persistent browser sessions. Opened on `apply`, closed on
+# submit-live / cancel / when a new application URL arrives.
+_live_browser_sessions: dict[str, BrowserSession] = {}
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 load_dotenv(Path(__file__).resolve().parent / ".env")
@@ -397,14 +402,13 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
     sess.state = State.REVIEWING
     session_mod.save(ctx.storage, sess)
 
-    # If the live-fill streamed screenshots, that IS the form preview — we
-    # just add a compact one-liner under it so the user knows the score and
-    # what's left. Only fall back to the full text panel if Playwright was
-    # disabled or the live-fill itself failed.
+    # Screenshots are the primary surface (uploaded to a public host so
+    # they actually render inline). Fall back to the text form panel only
+    # if no screenshot reached chat.
     if live_fill_succeeded:
         await _say(ctx, sender, rendering.format_panel_compact(sess))
     else:
-        await _say(ctx, sender, rendering.format_panel(sess))
+        await _say(ctx, sender, rendering.format_form_panel(sess))
         await _say(
             ctx, sender,
             rendering.format_commands_hint(
@@ -413,60 +417,135 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         )
 
 
+async def _close_browser_session(sender: str) -> None:
+    """Close and drop the user's live browser session if any."""
+    bs = _live_browser_sessions.pop(sender, None)
+    if bs is not None:
+        try:
+            await bs.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
 async def _run_live_fill(
     ctx: Context, sender: str, sess: Session, application_url: str
 ) -> bool:
-    """Stream the actual Greenhouse form filling into the chat as a sequence
-    of text + screenshot ChatMessages. Best-effort: returns True if at least
-    one screenshot was streamed (so the caller can skip the verbose text
-    fallback), False otherwise."""
+    """Open a persistent Playwright session and stream the initial fill
+    into chat. Browser stays OPEN after this returns — agent edits and
+    submit/cancel control the eventual close. Returns True if at least one
+    screenshot reached the chat."""
     headed = LIVE_FILL_MODE == "headed"
     mode_note = (
-        "I'll also pop a Chrome window on your machine so you can watch / "
-        "interact directly."
+        "I'll pop a Chrome window on your machine so you can watch / edit "
+        "the form directly, and I'll stream screenshots into chat too."
         if headed
-        else "I'll stream screenshots into the chat as it fills."
+        else "I'll stream screenshots of the real Greenhouse page into the chat."
     )
 
     await _say(
         ctx, sender,
-        f"🎬 Opening the real Greenhouse form so you can see it fill. {mode_note}",
+        f"🎬 Opening the real Greenhouse form. {mode_note}",
     )
 
-    streamed_any = False
+    # If there was an old browser open for this user, close it first.
+    await _close_browser_session(sender)
 
-    # Build the list the browser filler iterates. Skip file fields here —
-    # they're attached separately using sess.resume_path.
+    bs = BrowserSession(
+        application_url,
+        headless=not headed,
+        resume_path=sess.resume_path,
+    )
+    try:
+        await bs.open()
+    except Exception as exc:  # noqa: BLE001
+        ctx.logger.warning(f"live-fill: browser open failed: {exc}")
+        await _say(
+            ctx, sender,
+            f"⚠️ Couldn't open the live form ({exc}). The application is "
+            "still filled out — I'll show it as text instead.",
+        )
+        return False
+
+    _live_browser_sessions[sender] = bs
+
+    # File fields first so user sees the resume attach early.
     fillables = []
     for f in sess.filled:
         ftype = (f.get("ftype") or "").lower()
         if ftype in {"input_file", "file"}:
-            # Insert the file field FIRST so users see the attach early.
             fillables.insert(0, f)
         else:
             fillables.append(f)
 
+    streamed_any = False
     try:
-        async for event in live_fill(
-            application_url,
-            fillables,
-            resume_path=sess.resume_path,
-            headless=not headed,
-            screenshot_every_n_fields=LIVE_FILL_SCREENSHOT_EVERY,
+        async for event in bs.initial_fill(
+            fillables, screenshot_every_n_fields=LIVE_FILL_SCREENSHOT_EVERY
         ):
-            sent_image = await _handle_fill_event(ctx, sender, event)
-            if sent_image:
+            if await _handle_fill_event(ctx, sender, event):
                 streamed_any = True
     except Exception as exc:  # noqa: BLE001
-        ctx.logger.warning(f"live fill failed: {exc}")
+        ctx.logger.warning(f"live-fill: initial_fill failed: {exc}")
+
+    if headed:
         await _say(
             ctx, sender,
-            f"⚠️ Couldn't render the live form: {exc}. The form is still "
-            "filled out behind the scenes — I'll show it as text instead.",
+            "_The Chrome window stays open — feel free to scroll, edit, or "
+            "double-check anything. Just tell me when you're ready to `submit`._",
         )
-        return False
 
     return streamed_any
+
+
+async def _send_screenshot(
+    ctx: Context,
+    sender: str,
+    png_bytes: bytes,
+    caption: Optional[str],
+) -> bool:
+    """Deliver a screenshot to chat. Tries a public host first (markdown
+    image syntax — most reliable inline render) and falls back to
+    Agentverse external storage if that fails. Returns True on success."""
+    public_url = chat_assets.upload_public_image(
+        png_bytes,
+        filename="form-preview.png",
+        mime_type="image/png",
+        logger=ctx.logger,
+    )
+    if public_url:
+        try:
+            await ctx.send(
+                sender,
+                chat_assets.make_markdown_image_message(
+                    public_url, caption=caption
+                ),
+            )
+            return True
+        except Exception as exc:  # noqa: BLE001
+            ctx.logger.warning(f"failed to send markdown image: {exc}")
+
+    uploaded = chat_assets.upload_image(
+        png_bytes,
+        name_prefix="form-fill",
+        mime_type="image/png",
+        grant_to_address=sender,
+        logger=ctx.logger,
+    )
+    if uploaded:
+        asset_id, asset_uri = uploaded
+        if caption:
+            await _say(ctx, sender, caption)
+        try:
+            await ctx.send(
+                sender, chat_assets.make_image_message(asset_id, asset_uri)
+            )
+            return True
+        except Exception as exc:  # noqa: BLE001
+            ctx.logger.warning(f"failed to send agent-storage image: {exc}")
+
+    if caption:
+        await _say(ctx, sender, caption)
+    return False
 
 
 async def _handle_fill_event(ctx: Context, sender: str, event: FillEvent) -> bool:
@@ -490,30 +569,8 @@ async def _handle_fill_event(ctx: Context, sender: str, event: FillEvent) -> boo
     if event.kind in {"screenshot", "done"}:
         if not event.screenshot_png:
             return False
-
         caption = ("📸 " + event.message) if event.message else None
-        uploaded = chat_assets.upload_image(
-            event.screenshot_png,
-            name_prefix="form-fill",
-            mime_type="image/png",
-            grant_to_address=sender,
-        )
-        if uploaded:
-            asset_id, asset_uri = uploaded
-            try:
-                await ctx.send(
-                    sender,
-                    chat_assets.make_image_message(
-                        asset_id, asset_uri, caption=caption
-                    ),
-                )
-                return True
-            except Exception as exc:  # noqa: BLE001
-                ctx.logger.warning(f"failed to send image message: {exc}")
-        # Fallback: just send the caption text so user knows progress.
-        if caption:
-            await _say(ctx, sender, caption)
-        return False
+        return await _send_screenshot(ctx, sender, event.screenshot_png, caption)
 
     if event.kind == "error":
         await _say(ctx, sender, f"⚠️ live-fill: {event.error}")
@@ -536,7 +593,7 @@ async def _handle_review_command(
         return
 
     if cmd.kind == "show_all":
-        await _say(ctx, sender, rendering.format_panel(sess))
+        await _say(ctx, sender, rendering.format_form_panel(sess))
         return
 
     if cmd.kind == "show":
@@ -588,6 +645,7 @@ async def _handle_review_command(
 
     if cmd.kind == "cancel":
         session_mod.clear(ctx.storage, sender)
+        await _close_browser_session(sender)
         await _say(ctx, sender, "✓ Session cancelled.", end_session=True)
         return
 
@@ -626,10 +684,11 @@ async def _llm_handle(
 
     if intent == "cancel":
         session_mod.clear(ctx.storage, sender)
+        await _close_browser_session(sender)
         return
 
     if intent == "show_all":
-        await _say(ctx, sender, rendering.format_panel(sess))
+        await _say(ctx, sender, rendering.format_form_panel(sess))
         return
 
     if intent == "show":
@@ -715,6 +774,25 @@ async def _apply_field_edit(
 
     await _save_edit_to_profile(ctx, label=label, field_name=name, value=resolved)
 
+    # If a live browser session is open, type the edit into the page too so
+    # the user sees the visible form update — and ship a fresh screenshot.
+    bs = _live_browser_sessions.get(sender)
+    if bs is not None and bs.is_open:
+        meta = sess.field_meta(name) or {}
+        ftype = meta.get("type") or ""
+        try:
+            ok, png, detail = await bs.apply_edit(name, resolved, ftype=ftype)
+            ctx.logger.info(
+                f"live-fill edit name={name!r} ok={ok} detail={detail!r}"
+            )
+            if ok and png is not None:
+                await _send_screenshot(
+                    ctx, sender, png,
+                    caption=f"📸 Updated `{name}` → `{resolved}`",
+                )
+        except Exception as exc:  # noqa: BLE001
+            ctx.logger.warning(f"live-fill apply_edit failed: {exc}")
+
     tail = (
         "All required fields are filled — say `submit` whenever you're ready."
         if not sess.missing_required
@@ -798,6 +876,8 @@ async def _do_submit(
 
     if resp.success and not resp.dry_run:
         sess.state = State.DONE
+        # Application landed — tear the browser down.
+        await _close_browser_session(sender)
     else:
         sess.state = State.REVIEWING  # let user retry / inspect
     session_mod.save(ctx.storage, sess)
@@ -858,6 +938,7 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage):
 
     if cmd.kind == "cancel":
         session_mod.clear(ctx.storage, sender)
+        await _close_browser_session(sender)
         await _say(ctx, sender, "✓ Session cleared.", end_session=True)
         return
 

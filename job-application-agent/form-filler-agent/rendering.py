@@ -86,6 +86,89 @@ def format_panel_compact(sess: Session) -> str:
     return f"{head} · 🎉 _All required fields filled — say `submit` whenever you're ready._"
 
 
+def _value_display(value: Any, ftype: str) -> str:
+    ftype = (ftype or "").lower()
+    if ftype in {"input_file", "file"}:
+        return f"📎 `{value}`"
+    if isinstance(value, list):
+        return ", ".join(str(v) for v in value)
+    if value in (None, ""):
+        return "_(empty)_"
+    s = str(value).replace("\n", " ").strip()
+    return f"`{_truncate(s, 80)}`"
+
+
+def format_form_panel(sess: Session) -> str:
+    """Render the live application as a form-like markdown panel — grouped
+    by question, with the actual question text, value, and a per-field
+    status badge. Designed to look like an HTML `<form>` rendered into
+    chat so the user has real visibility without depending on screenshots."""
+    questions = sess.questions or []
+    filled_by_name = {f.get("name"): f for f in (sess.filled or [])}
+    missing = set(sess.missing_required or [])
+
+    if not questions:
+        return "_(no form fields parsed yet)_"
+
+    filled_count = len(sess.filled or [])
+    missing_count = len(missing)
+    total_count = filled_count + sum(
+        1 for n in missing if n not in filled_by_name
+    )
+
+    header = [
+        f"### 📋 {sess.job_title or 'Application form'}",
+        f"_{sess.job_company or ''}_  ·  **{filled_count}/{total_count} filled**",
+        "",
+        "---",
+    ]
+
+    body: list[str] = []
+    for idx, q in enumerate(questions, start=1):
+        label = (q.get("label") or "").strip()
+        required = bool(q.get("required"))
+        fields = q.get("fields") or []
+        req_mark = " *" if required else ""
+        body.append(f"**{idx}. {label or '(no label)'}**{req_mark}")
+
+        for fld in fields:
+            name = fld.get("name") or "?"
+            ftype = (fld.get("type") or "").lower()
+            filled = filled_by_name.get(name)
+            if filled is not None and filled.get("value") not in (None, ""):
+                badge = "✅"
+                src = filled.get("source") or ""
+                src_glyph = _glyph(src) if src else ""
+                value_md = _value_display(filled.get("value"), ftype)
+                body.append(
+                    f"  - {badge} `{name}` → {value_md}  {src_glyph}_{src}_"
+                )
+            elif name in missing:
+                body.append(
+                    f"  - ⚠️  `{name}` — _needs your input_  "
+                    f"(reply: `answer {name} <value>`)"
+                )
+            else:
+                body.append(f"  - ◻️  `{name}` — _(optional, blank)_")
+
+        body.append("")
+
+    footer = ["---"]
+    if missing_count:
+        footer.append(
+            f"_{missing_count} required field"
+            f"{'s' if missing_count != 1 else ''} still need"
+            f"{'' if missing_count != 1 else 's'} your input._ Say `next` for "
+            "the next missing field, or just answer in plain English."
+        )
+    else:
+        footer.append(
+            "🎉 _All required fields are filled — say `submit` whenever you're ready._"
+        )
+
+    return "\n".join(header + body + footer)
+
+
 def format_panel(sess: Session) -> str:
     """Detailed form-preview panel (filled + missing).
 
