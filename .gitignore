@@ -6,6 +6,12 @@
 # Cursor MCP config (contains Agentverse API token) - keep example template only
 .cursor/mcp.json
 
+# Internal/private docs (never push)
+Fetch Internship - summer Cohort Tasks.md
+
+# Job-application-agent local runtime data (resumes, vector index, agent storage)
+job-application-agent/**/data/
+
 # Python
 __pycache__/
 **/__pycache__/
