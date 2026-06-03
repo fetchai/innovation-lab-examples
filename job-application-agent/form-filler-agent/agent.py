@@ -70,6 +70,7 @@ import rendering  # noqa: E402
 import session as session_mod  # noqa: E402
 from browser_filler import BrowserSession, FillEvent  # noqa: E402
 from commands import Command, parse as parse_command  # noqa: E402
+from options import match_option  # noqa: E402
 from session import Session, State  # noqa: E402
 
 
@@ -318,9 +319,24 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
     # Hydrate session.filled and missing_required from the result.
     sess.filled = []
     for f in (result.get("filled") or []):
+        name = f.get("name")
+        value = f.get("value")
+        # Snap select-type values ("No", "Yes", etc.) to the actual option
+        # label/value the page exposes.
+        meta_for = sess.field_meta(name) if name else None
+        opts = (meta_for or {}).get("values") or (meta_for or {}).get("options") or []
+        if isinstance(opts, list) and opts and value not in (None, "") and not isinstance(value, list):
+            m = match_option(value, opts)
+            if m:
+                snapped = m["value"] or m["label"]
+                if snapped != value:
+                    ctx.logger.info(
+                        f"option-snap (initial): {name!r} {value!r} → {snapped!r}"
+                    )
+                    value = snapped
         sess.set_field(
-            f.get("name"),
-            f.get("value"),
+            name,
+            value,
             source=f.get("source") or "?",
             confidence=float(f.get("confidence") or 0.0),
         )
@@ -469,13 +485,17 @@ async def _run_live_fill(
     _live_browser_sessions[sender] = bs
 
     # File fields first so user sees the resume attach early.
-    fillables = []
+    fillables: list[dict] = []
     for f in sess.filled:
         ftype = (f.get("ftype") or "").lower()
+        enriched = dict(f)
+        meta = sess.field_meta(f.get("name")) or {}
+        enriched["options"] = meta.get("values") or meta.get("options") or []
+        enriched["ftype"] = ftype or meta.get("type") or ""
         if ftype in {"input_file", "file"}:
-            fillables.insert(0, f)
+            fillables.insert(0, enriched)
         else:
-            fillables.append(f)
+            fillables.append(enriched)
 
     streamed_any = False
     try:
@@ -750,19 +770,20 @@ async def _apply_field_edit(
         )
         return
 
-    # Normalise against select option labels → values when possible.
+    # Snap free-text answers like "no" / "us citizen" to the closest
+    # real option label so dropdowns submit the right value.
     meta = sess.field_meta(name) or {}
     opts = meta.get("values") or meta.get("options") or []
     resolved = value
     if isinstance(opts, list) and opts:
-        lower = value.lower().strip()
-        for o in opts:
-            if isinstance(o, dict):
-                label = str(o.get("label") or "").lower()
-                val = str(o.get("value") or "")
-                if label == lower or val.lower() == lower:
-                    resolved = val
-                    break
+        match = match_option(value, opts)
+        if match:
+            resolved = match["value"] or match["label"]
+            if resolved != value:
+                ctx.logger.info(
+                    f"option-snap: {name!r} {value!r} → {resolved!r} "
+                    f"(label={match['label']!r})"
+                )
 
     q = sess.question_for(name)
     label = (q or {}).get("label") or ""
@@ -780,8 +801,11 @@ async def _apply_field_edit(
     if bs is not None and bs.is_open:
         meta = sess.field_meta(name) or {}
         ftype = meta.get("type") or ""
+        options = meta.get("values") or meta.get("options") or []
         try:
-            ok, png, detail = await bs.apply_edit(name, resolved, ftype=ftype)
+            ok, png, detail = await bs.apply_edit(
+                name, resolved, ftype=ftype, options=options
+            )
             ctx.logger.info(
                 f"live-fill edit name={name!r} ok={ok} detail={detail!r}"
             )

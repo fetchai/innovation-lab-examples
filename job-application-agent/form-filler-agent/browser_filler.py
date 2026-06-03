@@ -28,6 +28,8 @@ from playwright.async_api import (
     async_playwright,
 )
 
+from options import match_option
+
 
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -168,6 +170,7 @@ class BrowserSession:
                     name,
                     value,
                     ftype=ftype,
+                    options=f.get("options") or [],
                     type_delay_ms=type_delay_ms,
                 )
                 yield FillEvent(
@@ -203,7 +206,12 @@ class BrowserSession:
             yield FillEvent(kind="done", message="Form filled")
 
     async def apply_edit(
-        self, name: str, value: Any, *, ftype: str = ""
+        self,
+        name: str,
+        value: Any,
+        *,
+        ftype: str = "",
+        options: Optional[list] = None,
     ) -> tuple[bool, Optional[bytes], str]:
         """Type/select `value` into the open browser. Returns
         (success, screenshot_png_or_None, detail)."""
@@ -211,7 +219,9 @@ class BrowserSession:
             return False, None, "browser session is not open"
 
         async with self._lock:
-            ok, detail = await self._fill_one(name, value, ftype=ftype, type_delay_ms=25)
+            ok, detail = await self._fill_one(
+                name, value, ftype=ftype, options=options or [], type_delay_ms=25
+            )
             png: Optional[bytes] = None
             if ok:
                 try:
@@ -281,11 +291,13 @@ class BrowserSession:
         value: Any,
         *,
         ftype: str,
+        options: Optional[list] = None,
         type_delay_ms: int = 25,
     ) -> tuple[bool, str]:
         if self._page is None:
             return False, "page is closed"
         ftype = (ftype or "").lower()
+        options = options or []
 
         if ftype in {"input_file", "file"}:
             if not self.resume_path:
@@ -315,22 +327,47 @@ class BrowserSession:
         except Exception:  # noqa: BLE001
             pass
 
+        # Determine the actual option label/value we want to use.
+        snap = match_option(value, options) if options else None
+        target_label = snap["label"] if snap else str(value)
+        target_value = snap["value"] if snap else str(value)
+
         try:
+            # Native <select>.
             if tag == "select":
-                try:
-                    await loc.select_option(value=str(value))
-                except Exception:  # noqa: BLE001
-                    await loc.select_option(label=str(value))
-                return True, "selected"
+                for attempt in (
+                    lambda: loc.select_option(value=target_value),
+                    lambda: loc.select_option(label=target_label),
+                    lambda: loc.select_option(value=str(value)),
+                    lambda: loc.select_option(label=str(value)),
+                ):
+                    try:
+                        await attempt()
+                        return True, f"selected `{target_label}`"
+                    except Exception:  # noqa: BLE001
+                        continue
+                return False, "select_option exhausted all attempts"
+
+            # Greenhouse react-select / styled dropdowns. The original element
+            # is an <input> (often type="text" with role=combobox). We click
+            # it to open the listbox, then click the matching option.
+            if options:
+                ok, detail = await self._select_styled_dropdown(
+                    loc, name, target_label, target_value
+                )
+                if ok:
+                    return True, detail
+                # If styled-dropdown click failed, fall through to typing as a
+                # best-effort so the user sees *something* in the field.
 
             if ftype in {"input_radio", "radio"}:
                 try:
                     radios = self._page.locator(
-                        f'input[name="{_css_escape(name)}"][value="{_css_escape(str(value))}"]'
+                        f'input[name="{_css_escape(name)}"][value="{_css_escape(target_value)}"]'
                     )
                     if await radios.count() > 0:
                         await radios.first.check(timeout=1500)
-                        return True, "selected radio"
+                        return True, f"checked radio `{target_value}`"
                 except Exception:  # noqa: BLE001
                     pass
 
@@ -339,7 +376,9 @@ class BrowserSession:
             except Exception:  # noqa: BLE001
                 pass
 
-            text_value = str(value) if not isinstance(value, list) else ", ".join(value)
+            text_value = (
+                str(value) if not isinstance(value, list) else ", ".join(value)
+            )
             if len(text_value) <= 80:
                 await loc.type(text_value, delay=type_delay_ms)
             else:
@@ -347,3 +386,66 @@ class BrowserSession:
             return True, f"typed {len(text_value)} chars"
         except Exception as exc:  # noqa: BLE001
             return False, f"interaction failed: {exc}"
+
+    async def _select_styled_dropdown(
+        self,
+        trigger: Locator,
+        name: str,
+        target_label: str,
+        target_value: str,
+    ) -> tuple[bool, str]:
+        """Open a Greenhouse-style react-select dropdown and click the
+        option matching `target_label`. Returns (success, detail)."""
+        if self._page is None:
+            return False, "page closed"
+        try:
+            await trigger.click(timeout=2000)
+        except Exception:  # noqa: BLE001
+            # Sometimes the input itself isn't clickable but its parent
+            # container is — click the container.
+            try:
+                await trigger.evaluate(
+                    "el => (el.closest('[class*=\"select\"],[class*=\"Select\"]') || el).click()"
+                )
+            except Exception:  # noqa: BLE001
+                return False, "couldn't open dropdown"
+
+        await asyncio.sleep(0.25)
+
+        # The listbox is usually rendered into a portal. Look for any
+        # role=option whose visible text contains the target label.
+        normalized_target = target_label.lower().strip()
+        try:
+            options_loc = self._page.locator('[role="option"]')
+            count = await options_loc.count()
+            for i in range(count):
+                opt = options_loc.nth(i)
+                try:
+                    txt = (await opt.inner_text(timeout=500)).strip()
+                except Exception:  # noqa: BLE001
+                    continue
+                if not txt:
+                    continue
+                nt = txt.lower().strip()
+                if (
+                    nt == normalized_target
+                    or normalized_target in nt
+                    or nt in normalized_target
+                ):
+                    try:
+                        await opt.click(timeout=1500)
+                        return True, f"clicked option `{txt}`"
+                    except Exception:  # noqa: BLE001
+                        continue
+        except Exception:  # noqa: BLE001
+            pass
+
+        # Fallback: type the label into the now-focused combobox input and
+        # press Enter — react-select treats this as a filter+select.
+        try:
+            await self._page.keyboard.type(target_label, delay=20)
+            await asyncio.sleep(0.2)
+            await self._page.keyboard.press("Enter")
+            return True, f"filtered+entered `{target_label}`"
+        except Exception as exc:  # noqa: BLE001
+            return False, f"styled-dropdown failed: {exc}"
