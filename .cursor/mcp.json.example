@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "agentverse-lite": {
+      "type": "http",
+      "url": "https://mcp-lite.agentverse.ai/mcp",
+      "timeout": 180000,
+      "env": {
+        "AGENTVERSE_API_TOKEN": "<YOUR_AGENTVERSE_API_TOKEN>"
+      }
+    }
+  }
+}

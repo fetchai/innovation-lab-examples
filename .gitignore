@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Cursor MCP config (contains Agentverse API token) - keep example template only
+.cursor/mcp.json
+
 # Python
 __pycache__/
 **/__pycache__/
