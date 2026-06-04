@@ -5,3 +5,7 @@ python-dotenv>=1.0
 certifi>=2024.7.4
 openai>=1.30
 requests>=2.31
+# FET on-chain payment verification. cosmpy is already pulled in
+# transitively by uagents, but pinning here makes the dependency
+# explicit for the payment gate.
+cosmpy>=0.9

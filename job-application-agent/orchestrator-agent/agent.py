@@ -65,6 +65,7 @@ from uagents_core.utils.registration import (  # noqa: E402
 )
 
 import intents  # noqa: E402
+import payment_proto as payment_mod  # noqa: E402
 import profile_fields  # noqa: E402
 import profile_proxy  # noqa: E402
 import rendering  # noqa: E402
@@ -317,7 +318,6 @@ async def _handle_profile_card_selection(
 
         saved = ", ".join(f"`{k}`" for k in patch)
         await _say(ctx, sender, f"✓ Saved updates to {saved}.")
-        # Re-show the profile overview so the user sees the new state.
         await _handle_show_profile(ctx, sender, sess)
         return
 
@@ -733,22 +733,58 @@ async def _forward_user_followup(
 
 async def _relay_from_form_filler(ctx: Context, msg: ChatMessage) -> None:
     """An inbound ChatMessage from FORM_FILLER_ADDR. Relay its content
-    verbatim to whichever user is currently applying."""
+    to whichever user is currently applying.
+
+    ResourceContent attachments are permission-scoped to the
+    orchestrator's identity by ExternalStorage, so the user's chat
+    client can't download them. Strip them out and surface a short text
+    note instead. (Form-filler's screenshots are already delivered as
+    catbox markdown inside TextContent in the happy path, so dropping
+    these is usually a no-op.)"""
     global _active_apply_user
     if not _active_apply_user:
         ctx.logger.warning(
             "received form-filler reply but no active apply user; dropping"
         )
         return
-    relayed = ChatMessage(
-        timestamp=datetime.now(UTC),
-        msg_id=uuid4(),
-        content=msg.content,
-    )
-    try:
-        await ctx.send(_active_apply_user, relayed)
-    except Exception as exc:  # noqa: BLE001
-        ctx.logger.warning(f"relay to {_active_apply_user} failed: {exc}")
+
+    relayed_content: list = []
+    dropped = 0
+    for c in msg.content:
+        if isinstance(c, ResourceContent):
+            dropped += 1
+            continue
+        relayed_content.append(c)
+    if dropped:
+        ctx.logger.info(
+            f"relay: stripped {dropped} ResourceContent item(s) from "
+            f"form-filler"
+        )
+        relayed_content.append(TextContent(
+            type="text",
+            text=(
+                f"_(form-filler sent {dropped} attachment(s) I can't relay "
+                f"through; the inline screenshots above are still up to "
+                f"date.)_"
+            ),
+        ))
+
+    if not relayed_content:
+        ctx.logger.warning(
+            "relay: nothing to forward after filtering; skipping send"
+        )
+    else:
+        relayed = ChatMessage(
+            timestamp=datetime.now(UTC),
+            msg_id=uuid4(),
+            content=relayed_content,
+        )
+        try:
+            await ctx.send(_active_apply_user, relayed)
+        except Exception as exc:  # noqa: BLE001
+            ctx.logger.warning(
+                f"relay to {_active_apply_user} failed: {exc}"
+            )
 
     if _has_end_session(msg):
         sess = session_mod.load(ctx.storage, _active_apply_user)
@@ -777,12 +813,116 @@ async def _handle_cancel(
     if sess.apply_state == ApplyState.APPLYING and FORM_FILLER_ADDR:
         await _forward_to_form_filler(ctx, "cancel")
 
+    was_payment_pending = sess.apply_state == ApplyState.PAYMENT_PENDING
     sess.apply_state = ApplyState.IDLE
     sess.apply_job_url = None
     session_mod.save(ctx.storage, sess)
     if _active_apply_user == sender:
         _active_apply_user = None
-    await _say(ctx, sender, "✓ Cleared. What would you like to do next?")
+
+    if was_payment_pending:
+        await _say(
+            ctx, sender,
+            "✓ Cancelled the pending application — no charge.",
+        )
+    else:
+        await _say(
+            ctx, sender,
+            "✓ Cleared. What would you like to do next?",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Payment integration
+# ---------------------------------------------------------------------------
+
+
+async def _on_payment_complete(ctx: Context, user_address: str) -> None:
+    """Wired into payment_proto.set_callbacks. Picks up the URL we
+    parked at apply-time and resumes the apply handoff."""
+    sess = session_mod.load(ctx.storage, user_address)
+    parked_url = sess.apply_job_url
+    if not parked_url:
+        await _say(
+            ctx, user_address,
+            "✓ Payment received. I lost track of the job URL — please "
+            "paste it again to start the application.",
+        )
+        sess.apply_state = ApplyState.IDLE
+        session_mod.save(ctx.storage, sess)
+        return
+
+    await _say(
+        ctx, user_address,
+        "✓ Payment confirmed. Starting your application now…",
+    )
+    # _start_apply resets apply_state to APPLYING + apply_job_url.
+    sess.apply_state = ApplyState.IDLE
+    sess.apply_job_url = None
+    session_mod.save(ctx.storage, sess)
+    await _start_apply(ctx, user_address, sess, parked_url)
+
+
+async def _on_payment_failed(
+    ctx: Context, user_address: str, reason: str
+) -> None:
+    """Clear the parked URL and tell the user what happened."""
+    sess = session_mod.load(ctx.storage, user_address)
+    sess.apply_state = ApplyState.IDLE
+    sess.apply_job_url = None
+    session_mod.save(ctx.storage, sess)
+
+    if reason.startswith("buyer_cancelled"):
+        msg = "Payment cancelled — no charge, no application started."
+    elif reason.startswith("buyer_rejected"):
+        msg = (
+            "You rejected the payment. Paste the URL again whenever you "
+            "want to retry."
+        )
+    else:
+        msg = (
+            "⚠️ Payment couldn't be verified. No application was started "
+            "and no charge was made. Paste the URL again to retry."
+        )
+    await _say(ctx, user_address, msg)
+
+
+async def _request_payment_for_apply(
+    ctx: Context,
+    sender: str,
+    sess: OrchestratorSession,
+    job_url: str,
+) -> None:
+    """Park the URL on the session, then send a RequestPayment. The
+    matching CommitPayment will be handled by payment_proto and (on
+    verify success) call back into `_on_payment_complete` which
+    invokes `_start_apply`."""
+    sess.apply_state = ApplyState.PAYMENT_PENDING
+    sess.apply_job_url = job_url
+    session_mod.save(ctx.storage, sess)
+    try:
+        await payment_mod.request_payment_from_user(ctx, sender)
+    except Exception as exc:  # noqa: BLE001
+        ctx.logger.error(f"failed to send RequestPayment: {exc}")
+        sess.apply_state = ApplyState.IDLE
+        sess.apply_job_url = None
+        session_mod.save(ctx.storage, sess)
+        await _say(
+            ctx, sender,
+            rendering.format_error(
+                "Couldn't initiate payment — try again in a moment."
+            ),
+        )
+        return
+    network = "testnet" if payment_mod.use_testnet() else "mainnet"
+    await _say(
+        ctx, sender,
+        (
+            f"💳 Sent a payment request for **{payment_mod.amount_fet()} "
+            f"FET** ({network}). Tap **Approve** on the card above to "
+            f"start filling the form, or **Reject** to cancel."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -825,30 +965,37 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     user_text = _extract_text(msg)
     has_attachment = _has_attachment(msg)
 
-    # If an application is in flight and this isn't an obvious meta command
-    # (cancel / show profile / new URL / attachment), forward the user's
-    # turn straight to form-filler so the existing form-filler chat UX
-    # takes over.
-    if sess.apply_state == ApplyState.APPLYING and not has_attachment:
-        meta_interp = intents.interpret(user_text, has_attachment=False)
-        if meta_interp.intent not in {
-            "cancel", "show_profile", "apply", "list_resumes",
-            "switch_resume", "upload_resume",
-        }:
-            await _forward_user_followup(ctx, sender, user_text)
-            return
-
     ctx.logger.info(
-        f"Chat from {sender}: text={user_text!r} attachment={has_attachment}"
+        f"Chat from {sender}: text={user_text!r} attachment={has_attachment} "
+        f"apply_state={sess.apply_state.value}"
     )
 
+    # Classify once per turn. The result is reused below for the
+    # apply-state passthrough decision *and* the main dispatch — avoids
+    # a duplicate ASI:One call.
     interp = intents.interpret(user_text, has_attachment=has_attachment)
     ctx.logger.info(
         f"Intent={interp.intent!r} field={interp.field!r} value={interp.value!r}"
     )
 
-    # Always send the LLM's reply first when present (warm conversational tone).
-    if interp.reply:
+    # Meta verbs always run through the main dispatch (so the user can
+    # cancel/show profile/start a new apply mid-flow). Everything else
+    # is forwarded to form-filler verbatim while we're applying.
+    APPLY_META_VERBS = {
+        "cancel", "show_profile", "apply", "list_resumes",
+        "switch_resume", "upload_resume",
+    }
+    if (
+        sess.apply_state == ApplyState.APPLYING
+        and not has_attachment
+        and interp.intent not in APPLY_META_VERBS
+    ):
+        await _forward_user_followup(ctx, sender, user_text)
+        return
+
+    # Conversational LLM reply (warm tone). Skip while waiting on a
+    # payment so we don't bury the wallet confirmation prompt.
+    if interp.reply and sess.apply_state != ApplyState.PAYMENT_PENDING:
         await _say(ctx, sender, interp.reply)
 
     if interp.intent == "greet":
@@ -908,7 +1055,40 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
                 "the form.",
             )
             return
-        await _start_apply(ctx, sender, sess, str(interp.value))
+        url = str(interp.value)
+
+        # Already applying? Tear down the old session before starting the
+        # new one so form-filler doesn't stack URLs.
+        if sess.apply_state == ApplyState.APPLYING:
+            if FORM_FILLER_ADDR:
+                await _forward_to_form_filler(ctx, "cancel")
+            await _say(
+                ctx, sender,
+                "_Cancelling the current application and starting the new "
+                "one…_",
+            )
+            sess.apply_state = ApplyState.IDLE
+            sess.apply_job_url = None
+            session_mod.save(ctx.storage, sess)
+
+        # Already waiting on a payment? Re-park the (possibly new) URL but
+        # don't re-send a RequestPayment — the user still has an open one.
+        if sess.apply_state == ApplyState.PAYMENT_PENDING:
+            sess.apply_job_url = url
+            session_mod.save(ctx.storage, sess)
+            await _say(
+                ctx, sender,
+                "💳 You still have a pending payment request. Confirm or "
+                "reject it in your wallet — I'll start as soon as that "
+                "settles. (Or say `cancel` to abort.)",
+            )
+            return
+
+        if payment_mod.gate_active():
+            await _request_payment_for_apply(ctx, sender, sess, url)
+            return
+
+        await _start_apply(ctx, sender, sess, url)
         return
 
     # smalltalk / noop — reply was already sent above; nothing more to do.
@@ -940,6 +1120,14 @@ The single user-facing chat entry for the job-application workflow.
 """
 
 
+# Wire payment callbacks once, before startup events run.
+payment_mod.set_callbacks(
+    on_complete=_on_payment_complete,
+    on_failed=_on_payment_failed,
+)
+payment_mod.set_agent_wallet(agent.wallet)
+
+
 @agent.on_event("startup")
 async def on_startup(ctx: Context):
     ctx.logger.info(
@@ -949,6 +1137,19 @@ async def on_startup(ctx: Context):
         f"Helpers: profile={PROFILE_ADDR or '(unset)'} "
         f"form_filler={FORM_FILLER_ADDR or '(unset)'}"
     )
+    if payment_mod.gate_active():
+        net = "testnet" if payment_mod.use_testnet() else "mainnet"
+        ctx.logger.info(
+            f"Payment gate ACTIVE — {payment_mod.amount_fet()} FET per apply "
+            f"({net}), recipient={agent.wallet.address()}"
+        )
+    elif payment_mod.is_enabled():
+        ctx.logger.warning(
+            "PAYMENT_ENABLED=true but the agent wallet wasn't wired; "
+            "payment gate is INACTIVE."
+        )
+    else:
+        ctx.logger.info("Payment gate disabled (PAYMENT_ENABLED=false)")
     for label, val in [
         ("PROFILE_AGENT_ADDRESS", PROFILE_ADDR),
         ("FORM_FILLER_AGENT_ADDRESS", FORM_FILLER_ADDR),
@@ -985,6 +1186,7 @@ async def on_startup(ctx: Context):
 
 
 agent.include(chat_proto, publish_manifest=True)
+agent.include(payment_mod.payment_proto, publish_manifest=True)
 
 
 if __name__ == "__main__":

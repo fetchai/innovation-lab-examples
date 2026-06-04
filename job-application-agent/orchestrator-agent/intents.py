@@ -113,6 +113,27 @@ GREENHOUSE_URL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Recognised trivial inputs that we want to bypass the LLM for. Going to
+# ASI:One for every "hi" adds ~1-2s of dead air in chat before any
+# response lands, which makes the agent feel laggy even when nothing is
+# actually being computed.
+GREET_WORDS = {
+    "hi", "hii", "hey", "heya", "hello", "hellooo", "yo", "sup",
+    "howdy", "gm", "good morning", "good afternoon", "good evening",
+    "hi there", "hey there", "hello there",
+}
+
+SHOW_PROFILE_PHRASES = {
+    "show profile", "show my profile", "my profile", "view profile",
+    "see profile", "whoami", "who am i", "what do you have on me",
+    "what do you know about me", "profile",
+}
+
+LIST_RESUMES_PHRASES = {
+    "list resumes", "my resumes", "show resumes", "resumes",
+    "list my resumes",
+}
+
 
 def find_greenhouse_url(text: str) -> Optional[str]:
     m = GREENHOUSE_URL_RE.search(text or "")
@@ -124,7 +145,7 @@ def short_circuit(
 ) -> Optional[Interpretation]:
     """Handle the obvious cases without spending a tokens on the LLM."""
     text = (user_text or "").strip()
-    lower = text.lower()
+    lower = text.lower().rstrip(".!?")
 
     if has_attachment:
         return Interpretation(
@@ -140,11 +161,28 @@ def short_circuit(
             reply="🚀 Got it — opening that posting and starting an application.",
         )
 
-    if lower in {"help", "?", "/help", "menu"}:
+    if lower in {"help", "?", "/help", "menu", "what can you do"}:
         return Interpretation(intent="help")
 
-    if lower in {"cancel", "reset", "abort", "stop"}:
+    if lower in {"cancel", "reset", "abort", "stop", "nevermind", "never mind"}:
         return Interpretation(intent="cancel", reply="Okay, cancelling.")
+
+    # Fast-path the chattiest intents so trivial turns feel snappy.
+    if lower in GREET_WORDS:
+        return Interpretation(
+            intent="greet",
+            reply=(
+                "Hey 👋 I can manage your resume + profile and apply to "
+                "Greenhouse jobs for you. Say `help` to see what I do, or "
+                "paste a Greenhouse URL to get started."
+            ),
+        )
+
+    if lower in SHOW_PROFILE_PHRASES:
+        return Interpretation(intent="show_profile")
+
+    if lower in LIST_RESUMES_PHRASES:
+        return Interpretation(intent="list_resumes")
 
     return None
 

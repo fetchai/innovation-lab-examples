@@ -26,6 +26,9 @@ SESSION_KEY_PREFIX = "orch:"
 
 class ApplyState(str, Enum):
     IDLE = "idle"
+    # The user pasted a URL and we've sent them a RequestPayment;
+    # waiting for CommitPayment before we touch form-filler.
+    PAYMENT_PENDING = "payment_pending"
     APPLYING = "applying"
     DONE = "done"
 
