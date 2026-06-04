@@ -54,6 +54,7 @@ from uagents_core.utils.registration import (  # noqa: E402
 )
 
 import intents  # noqa: E402
+import profile_fields  # noqa: E402
 import profile_proxy  # noqa: E402
 import rendering  # noqa: E402
 import session as session_mod  # noqa: E402
@@ -172,6 +173,83 @@ async def _handle_show_profile(
         session_mod.save(ctx.storage, sess)
 
 
+async def _handle_edit_profile(
+    ctx: Context,
+    sender: str,
+    sess: OrchestratorSession,
+    raw_field: str,
+    raw_value: str,
+) -> None:
+    """Apply a single structured-field edit to the user's stored profile.
+
+    Slice 2 covers only the canonical UserProfile fields enumerated in
+    `profile_fields.ALL_KNOWN_FIELDS`. Free-form 'canned answer' edits
+    (e.g. "remember to answer X with Y") will land in a follow-up commit.
+    """
+    if not PROFILE_ADDR:
+        await _say(
+            ctx, sender,
+            rendering.format_error(
+                "Profile agent not configured — set PROFILE_AGENT_ADDRESS "
+                "in orchestrator-agent/.env."
+            ),
+        )
+        return
+
+    field = profile_fields.normalise_field(raw_field)
+    if field is None:
+        await _say(ctx, sender, rendering.format_field_unknown(raw_field or "?"))
+        return
+
+    ok, coerced, err = profile_fields.coerce_value(field, raw_value)
+    if not ok:
+        await _say(ctx, sender, rendering.format_error(err or "couldn't parse value"))
+        return
+
+    # Read-merge-write requires a valid existing profile (UserProfile has
+    # required first_name/last_name/email). If there's no profile yet, the
+    # user has to bootstrap via resume upload first — clear redirect.
+    exists, current, fetch_err = await profile_proxy.fetch_profile(
+        ctx, PROFILE_ADDR, sess.user_key
+    )
+    if fetch_err:
+        await _say(ctx, sender, rendering.format_error(fetch_err))
+        return
+    if not exists:
+        await _say(
+            ctx, sender,
+            (
+                "I don't have a profile for you yet — drop your resume in "
+                "chat first and I'll bootstrap one. Then I can apply this "
+                f"edit ({field} → `{coerced}`)."
+            ),
+        )
+        return
+
+    success, upsert_err = await profile_proxy.upsert_profile_patch(
+        ctx, PROFILE_ADDR, sess.user_key, {field: coerced}
+    )
+    if not success:
+        await _say(
+            ctx, sender,
+            rendering.format_error(upsert_err or "profile save failed"),
+        )
+        return
+
+    # Invalidate the cached profile snapshot so the next `show my profile`
+    # is fresh, and update the in-memory copy for free.
+    if isinstance(current, dict):
+        current[field] = coerced
+        sess.profile_summary = current
+        session_mod.save(ctx.storage, sess)
+
+    ctx.logger.info(f"edit_profile: {field}={coerced!r} for {sess.user_key}")
+    await _say(
+        ctx, sender,
+        rendering.format_edit_confirmation(field, str(coerced)),
+    )
+
+
 async def _handle_stub(
     ctx: Context, sender: str, intent: str, note: str
 ) -> None:
@@ -259,10 +337,14 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         return
 
     if interp.intent == "edit_profile":
-        await _handle_stub(
-            ctx, sender, "edit_profile",
-            "conversational profile editing is coming in the next commit.",
-        )
+        if not interp.field or interp.value in (None, ""):
+            await _say(
+                ctx, sender,
+                "Tell me which field and value to set, e.g. "
+                "*\"my phone is +1-555-1234\"* or *\"set work auth to US Citizen\"*.",
+            )
+            return
+        await _handle_edit_profile(ctx, sender, sess, interp.field, interp.value)
         return
 
     if interp.intent == "upload_resume":
