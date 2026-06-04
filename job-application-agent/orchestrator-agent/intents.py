@@ -24,9 +24,15 @@ except ImportError:
     OpenAI = None  # type: ignore
 
 
-ASI_ONE_API_KEY = os.getenv("ASI_ONE_API_KEY")
-ASI_ONE_MODEL = os.getenv("ASI_ONE_CHAT_MODEL", "asi1-mini")
 ASI_ONE_BASE_URL = "https://api.asi1.ai/v1"
+
+
+def _asi_one_key() -> Optional[str]:
+    return os.getenv("ASI_ONE_API_KEY")
+
+
+def _asi_one_model() -> str:
+    return os.getenv("ASI_ONE_CHAT_MODEL", "asi1-mini")
 
 
 ALLOWED_INTENTS = {
@@ -186,7 +192,8 @@ def interpret(
     if sc is not None:
         return sc
 
-    if not ASI_ONE_API_KEY or OpenAI is None:
+    api_key = _asi_one_key()
+    if not api_key or OpenAI is None:
         return _heuristic_fallback(user_text)
 
     user_prompt = (
@@ -195,9 +202,9 @@ def interpret(
     )
 
     try:
-        client = OpenAI(base_url=ASI_ONE_BASE_URL, api_key=ASI_ONE_API_KEY)
+        client = OpenAI(base_url=ASI_ONE_BASE_URL, api_key=api_key)
         resp = client.chat.completions.create(
-            model=ASI_ONE_MODEL,
+            model=_asi_one_model(),
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},

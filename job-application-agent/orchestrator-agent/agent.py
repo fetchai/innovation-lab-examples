@@ -15,11 +15,13 @@ list_resumes, apply. (Each replies with a 'coming soon' note for now.)
 """
 
 import base64
+import json
 import os
 import ssl
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
+import re
+from typing import Any, Optional
 from uuid import uuid4
 
 import certifi
@@ -46,10 +48,15 @@ from uagents_core.contrib.protocols.chat import (  # noqa: E402
     ChatAcknowledgement,
     ChatMessage,
     EndSessionContent,
+    MetadataContent,
     ResourceContent,
     StartSessionContent,
     TextContent,
     chat_protocol_spec,
+)
+from uagents_core.contrib.protocols.chat.cards import (  # noqa: E402
+    create_card_content,
+    extract_card_response,
 )
 from uagents_core.storage import ExternalStorage  # noqa: E402
 from uagents_core.utils.registration import (  # noqa: E402
@@ -125,13 +132,43 @@ async def _say(
     await ctx.send(sender, _msg(text, end_session=end_session))
 
 
+async def _send_card(
+    ctx: Context,
+    sender: str,
+    payload: Any,
+    *,
+    caption: str = "",
+    drawer_width_px: Optional[int] = 480,
+) -> None:
+    """Send an interactive card. We pair it with a small text caption in
+    the same ChatMessage — without a companion TextContent the platform
+    drops the message entirely (verified by trial)."""
+    content: list = [TextContent(type="text",
+                                 text=caption or "Here's your profile.")]
+    content.append(create_card_content(
+        payload,
+        preferred_drawer_width_px=drawer_width_px,
+    ))
+    await ctx.send(sender, ChatMessage(
+        timestamp=datetime.now(UTC),
+        msg_id=uuid4(),
+        content=content,
+    ))
+
+
+_MY_MENTION_RE = re.compile(r"^\s*@agent1[a-z0-9]{50,}\s*", re.IGNORECASE)
+
+
 def _extract_text(message: ChatMessage) -> str:
     parts: list[str] = []
     for c in message.content:
         text = getattr(c, "text", None)
         if isinstance(text, str) and text:
             parts.append(text)
-    return "\n".join(parts).strip()
+    raw = "\n".join(parts).strip()
+    # Group-chat clients prepend an "@agent1…" mention to whatever the user
+    # typed. Strip it so intent classification sees the actual message.
+    return _MY_MENTION_RE.sub("", raw).strip()
 
 
 def _has_attachment(message: ChatMessage) -> bool:
@@ -203,6 +240,125 @@ def _is_start_session(message: ChatMessage) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _extract_card_selection(msg: ChatMessage) -> Optional[dict[str, Any]]:
+    """Return the merged card-response selection dict (or None).
+
+    Tries two paths because the chat client may use either:
+      1. Standard: a MetadataContent block parsed by `extract_card_response`.
+      2. Legacy fallback: the CTA `selection` posted as a JSON blob inside
+         a TextContent bubble (documented in the cards README).
+    """
+    out: dict[str, Any] = {}
+
+    for c in msg.content:
+        if isinstance(c, MetadataContent):
+            resp = extract_card_response(c)
+            if resp and resp.selection:
+                out.update(resp.selection)
+
+    if not out:
+        stripped = _extract_text(msg).strip()
+        if stripped.startswith("{"):
+            try:
+                parsed = json.loads(stripped)
+            except (json.JSONDecodeError, ValueError):
+                parsed = None
+            if isinstance(parsed, dict) and "section" in parsed:
+                out.update(parsed)
+
+    return out or None
+
+
+def _coerce_form_value(field: str, raw: Any) -> Any:
+    """Lightweight coercion for form-submit values before patching."""
+    if raw in (None, "", "null"):
+        return None
+    if field in ("needs_sponsorship", "requires_visa"):
+        if isinstance(raw, bool):
+            return raw
+        return str(raw).strip().lower() in {"true", "yes", "1", "on"}
+    return raw
+
+
+async def _handle_profile_card_selection(
+    ctx: Context,
+    sender: str,
+    sess: OrchestratorSession,
+    selection: dict[str, Any],
+) -> None:
+    section = str(selection.get("section") or "")
+    submitted = bool(selection.get("submitted"))
+
+    if not PROFILE_ADDR:
+        await _say(ctx, sender, rendering.format_error(
+            "Profile agent not configured (PROFILE_AGENT_ADDRESS missing)."
+        ))
+        return
+
+    # ---- Form submission: persist the patch and re-show the overview ----
+    if submitted:
+        patch: dict[str, Any] = {}
+        for k, v in selection.items():
+            if k in ("section", "submitted"):
+                continue
+            patch[k] = _coerce_form_value(k, v)
+        if not patch:
+            await _say(ctx, sender, "Nothing to save — try editing a field first.")
+            return
+
+        ok, err = await profile_proxy.upsert_profile_patch(
+            ctx, PROFILE_ADDR, sess.user_key, patch
+        )
+        if not ok:
+            await _say(ctx, sender, rendering.format_error(
+                err or "couldn't save those changes"
+            ))
+            return
+
+        saved = ", ".join(f"`{k}`" for k in patch)
+        await _say(ctx, sender, f"✓ Saved updates to {saved}.")
+        # Re-show the profile overview so the user sees the new state.
+        await _handle_show_profile(ctx, sender, sess)
+        return
+
+    # ---- Section click: open the matching form (or fall back to a hint) ----
+    form = rendering.build_section_form(section, sess.profile_summary)
+    if form is not None:
+        await _send_card(ctx, sender, form, caption=f"Editing {section.replace('_', ' ')}.")
+        return
+
+    if section == "resume":
+        await _say(
+            ctx, sender,
+            "Drop a PDF, DOCX, or TXT in chat and I'll parse and index it as "
+            "your active resume.",
+        )
+        return
+
+    if section == "answers":
+        canned = (sess.profile_summary or {}).get("canned_answers") or {}
+        if not canned:
+            await _say(
+                ctx, sender,
+                "No saved answers yet — whenever you answer a tricky "
+                "application question, I'll remember it for next time.",
+            )
+            return
+        lines = ["**Saved answers:**"]
+        for q, a in list(canned.items())[:25]:
+            qs = q if len(q) <= 80 else q[:79] + "…"
+            as_ = str(a)
+            if len(as_) > 60:
+                as_ = as_[:59] + "…"
+            lines.append(f"• _{qs}_ → `{as_}`")
+        if len(canned) > 25:
+            lines.append(f"…and {len(canned) - 25} more")
+        await _say(ctx, sender, "\n".join(lines))
+        return
+
+    await _say(ctx, sender, f"I don't have an editor for `{section}` yet.")
+
+
 async def _handle_show_profile(
     ctx: Context, sender: str, sess: OrchestratorSession
 ) -> None:
@@ -225,12 +381,12 @@ async def _handle_show_profile(
         await _say(ctx, sender, rendering.format_error(err))
         return
 
-    panel = rendering.format_profile_summary(
+    card = rendering.build_profile_list_card(
         profile if exists else None,
         active_resume=sess.active_resume_version,
         resume_versions=sess.resume_versions,
     )
-    await _say(ctx, sender, panel)
+    await _send_card(ctx, sender, card, caption="Here's your profile — tap any section to edit.")
 
     if exists and profile is not None:
         sess.profile_summary = profile
@@ -652,6 +808,14 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
 
     sess = session_mod.load(ctx.storage, sender)
     sess.user_key = sess.user_key or DEFAULT_USER_KEY
+
+    # Card-response intercept: profile list-card click or section-form
+    # submission both arrive as MetadataContent and short-circuit the
+    # regular intent classifier.
+    card_selection = _extract_card_selection(msg)
+    if card_selection is not None and "section" in card_selection:
+        await _handle_profile_card_selection(ctx, sender, sess, card_selection)
+        return
 
     if _is_start_session(msg) and not _extract_text(msg):
         await _say(ctx, sender, rendering.WELCOME)
