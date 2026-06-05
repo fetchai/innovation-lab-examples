@@ -24,9 +24,11 @@ Flow:
 Configuration (env):
 
 - `PAYMENT_ENABLED`        — "true" turns the gate on. Default false.
-- `PAYMENT_AMOUNT_FET`     — amount per application (default "10").
+- `PAYMENT_AMOUNT_FET`     — amount per application (default "0.1").
 - `FET_USE_TESTNET`        — "true" (default) verifies against Dorado
                              testnet; "false" against mainnet.
+- `PAYMENT_RECIPIENT_FET`  — wallet that receives the FET payment.
+- `PAYMENT_BUYER_FET`      — optional wallet expected to send the payment.
 
 Reference implementation: `fet-example/payment.py`.
 """
@@ -34,10 +36,12 @@ Reference implementation: `fet-example/payment.py`.
 from __future__ import annotations
 
 import os
+from decimal import Decimal
 from typing import Awaitable, Callable, Optional
 from uuid import uuid4
 
 from uagents import Context, Protocol
+from uagents_core.models import Model
 from uagents_core.contrib.protocols.payment import (
     CancelPayment,
     CommitPayment,
@@ -81,7 +85,46 @@ def use_testnet() -> bool:
 
 
 def amount_fet() -> str:
-    return os.getenv("PAYMENT_AMOUNT_FET", "10")
+    return os.getenv("PAYMENT_AMOUNT_FET", "0.1")
+
+
+def recipient_fet_address(ctx: Optional[Context] = None) -> str:
+    configured = os.getenv("PAYMENT_RECIPIENT_FET", "").strip()
+    if configured:
+        return configured
+    if _agent_wallet:
+        return str(_agent_wallet.address())
+    return str(ctx.agent.address) if ctx is not None else ""
+
+
+def expected_buyer_fet_address() -> str:
+    return os.getenv("PAYMENT_BUYER_FET", "").strip()
+
+
+def balance_fet(address: str, logger=None) -> Optional[str]:  # noqa: ANN001
+    """Return wallet balance in FET as a compact decimal string."""
+    if not address:
+        return None
+    try:
+        from cosmpy.aerial.client import LedgerClient, NetworkConfig
+        from cosmpy.crypto.address import Address
+
+        network_config = (
+            NetworkConfig.fetchai_stable_testnet()
+            if use_testnet()
+            else NetworkConfig.fetchai_mainnet()
+        )
+        ledger = LedgerClient(network_config)
+        denom = "atestfet" if use_testnet() else "afet"
+        raw_amount = ledger.query_bank_balance(Address(address), denom)
+    except Exception as exc:  # noqa: BLE001
+        if logger is not None:
+            logger.warning(f"balance query failed for {address}: {exc}")
+        return None
+
+    fet_value = Decimal(raw_amount) / Decimal(10**18)
+    text = f"{fet_value:.4f}".rstrip("0").rstrip(".")
+    return text or "0"
 
 
 def gate_active() -> bool:
@@ -127,18 +170,19 @@ def set_agent_wallet(wallet) -> None:  # noqa: ANN001
 # ---------------------------------------------------------------------------
 
 
-def verify_fet_payment_to_agent(
+def verify_fet_payment(
     *,
     transaction_id: str,
     expected_amount_fet: str,
     sender_fet_address: str,
+    recipient_fet_address: str,
     logger,  # noqa: ANN001
 ) -> bool:
     """Verify that `transaction_id` on the Fetch.ai chain transferred at
-    least `expected_amount_fet` from `sender_fet_address` to the agent
+    least `expected_amount_fet` from `sender_fet_address` to the expected
     wallet. Returns True on success."""
-    if _agent_wallet is None:
-        logger.error("verify_fet_payment_to_agent: agent wallet not set")
+    if not recipient_fet_address:
+        logger.error("verify_fet_payment: recipient wallet not configured")
         return False
     try:
         from cosmpy.aerial.client import LedgerClient, NetworkConfig
@@ -160,7 +204,7 @@ def verify_fet_payment_to_agent(
         logger.error(f"invalid expected_amount_fet: {expected_amount_fet!r}")
         return False
 
-    expected_recipient = str(_agent_wallet.address())
+    expected_recipient = recipient_fet_address
     denom = "atestfet" if testnet else "afet"
 
     logger.info(
@@ -240,29 +284,26 @@ async def request_payment_from_user(
     }
     if _agent_wallet:
         metadata["provider_agent_wallet"] = str(_agent_wallet.address())
+    expected_buyer = expected_buyer_fet_address()
+    if expected_buyer:
+        metadata["buyer_fet_wallet"] = expected_buyer
+        metadata["expected_buyer_fet_wallet"] = expected_buyer
     metadata["content"] = (
         description
-        or "Authorise one Greenhouse job application. The orchestrator "
-           "will hand the URL to its form-filler co-agent and submit on "
-           "your behalf."
+        or "Please complete the FET payment to start the Greenhouse application."
     )
 
-    recipient_addr = (
-        str(_agent_wallet.address())
-        if _agent_wallet
-        else str(ctx.agent.address)
-    )
+    recipient_addr = recipient_fet_address(ctx)
+
+    # Bare session UUID, same as duffel (`reference=session`).
+    session_ref = reference or (str(ctx.session) if ctx.session else str(uuid4()))
 
     req = RequestPayment(
         accepted_funds=[funds],
         recipient=recipient_addr,
         deadline_seconds=deadline_seconds,
-        reference=reference or str(uuid4()),
-        description=(
-            description
-            or f"Pay {amount_fet()} FET to run one automated job "
-               f"application."
-        ),
+        reference=session_ref,
+        description=description or "Greenhouse job application — pay to proceed",
         metadata=metadata,
     )
     ctx.logger.info(
@@ -270,7 +311,20 @@ async def request_payment_from_user(
         f"({funds.amount} {funds.currency} via {funds.payment_method}, "
         f"recipient={recipient_addr})"
     )
-    await ctx.send(user_address, req)
+    try:
+        ctx.logger.info(f"[payment] payload: {req.model_dump_json()}")
+    except Exception:  # noqa: BLE001
+        ctx.logger.info(f"[payment] payload (repr): {req!r}")
+    status = await ctx.send_raw(
+        destination=user_address,
+        message_schema_digest=Model.build_schema_digest(req),
+        message_body=req.model_dump_json(),
+        protocol_digest=payment_proto.digest,
+    )
+    ctx.logger.info(
+        f"[payment] send_raw status={status.status} "
+        f"protocol_digest={payment_proto.digest}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -308,12 +362,64 @@ async def handle_commit_payment(
             await _on_failed(ctx, sender, "unsupported_method")
         return
 
+    expected_recipient = recipient_fet_address(ctx)
+    if msg.recipient != expected_recipient:
+        ctx.logger.error(
+            f"CommitPayment recipient mismatch: {msg.recipient} "
+            f"!= {expected_recipient}"
+        )
+        await ctx.send(
+            sender,
+            CancelPayment(
+                transaction_id=msg.transaction_id,
+                reason="Payment recipient did not match the requested wallet.",
+            ),
+        )
+        if _on_failed is not None:
+            await _on_failed(ctx, sender, "wrong_recipient")
+        return
+
+    if str(msg.funds.amount) != amount_fet():
+        ctx.logger.error(
+            f"CommitPayment amount mismatch: {msg.funds.amount} "
+            f"!= {amount_fet()}"
+        )
+        await ctx.send(
+            sender,
+            CancelPayment(
+                transaction_id=msg.transaction_id,
+                reason="Payment amount did not match the requested amount.",
+            ),
+        )
+        if _on_failed is not None:
+            await _on_failed(ctx, sender, "wrong_amount")
+        return
+
     buyer_fet_wallet = None
     if isinstance(msg.metadata, dict):
         buyer_fet_wallet = (
             msg.metadata.get("buyer_fet_wallet")
             or msg.metadata.get("buyer_fet_address")
+            or msg.metadata.get("expected_buyer_fet_wallet")
         )
+    configured_buyer = expected_buyer_fet_address()
+    if configured_buyer:
+        if buyer_fet_wallet and buyer_fet_wallet != configured_buyer:
+            ctx.logger.error(
+                f"CommitPayment buyer wallet mismatch: "
+                f"{buyer_fet_wallet} != {configured_buyer}"
+            )
+            await ctx.send(
+                sender,
+                CancelPayment(
+                    transaction_id=msg.transaction_id,
+                    reason="Payment was not sent from the expected FET wallet.",
+                ),
+            )
+            if _on_failed is not None:
+                await _on_failed(ctx, sender, "wrong_buyer_wallet")
+            return
+        buyer_fet_wallet = configured_buyer
     if not buyer_fet_wallet:
         ctx.logger.error("CommitPayment missing buyer_fet_wallet metadata")
         await ctx.send(
@@ -328,14 +434,15 @@ async def handle_commit_payment(
         return
 
     try:
-        verified = verify_fet_payment_to_agent(
+        verified = verify_fet_payment(
             transaction_id=msg.transaction_id,
-            expected_amount_fet=str(msg.funds.amount),
+            expected_amount_fet=amount_fet(),
             sender_fet_address=buyer_fet_wallet,
+            recipient_fet_address=expected_recipient,
             logger=ctx.logger,
         )
     except Exception as exc:  # noqa: BLE001
-        ctx.logger.error(f"verify_fet_payment_to_agent raised: {exc}")
+        ctx.logger.error(f"verify_fet_payment raised: {exc}")
         verified = False
 
     if verified:

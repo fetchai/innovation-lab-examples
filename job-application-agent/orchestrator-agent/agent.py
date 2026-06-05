@@ -55,14 +55,18 @@ from uagents_core.contrib.protocols.chat import (  # noqa: E402
     chat_protocol_spec,
 )
 from uagents_core.contrib.protocols.chat.cards import (  # noqa: E402
+    ButtonAction,
+    ButtonNode,
+    CustomCardPayload,
+    DividerNode,
+    GroupNode,
+    HeadingNode,
+    SectionNode,
+    TextNode,
     create_card_content,
     extract_card_response,
 )
 from uagents_core.storage import ExternalStorage  # noqa: E402
-from uagents_core.utils.registration import (  # noqa: E402
-    RegistrationRequestCredentials,
-    register_chat_agent,
-)
 
 import intents  # noqa: E402
 import payment_proto as payment_mod  # noqa: E402
@@ -82,7 +86,6 @@ AGENT_NAME = "job_application_orchestrator"
 SEED_PHRASE = os.getenv(
     "ORCHESTRATOR_AGENT_SEED", "orchestrator-agent-user-facing-seed-v1"
 )
-AGENTVERSE_API_KEY = os.getenv("AGENTVERSE_API_KEY")
 PORT = int(os.getenv("ORCHESTRATOR_AGENT_PORT", "8014"))
 
 PROFILE_ADDR = os.getenv("PROFILE_AGENT_ADDRESS", "")
@@ -100,7 +103,15 @@ STORAGE_URL = f"{AGENTVERSE_URL}/v1/storage"
 # Agent setup
 # ---------------------------------------------------------------------------
 
-agent = Agent(name=AGENT_NAME, seed=SEED_PHRASE, port=PORT, mailbox=True)
+agent = Agent(
+    name=AGENT_NAME,
+    seed=SEED_PHRASE,
+    port=PORT,
+    network="testnet",
+    mailbox=True,
+    agentverse=AGENTVERSE_URL,
+    publish_agent_details=True,
+)
 chat_proto = Protocol(spec=chat_protocol_spec)
 
 
@@ -154,6 +165,91 @@ async def _send_card(
         timestamp=datetime.now(UTC),
         msg_id=uuid4(),
         content=content,
+    ))
+
+
+async def _send_payment_fallback_card(ctx: Context, sender: str) -> None:
+    """Visible chat-card fallback for ASI surfaces that suppress the
+    native payment renderer. The real RequestPayment is still sent first."""
+    amount = payment_mod.amount_fet()
+    balance = payment_mod.balance_fet(
+        payment_mod.expected_buyer_fet_address(),
+        logger=ctx.logger,
+    )
+    balance_text = (
+        f"Wallet balance: {balance} FET"
+        if balance is not None
+        else "Wallet balance: unavailable"
+    )
+    payload = CustomCardPayload(
+        root=SectionNode(
+            type="section",
+            title=None,
+            subtitle=(
+                "Choose your preferred payment method to complete your "
+                "purchase securely."
+            ),
+            children=[
+                GroupNode(
+                    type="group",
+                    direction="row",
+                    gap=16,
+                    children=[
+                        HeadingNode(type="heading", value="Reject", level=3),
+                        TextNode(
+                            type="text",
+                            value="Reject payment",
+                            style="muted",
+                        ),
+                        ButtonNode(
+                            type="button",
+                            label="Reject",
+                            primary=False,
+                            action=ButtonAction(
+                                selection={"payment_action": "reject"}
+                            ),
+                        ),
+                    ],
+                ),
+                DividerNode(type="divider"),
+                SectionNode(
+                    type="section",
+                    title="Pay With FET",
+                    subtitle=f"{amount} FET",
+                    children=[
+                        TextNode(
+                            type="text",
+                            value=balance_text,
+                            style="muted",
+                        ),
+                        ButtonNode(
+                            type="button",
+                            label=f"Confirm payment · FET {amount}",
+                            primary=True,
+                            action=ButtonAction(
+                                selection={"payment_action": "pay_with_fet"}
+                            ),
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+    await ctx.send(sender, ChatMessage(
+        timestamp=datetime.now(UTC),
+        msg_id=uuid4(),
+        content=[
+            TextContent(
+                type="text",
+                text=(
+                    "Payment requested by agent. Here are your options:"
+                ),
+            ),
+            create_card_content(
+                payload,
+                preferred_drawer_width_px=720,
+            ),
+        ],
     ))
 
 
@@ -313,10 +409,52 @@ def _extract_card_selection(msg: ChatMessage) -> Optional[dict[str, Any]]:
                 parsed = json.loads(stripped)
             except (json.JSONDecodeError, ValueError):
                 parsed = None
-            if isinstance(parsed, dict) and "section" in parsed:
+            if isinstance(parsed, dict):
                 out.update(parsed)
 
     return out or None
+
+
+async def _handle_payment_card_selection(
+    ctx: Context,
+    sender: str,
+    selection: dict[str, Any],
+) -> None:
+    action = str(selection.get("payment_action") or "")
+    if action == "reject":
+        await _on_payment_failed(ctx, sender, "buyer_rejected:fallback_card")
+        return
+    if action == "pay_with_fet":
+        sess = session_mod.load(ctx.storage, sender)
+        parked_url = sess.apply_job_url
+        if not parked_url:
+            sess.apply_state = ApplyState.IDLE
+            session_mod.save(ctx.storage, sess)
+            await _say(
+                ctx, sender,
+                "I lost track of the job URL. Paste it again to restart.",
+            )
+            return
+
+        if payment_mod.use_testnet():
+            await _say(
+                ctx, sender,
+                (
+                    "Testnet payment confirmed in the chat UI. Starting "
+                    "your application now."
+                ),
+            )
+            sess.apply_state = ApplyState.IDLE
+            sess.apply_job_url = None
+            session_mod.save(ctx.storage, sess)
+            await _start_apply(ctx, sender, sess, parked_url)
+            return
+
+        await _say(
+            ctx, sender,
+            "Waiting for wallet confirmation before starting the application.",
+        )
+        return
 
 
 def _coerce_form_value(field: str, raw: Any) -> Any:
@@ -963,15 +1101,10 @@ async def _request_payment_for_apply(
             ),
         )
         return
-    network = "testnet" if payment_mod.use_testnet() else "mainnet"
-    await _say(
-        ctx, sender,
-        (
-            f"💳 Sent a payment request for **{payment_mod.amount_fet()} "
-            f"FET** ({network}). Tap **Approve** on the card above to "
-            f"start filling the form, or **Reject** to cancel."
-        ),
-    )
+    # No TextContent before or after the RequestPayment. The official
+    # doc's pattern (innovationlab.fetch.ai/.../fet-image-agent-payment-protocol)
+    # is: ACK → request_payment_from_user → return. Any extra bubble in
+    # the same turn blocks the inline payment card render.
 
 
 # ---------------------------------------------------------------------------
@@ -981,6 +1114,55 @@ async def _request_payment_for_apply(
 
 @chat_proto.on_message(ChatMessage)
 async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
+    user_text = _extract_text(msg)
+    hot_apply_url = intents.find_greenhouse_url(user_text)
+
+    # ASI:One's native payment renderer is extremely timing-sensitive:
+    # the RequestPayment must be the first thing the chat turn emits. For
+    # a pasted Greenhouse URL, bypass all normal bookkeeping until the
+    # payment envelope is already on the wire.
+    if (
+        hot_apply_url
+        and sender != FORM_FILLER_ADDR
+        and payment_mod.gate_active()
+    ):
+        try:
+            await payment_mod.request_payment_from_user(ctx, sender)
+        except Exception as exc:  # noqa: BLE001
+            ctx.logger.error(f"failed to send RequestPayment: {exc}")
+            await ctx.send(
+                sender,
+                ChatAcknowledgement(
+                    timestamp=datetime.now(UTC),
+                    acknowledged_msg_id=msg.msg_id,
+                ),
+            )
+            await _say(
+                ctx, sender,
+                rendering.format_error(
+                    "Couldn't initiate payment — try again in a moment."
+                ),
+            )
+            return
+
+        await ctx.send(
+            sender,
+            ChatAcknowledgement(
+                timestamp=datetime.now(UTC), acknowledged_msg_id=msg.msg_id
+            ),
+        )
+        sess = session_mod.load(ctx.storage, sender)
+        sess.user_key = sess.user_key or DEFAULT_USER_KEY
+        sess.apply_state = ApplyState.PAYMENT_PENDING
+        sess.apply_job_url = hot_apply_url
+        session_mod.save(ctx.storage, sess)
+        await _send_payment_fallback_card(ctx, sender)
+        ctx.logger.info(
+            f"Payment-first Greenhouse apply queued for {sender}: "
+            f"{hot_apply_url}"
+        )
+        return
+
     # ACK first so the user's client knows we received their message.
     await ctx.send(
         sender,
@@ -1002,6 +1184,9 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     # submission both arrive as MetadataContent and short-circuit the
     # regular intent classifier.
     card_selection = _extract_card_selection(msg)
+    if card_selection is not None and "payment_action" in card_selection:
+        await _handle_payment_card_selection(ctx, sender, card_selection)
+        return
     if card_selection is not None and "section" in card_selection:
         await _handle_profile_card_selection(ctx, sender, sess, card_selection)
         return
@@ -1022,7 +1207,6 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
             session_mod.save(ctx.storage, sess)
             return
 
-    user_text = _extract_text(msg)
     has_attachment = _has_attachment(msg)
 
     # Debug: log the content-type mix on every inbound so we can see what
@@ -1059,9 +1243,17 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         await _forward_user_followup(ctx, sender, user_text)
         return
 
-    # Conversational LLM reply (warm tone). Skip while waiting on a
-    # payment so we don't bury the wallet confirmation prompt.
-    if interp.reply and sess.apply_state != ApplyState.PAYMENT_PENDING:
+    # Conversational LLM reply (warm tone). Skip:
+    #   - while waiting on a payment (don't bury the wallet prompt)
+    #   - on `apply` intent (sending a TextContent bubble between the ACK
+    #     and the RequestPayment causes the chat client to skip rendering
+    #     the inline payment card — matches duffel-agent's pattern of
+    #     going ACK → RequestPayment with no intervening text).
+    if (
+        interp.reply
+        and sess.apply_state != ApplyState.PAYMENT_PENDING
+        and interp.intent != "apply"
+    ):
         await _say(ctx, sender, interp.reply)
 
     if interp.intent == "greet":
@@ -1207,7 +1399,7 @@ async def on_startup(ctx: Context):
         net = "testnet" if payment_mod.use_testnet() else "mainnet"
         ctx.logger.info(
             f"Payment gate ACTIVE — {payment_mod.amount_fet()} FET per apply "
-            f"({net}), recipient={agent.wallet.address()}"
+            f"({net}), recipient={payment_mod.recipient_fet_address(ctx)}"
         )
     elif payment_mod.is_enabled():
         ctx.logger.warning(
@@ -1225,30 +1417,10 @@ async def on_startup(ctx: Context):
                 f"{label} is not set — set it in orchestrator-agent/.env"
             )
 
-    if not AGENTVERSE_API_KEY:
-        ctx.logger.warning(
-            "AGENTVERSE_API_KEY not set — skipping Agentverse registration"
-        )
-        return
-
-    try:
-        register_chat_agent(
-            AGENT_NAME,
-            agent._endpoints[0].url,
-            active=True,
-            credentials=RegistrationRequestCredentials(
-                agentverse_api_key=AGENTVERSE_API_KEY,
-                agent_seed_phrase=SEED_PHRASE,
-            ),
-            readme=README,
-            description=(
-                "User-facing job-application orchestrator. Manage your "
-                "resume + profile, then paste a Greenhouse URL to apply."
-            ),
-        )
-        ctx.logger.info("Registered with Agentverse")
-    except Exception as exc:  # noqa: BLE001
-        ctx.logger.error(f"Failed to register with Agentverse: {exc}")
+    # Agentverse publication is handled by the Agent constructor. That
+    # keeps the published profile in sync with both chat and seller
+    # payment manifests; publishing this agent as chat-only makes ASI:One
+    # render RequestPayment messages as plain text instead of inline cards.
 
 
 agent.include(chat_proto, publish_manifest=True)
