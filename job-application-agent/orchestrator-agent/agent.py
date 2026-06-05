@@ -55,14 +55,6 @@ from uagents_core.contrib.protocols.chat import (  # noqa: E402
     chat_protocol_spec,
 )
 from uagents_core.contrib.protocols.chat.cards import (  # noqa: E402
-    ButtonAction,
-    ButtonNode,
-    CustomCardPayload,
-    DividerNode,
-    GroupNode,
-    HeadingNode,
-    SectionNode,
-    TextNode,
     create_card_content,
     extract_card_response,
 )
@@ -165,91 +157,6 @@ async def _send_card(
         timestamp=datetime.now(UTC),
         msg_id=uuid4(),
         content=content,
-    ))
-
-
-async def _send_payment_fallback_card(ctx: Context, sender: str) -> None:
-    """Visible chat-card fallback for ASI surfaces that suppress the
-    native payment renderer. The real RequestPayment is still sent first."""
-    amount = payment_mod.amount_fet()
-    balance = payment_mod.balance_fet(
-        payment_mod.expected_buyer_fet_address(),
-        logger=ctx.logger,
-    )
-    balance_text = (
-        f"Wallet balance: {balance} FET"
-        if balance is not None
-        else "Wallet balance: unavailable"
-    )
-    payload = CustomCardPayload(
-        root=SectionNode(
-            type="section",
-            title=None,
-            subtitle=(
-                "Choose your preferred payment method to complete your "
-                "purchase securely."
-            ),
-            children=[
-                GroupNode(
-                    type="group",
-                    direction="row",
-                    gap=16,
-                    children=[
-                        HeadingNode(type="heading", value="Reject", level=3),
-                        TextNode(
-                            type="text",
-                            value="Reject payment",
-                            style="muted",
-                        ),
-                        ButtonNode(
-                            type="button",
-                            label="Reject",
-                            primary=False,
-                            action=ButtonAction(
-                                selection={"payment_action": "reject"}
-                            ),
-                        ),
-                    ],
-                ),
-                DividerNode(type="divider"),
-                SectionNode(
-                    type="section",
-                    title="Pay With FET",
-                    subtitle=f"{amount} FET",
-                    children=[
-                        TextNode(
-                            type="text",
-                            value=balance_text,
-                            style="muted",
-                        ),
-                        ButtonNode(
-                            type="button",
-                            label=f"Confirm payment · FET {amount}",
-                            primary=True,
-                            action=ButtonAction(
-                                selection={"payment_action": "pay_with_fet"}
-                            ),
-                        ),
-                    ],
-                ),
-            ],
-        ),
-    )
-    await ctx.send(sender, ChatMessage(
-        timestamp=datetime.now(UTC),
-        msg_id=uuid4(),
-        content=[
-            TextContent(
-                type="text",
-                text=(
-                    "Payment requested by agent. Here are your options:"
-                ),
-            ),
-            create_card_content(
-                payload,
-                preferred_drawer_width_px=720,
-            ),
-        ],
     ))
 
 
@@ -413,89 +320,6 @@ def _extract_card_selection(msg: ChatMessage) -> Optional[dict[str, Any]]:
                 out.update(parsed)
 
     return out or None
-
-
-async def _handle_payment_card_selection(
-    ctx: Context,
-    sender: str,
-    selection: dict[str, Any],
-) -> None:
-    action = str(selection.get("payment_action") or "")
-    if action == "reject":
-        await _on_payment_failed(ctx, sender, "buyer_rejected:fallback_card")
-        return
-    if action == "pay_with_fet":
-        sess = session_mod.load(ctx.storage, sender)
-        parked_url = sess.apply_job_url
-        if not parked_url:
-            sess.apply_state = ApplyState.IDLE
-            session_mod.save(ctx.storage, sess)
-            await _say(
-                ctx, sender,
-                "I lost track of the job URL. Paste it again to restart.",
-            )
-            return
-
-        if payment_mod.use_testnet():
-            paid, detail, payer_address = payment_mod.execute_testnet_payment(
-                ctx.logger
-            )
-            if not paid:
-                if detail == "missing_payment_testnet_payer_key":
-                    await _say(
-                        ctx, sender,
-                        (
-                            "I cannot execute the testnet transfer yet: "
-                            "configure `PAYMENT_TESTNET_PAYER_PRIVATE_KEY` "
-                            "or `PAYMENT_TESTNET_PAYER_MNEMONIC` for the "
-                            "payer wallet."
-                        ),
-                    )
-                elif detail == "auto_pay_disabled":
-                    await _say(
-                        ctx, sender,
-                        (
-                            "Testnet auto-payment is disabled. Set "
-                            "`PAYMENT_TESTNET_AUTO_PAY=true` and configure "
-                            "`PAYMENT_TESTNET_PAYER_PRIVATE_KEY` or "
-                            "`PAYMENT_TESTNET_PAYER_MNEMONIC` to execute a "
-                            "real testnet transfer."
-                        ),
-                    )
-                elif detail == "payer_mnemonic_address_mismatch":
-                    await _say(
-                        ctx, sender,
-                        (
-                            "The configured payer mnemonic does not match "
-                            "the expected buyer wallet, so I did not send "
-                            "the testnet payment."
-                        ),
-                    )
-                else:
-                    await _say(
-                        ctx, sender,
-                        f"Testnet payment failed: {detail}",
-                    )
-                return
-
-            await _say(
-                ctx, sender,
-                (
-                    f"Testnet payment verified (tx `{detail}`). Starting "
-                    "your application now."
-                ),
-            )
-            sess.apply_state = ApplyState.IDLE
-            sess.apply_job_url = None
-            session_mod.save(ctx.storage, sess)
-            await _start_apply(ctx, sender, sess, parked_url)
-            return
-
-        await _say(
-            ctx, sender,
-            "Waiting for wallet confirmation before starting the application.",
-        )
-        return
 
 
 def _coerce_form_value(field: str, raw: Any) -> Any:
@@ -1197,7 +1021,6 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         sess.apply_state = ApplyState.PAYMENT_PENDING
         sess.apply_job_url = hot_apply_url
         session_mod.save(ctx.storage, sess)
-        await _send_payment_fallback_card(ctx, sender)
         ctx.logger.info(
             f"Payment-first Greenhouse apply queued for {sender}: "
             f"{hot_apply_url}"
@@ -1225,9 +1048,6 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     # submission both arrive as MetadataContent and short-circuit the
     # regular intent classifier.
     card_selection = _extract_card_selection(msg)
-    if card_selection is not None and "payment_action" in card_selection:
-        await _handle_payment_card_selection(ctx, sender, card_selection)
-        return
     if card_selection is not None and "section" in card_selection:
         await _handle_profile_card_selection(ctx, sender, sess, card_selection)
         return
