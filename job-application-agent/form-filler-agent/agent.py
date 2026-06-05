@@ -104,6 +104,10 @@ SUBMITTER_TIMEOUT = int(os.getenv("SUBMITTER_TIMEOUT", "60"))
 LIVE_FILL_MODE = os.getenv("LIVE_FILL_MODE", "headed").strip().lower()
 LIVE_FILL_SCREENSHOT_EVERY = int(os.getenv("LIVE_FILL_SCREENSHOT_EVERY", "3"))
 
+FORM_FILLER_DIR = Path(__file__).resolve().parent
+JOB_AGENT_DIR = FORM_FILLER_DIR.parent
+PROFILE_AGENT_DIR = JOB_AGENT_DIR / "profile-agent"
+
 
 # ---------------------------------------------------------------------------
 # Agent setup
@@ -189,6 +193,60 @@ def _match_structured_attr(field_name: str, label: str) -> Optional[str]:
         for h in hints:
             if h in blob:
                 return attr
+    return None
+
+
+def _existing_resume_path(raw_path: str | None) -> str | None:
+    """Return an absolute local resume path if the profile/env value is usable."""
+    if not raw_path:
+        return None
+
+    raw = Path(raw_path).expanduser()
+    candidates = [raw] if raw.is_absolute() else [
+        PROFILE_AGENT_DIR / raw,
+        JOB_AGENT_DIR / raw,
+        FORM_FILLER_DIR / raw,
+        Path.cwd() / raw,
+    ]
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved.is_file():
+            return str(resolved)
+    return None
+
+
+async def _resolve_resume_path(ctx: Context) -> str | None:
+    profile_resume_path: str | None = None
+    if PROFILE_ADDR:
+        try:
+            prof_resp = await clients.call_get_profile(
+                ctx, PROFILE_ADDR, DEFAULT_USER_KEY, timeout=15
+            )
+            if prof_resp.success and prof_resp.profile_json:
+                prof = json.loads(prof_resp.profile_json)
+                profile_resume_path = prof.get("resume_path")
+        except Exception as exc:  # noqa: BLE001
+            ctx.logger.warning(f"Could not load profile to read resume_path: {exc}")
+
+    selected = _existing_resume_path(profile_resume_path)
+    if selected:
+        ctx.logger.info(f"resume: using profile resume_path={selected}")
+        return selected
+
+    if profile_resume_path:
+        ctx.logger.warning(
+            f"resume: profile resume_path is not a readable file: {profile_resume_path}"
+        )
+
+    selected = _existing_resume_path(DEFAULT_RESUME_PATH)
+    if selected:
+        ctx.logger.info(f"resume: using DEFAULT_RESUME_PATH fallback={selected}")
+        return selected
+
+    if DEFAULT_RESUME_PATH:
+        ctx.logger.warning(
+            f"resume: DEFAULT_RESUME_PATH is not a readable file: {DEFAULT_RESUME_PATH}"
+        )
     return None
 
 
@@ -364,21 +422,9 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         if n not in sess.missing_required:
             sess.missing_required.append(n)
 
-    # Resume path: prefer env override, otherwise read the profile agent's
-    # stored resume_path field for this user.
-    if DEFAULT_RESUME_PATH:
-        sess.resume_path = DEFAULT_RESUME_PATH
-    else:
-        # The profile agent stores resume_path on the UserProfile; fetch it now.
-        try:
-            prof_resp = await clients.call_get_profile(
-                ctx, PROFILE_ADDR, DEFAULT_USER_KEY, timeout=15
-            )
-            if prof_resp.success and prof_resp.profile_json:
-                prof = json.loads(prof_resp.profile_json)
-                sess.resume_path = prof.get("resume_path")
-        except Exception as exc:  # noqa: BLE001
-            ctx.logger.warning(f"Could not load profile to read resume_path: {exc}")
+    # Resume path: prefer the active profile/uploaded resume. DEFAULT_RESUME_PATH
+    # is only a local fallback for demos with no profile resume yet.
+    sess.resume_path = await _resolve_resume_path(ctx)
 
     # Show the resume as a "filled" file field for visibility, if there is one.
     if sess.resume_path:
