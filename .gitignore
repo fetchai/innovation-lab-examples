@@ -17,6 +17,7 @@ job-application-agent/**/data/
 
 # Job-application-agent private working notes (not for commit)
 job-application-agent/PLAN.md
+job-application-agent/wiki/
 
 # Python
 __pycache__/

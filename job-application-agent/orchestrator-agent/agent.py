@@ -195,36 +195,85 @@ def _download_resource(
     """Download a ResourceContent attachment. Returns
     (bytes, mime_type, source_filename) or None on failure.
 
-    Pattern mirrors `pdf-summariser-example/chat_proto.py`."""
+    Mirrors `pdf-summariser-example/chat_proto.py:download_resource` —
+    try Agentverse storage first, then fall back to the public `uri`
+    that some chat clients embed on `item.resource[0]` (Agentverse
+    storage has TTL'd or never held the bytes for this resource_id)."""
+    # Debug: full dump of the resource item so we can see what the chat
+    # client actually populated (resource_id, resource list, metadata).
+    try:
+        ctx.logger.info(
+            f"ResourceContent dump: {item.model_dump_json(exclude_none=False)}"
+        )
+    except Exception:  # noqa: BLE001
+        ctx.logger.info(f"ResourceContent dump (raw): {item!r}")
+
+    content_bytes: Optional[bytes] = None
+    mime_type = "application/octet-stream"
+
+    # 1) Agentverse external storage
     try:
         storage = ExternalStorage(
             identity=ctx.agent.identity, storage_url=STORAGE_URL
         )
         stored = storage.download(str(item.resource_id))
-        mime_type = stored.get("mime_type", "application/octet-stream")
+        mime_type = stored.get("mime_type", mime_type)
         content_b64 = stored.get("contents", "")
-        if not content_b64:
-            return None
-        content_bytes = base64.b64decode(content_b64)
+        if content_b64:
+            content_bytes = base64.b64decode(content_b64)
     except Exception as exc:  # noqa: BLE001
-        ctx.logger.warning(f"resource download failed: {exc}")
-        return None
+        ctx.logger.info(
+            f"storage download failed for {item.resource_id} ({exc}); "
+            f"trying URI fallback"
+        )
+
+    # 2) Public URI fallback. `item.resource` may be a single Resource
+    # object (current chat clients) or a list of them (older protocol).
+    if content_bytes is None:
+        uri = None
+        res_obj = getattr(item, "resource", None)
+        candidates = res_obj if isinstance(res_obj, list) else [res_obj]
+        for res in candidates:
+            uri = getattr(res, "uri", None) if res is not None else None
+            if uri:
+                break
+        if uri:
+            try:
+                import httpx  # local import keeps the top of the file unchanged
+                resp = httpx.get(uri, timeout=120)
+                resp.raise_for_status()
+                content_bytes = resp.content
+                mime_type = resp.headers.get("content-type", mime_type)
+            except Exception as exc:  # noqa: BLE001
+                ctx.logger.warning(f"URI download failed ({uri}): {exc}")
+                return None
+        else:
+            ctx.logger.warning(
+                f"resource {item.resource_id}: no storage bytes and no URI"
+            )
+            return None
 
     # Try to recover the original filename from the resource metadata
     # (set by chat clients) or fall back to the asset id.
     source_filename = f"resource_{item.resource_id}"
-    try:
-        for res in getattr(item, "resource", []) or []:
-            md = getattr(res, "metadata", None) or {}
-            for k in ("filename", "name", "title"):
-                v = md.get(k) if isinstance(md, dict) else None
-                if v:
-                    source_filename = str(v)
-                    break
-            if source_filename and not source_filename.startswith("resource_"):
+    res_obj = getattr(item, "resource", None)
+    candidates = res_obj if isinstance(res_obj, list) else [res_obj]
+    for res in candidates:
+        if res is None:
+            continue
+        md = getattr(res, "metadata", None) or {}
+        if not isinstance(md, dict):
+            continue
+        for k in ("filename", "name", "title", "description"):
+            v = md.get(k)
+            if v:
+                source_filename = str(v)
                 break
-    except Exception:  # noqa: BLE001
-        pass
+        # Also pick up mime_type from metadata if storage didn't provide one
+        if md.get("mime_type") and mime_type == "application/octet-stream":
+            mime_type = str(md["mime_type"])
+        if source_filename and not source_filename.startswith("resource_"):
+            break
 
     return content_bytes, mime_type, source_filename
 
@@ -957,13 +1006,30 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         await _handle_profile_card_selection(ctx, sender, sess, card_selection)
         return
 
-    if _is_start_session(msg) and not _extract_text(msg):
-        await _say(ctx, sender, rendering.WELCOME)
-        session_mod.save(ctx.storage, sess)
-        return
+    if _is_start_session(msg):
+        # Advertise attachment support. Without this the chat client
+        # uploads files as MetadataContent stubs (or skips them entirely)
+        # instead of as ResourceContent, so `_handle_upload_resume` never
+        # sees any bytes to ingest.
+        await ctx.send(sender, ChatMessage(
+            timestamp=datetime.now(UTC),
+            msg_id=uuid4(),
+            content=[MetadataContent(type="metadata",
+                                     metadata={"attachments": "true"})],
+        ))
+        if not _extract_text(msg):
+            await _say(ctx, sender, rendering.WELCOME)
+            session_mod.save(ctx.storage, sess)
+            return
 
     user_text = _extract_text(msg)
     has_attachment = _has_attachment(msg)
+
+    # Debug: log the content-type mix on every inbound so we can see what
+    # the chat client actually sent (TextContent / ResourceContent / etc).
+    ctx.logger.info(
+        f"Inbound content types: {[type(c).__name__ for c in msg.content]}"
+    )
 
     ctx.logger.info(
         f"Chat from {sender}: text={user_text!r} attachment={has_attachment} "
