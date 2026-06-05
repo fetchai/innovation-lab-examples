@@ -55,6 +55,12 @@ from uagents_core.contrib.protocols.chat import (  # noqa: E402
     chat_protocol_spec,
 )
 from uagents_core.contrib.protocols.chat.cards import (  # noqa: E402
+    ButtonAction,
+    ButtonNode,
+    CustomCardPayload,
+    DividerNode,
+    SectionNode,
+    TextNode,
     create_card_content,
     extract_card_response,
 )
@@ -157,6 +163,75 @@ async def _send_card(
         timestamp=datetime.now(UTC),
         msg_id=uuid4(),
         content=content,
+    ))
+
+
+async def _send_payment_card(ctx: Context, sender: str) -> None:
+    """Send the single visible payment card.
+
+    ASI's native FET card currently renders but fails before it sends a
+    CommitPayment callback. This card keeps the same UI shape and executes the
+    real Dorado testnet transfer through the configured payer key.
+    """
+    amount = payment_mod.amount_fet()
+    balance = payment_mod.balance_fet(
+        payment_mod.configured_provider_fet_address()
+        or payment_mod.expected_buyer_fet_address(),
+        logger=ctx.logger,
+    )
+    balance_text = (
+        f"Wallet balance: {balance} FET"
+        if balance is not None
+        else "Wallet balance: unavailable"
+    )
+    payload = CustomCardPayload(
+        root=SectionNode(
+            type="section",
+            subtitle=(
+                "Choose your preferred payment method to complete your "
+                "purchase securely."
+            ),
+            children=[
+                ButtonNode(
+                    type="button",
+                    label="Reject Payment",
+                    primary=False,
+                    action=ButtonAction(selection={"payment_action": "reject"}),
+                ),
+                DividerNode(type="divider"),
+                SectionNode(
+                    type="section",
+                    title="Pay With FET",
+                    subtitle=f"{amount} FET",
+                    children=[
+                        TextNode(
+                            type="text",
+                            value=balance_text,
+                            style="muted",
+                        ),
+                        ButtonNode(
+                            type="button",
+                            label=f"Confirm payment · FET {amount}",
+                            primary=True,
+                            action=ButtonAction(
+                                selection={"payment_action": "pay_with_fet"}
+                            ),
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    )
+    await ctx.send(sender, ChatMessage(
+        timestamp=datetime.now(UTC),
+        msg_id=uuid4(),
+        content=[
+            TextContent(
+                type="text",
+                text="Payment requested by agent. Here are your options:",
+            ),
+            create_card_content(payload, preferred_drawer_width_px=640),
+        ],
     ))
 
 
@@ -409,6 +484,59 @@ async def _handle_profile_card_selection(
         return
 
     await _say(ctx, sender, f"I don't have an editor for `{section}` yet.")
+
+
+async def _handle_payment_card_selection(
+    ctx: Context,
+    sender: str,
+    selection: dict[str, Any],
+) -> None:
+    action = str(selection.get("payment_action") or "")
+    if action == "reject":
+        await _on_payment_failed(ctx, sender, "buyer_rejected:payment_card")
+        return
+    if action != "pay_with_fet":
+        return
+
+    sess = session_mod.load(ctx.storage, sender)
+    if not sess.apply_job_url:
+        sess.apply_state = ApplyState.IDLE
+        session_mod.save(ctx.storage, sess)
+        await _say(ctx, sender, "I lost track of the job URL. Paste it again.")
+        return
+
+    if not payment_mod.use_testnet():
+        await _say(
+            ctx,
+            sender,
+            "Mainnet payment still needs the native wallet confirmation flow.",
+        )
+        return
+
+    paid, detail, payer_address = payment_mod.execute_testnet_payment(ctx.logger)
+    if not paid:
+        ctx.logger.error(
+            f"testnet payment action failed detail={detail} "
+            f"payer={payer_address}"
+        )
+        if detail == "payer_mnemonic_address_mismatch":
+            msg = (
+                "The configured testnet payer key does not match the funded "
+                "wallet in the payment settings."
+            )
+        elif detail == "missing_payment_testnet_payer_key":
+            msg = "The testnet payer private key is missing from env."
+        elif detail == "auto_pay_disabled":
+            msg = "Testnet payment execution is disabled in env."
+        else:
+            msg = "Payment failed on Dorado testnet. No application was started."
+        await _say(ctx, sender, rendering.format_error(msg))
+        return
+
+    ctx.logger.info(
+        f"[payment] testnet card payment complete tx={detail} payer={payer_address}"
+    )
+    await _on_payment_complete(ctx, sender)
 
 
 async def _handle_show_profile(
@@ -945,17 +1073,14 @@ async def _request_payment_for_apply(
     sess: OrchestratorSession,
     job_url: str,
 ) -> None:
-    """Park the URL on the session, then send a RequestPayment. The
-    matching CommitPayment will be handled by payment_proto and (on
-    verify success) call back into `_on_payment_complete` which
-    invokes `_start_apply`."""
+    """Park the URL on the session, then send the visible payment card."""
     sess.apply_state = ApplyState.PAYMENT_PENDING
     sess.apply_job_url = job_url
     session_mod.save(ctx.storage, sess)
     try:
-        await payment_mod.request_payment_from_user(ctx, sender)
+        await _send_payment_card(ctx, sender)
     except Exception as exc:  # noqa: BLE001
-        ctx.logger.error(f"failed to send RequestPayment: {exc}")
+        ctx.logger.error(f"failed to send payment card: {exc}")
         sess.apply_state = ApplyState.IDLE
         sess.apply_job_url = None
         session_mod.save(ctx.storage, sess)
@@ -966,10 +1091,6 @@ async def _request_payment_for_apply(
             ),
         )
         return
-    # No TextContent before or after the RequestPayment. The official
-    # doc's pattern (innovationlab.fetch.ai/.../fet-image-agent-payment-protocol)
-    # is: ACK → request_payment_from_user → return. Any extra bubble in
-    # the same turn blocks the inline payment card render.
 
 
 # ---------------------------------------------------------------------------
@@ -982,34 +1103,11 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     user_text = _extract_text(msg)
     hot_apply_url = intents.find_greenhouse_url(user_text)
 
-    # ASI:One's native payment renderer is extremely timing-sensitive:
-    # the RequestPayment must be the first thing the chat turn emits. For
-    # a pasted Greenhouse URL, bypass all normal bookkeeping until the
-    # payment envelope is already on the wire.
     if (
         hot_apply_url
         and sender != FORM_FILLER_ADDR
         and payment_mod.gate_active()
     ):
-        try:
-            await payment_mod.request_payment_from_user(ctx, sender)
-        except Exception as exc:  # noqa: BLE001
-            ctx.logger.error(f"failed to send RequestPayment: {exc}")
-            await ctx.send(
-                sender,
-                ChatAcknowledgement(
-                    timestamp=datetime.now(UTC),
-                    acknowledged_msg_id=msg.msg_id,
-                ),
-            )
-            await _say(
-                ctx, sender,
-                rendering.format_error(
-                    "Couldn't initiate payment — try again in a moment."
-                ),
-            )
-            return
-
         await ctx.send(
             sender,
             ChatAcknowledgement(
@@ -1021,6 +1119,20 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         sess.apply_state = ApplyState.PAYMENT_PENDING
         sess.apply_job_url = hot_apply_url
         session_mod.save(ctx.storage, sess)
+        try:
+            await _send_payment_card(ctx, sender)
+        except Exception as exc:  # noqa: BLE001
+            ctx.logger.error(f"failed to send payment card: {exc}")
+            sess.apply_state = ApplyState.IDLE
+            sess.apply_job_url = None
+            session_mod.save(ctx.storage, sess)
+            await _say(
+                ctx, sender,
+                rendering.format_error(
+                    "Couldn't initiate payment — try again in a moment."
+                ),
+            )
+            return
         ctx.logger.info(
             f"Payment-first Greenhouse apply queued for {sender}: "
             f"{hot_apply_url}"
@@ -1048,6 +1160,9 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     # submission both arrive as MetadataContent and short-circuit the
     # regular intent classifier.
     card_selection = _extract_card_selection(msg)
+    if card_selection is not None and "payment_action" in card_selection:
+        await _handle_payment_card_selection(ctx, sender, card_selection)
+        return
     if card_selection is not None and "section" in card_selection:
         await _handle_profile_card_selection(ctx, sender, sess, card_selection)
         return
@@ -1197,9 +1312,8 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
             session_mod.save(ctx.storage, sess)
             await _say(
                 ctx, sender,
-                "💳 You still have a pending payment request. Confirm or "
-                "reject it in your wallet — I'll start as soon as that "
-                "settles. (Or say `cancel` to abort.)",
+                "You still have a pending payment request. Use the payment "
+                "card above, or say `cancel` to abort.",
             )
             return
 

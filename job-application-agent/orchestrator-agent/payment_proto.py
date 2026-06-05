@@ -27,9 +27,11 @@ Configuration (env):
 - `PAYMENT_AMOUNT_FET`     — amount per application (default "0.1").
 - `FET_USE_TESTNET`        — "true" (default) verifies against Dorado
                              testnet; "false" against mainnet.
+- `PAYMENT_PROVIDER_FET`   — optional wallet used as the native ASI/FET
+                             payment card recipient/provider wallet.
 - `PAYMENT_RECIPIENT_FET`  — optional downstream payout wallet. Native
                              `fet_direct` RequestPayment must still target
-                             the seller agent wallet.
+                             the provider wallet.
 - `PAYMENT_BUYER_FET`      — optional wallet expected to send the payment.
 - `PAYMENT_TESTNET_AUTO_PAY` — "true" lets the fallback card submit a
                                real testnet transfer using a configured
@@ -96,13 +98,18 @@ def amount_fet() -> str:
 
 
 def recipient_fet_address(ctx: Optional[Context] = None) -> str:
-    # The native ASI/FET payment renderer expects `recipient` to be the seller
-    # agent wallet and metadata.provider_agent_wallet to match. Sending an
-    # arbitrary external payout wallet here renders but can fail before
-    # CommitPayment is delivered.
+    # The native ASI/FET payment renderer expects `recipient` and
+    # metadata.provider_agent_wallet to point at the funded provider wallet.
+    provider_wallet = configured_provider_fet_address()
+    if provider_wallet:
+        return provider_wallet
     if _agent_wallet:
         return str(_agent_wallet.address())
     return str(ctx.agent.address) if ctx is not None else ""
+
+
+def configured_provider_fet_address() -> str:
+    return os.getenv("PAYMENT_PROVIDER_FET", "").strip()
 
 
 def configured_payout_fet_address() -> str:
@@ -181,7 +188,7 @@ def execute_testnet_payment(logger) -> tuple[bool, str, Optional[str]]:  # noqa:
             )
             return False, "payer_mnemonic_address_mismatch", payer_address
 
-        recipient_address = recipient_fet_address()
+        recipient_address = configured_payout_fet_address() or recipient_fet_address()
         if not recipient_address:
             return False, "missing_recipient", payer_address
 
@@ -371,21 +378,12 @@ async def request_payment_from_user(
         "fet_network": "stable-testnet" if use_testnet() else "mainnet",
         "mainnet": "false" if use_testnet() else "true",
     }
-    if _agent_wallet:
-        metadata["provider_agent_wallet"] = str(_agent_wallet.address())
-    payout_wallet = configured_payout_fet_address()
-    if payout_wallet:
-        metadata["configured_payout_wallet"] = payout_wallet
-    expected_buyer = expected_buyer_fet_address()
-    if expected_buyer:
-        metadata["buyer_fet_wallet"] = expected_buyer
-        metadata["expected_buyer_fet_wallet"] = expected_buyer
+    recipient_addr = recipient_fet_address(ctx)
+    metadata["provider_agent_wallet"] = recipient_addr
     metadata["content"] = (
         description
         or "Please complete the FET payment to start the Greenhouse application."
     )
-
-    recipient_addr = recipient_fet_address(ctx)
 
     # Bare session UUID, same as duffel (`reference=session`).
     session_ref = reference or (str(ctx.session) if ctx.session else str(uuid4()))
