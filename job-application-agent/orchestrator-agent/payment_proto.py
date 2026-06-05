@@ -27,7 +27,9 @@ Configuration (env):
 - `PAYMENT_AMOUNT_FET`     — amount per application (default "0.1").
 - `FET_USE_TESTNET`        — "true" (default) verifies against Dorado
                              testnet; "false" against mainnet.
-- `PAYMENT_RECIPIENT_FET`  — wallet that receives the FET payment.
+- `PAYMENT_RECIPIENT_FET`  — optional downstream payout wallet. Native
+                             `fet_direct` RequestPayment must still target
+                             the seller agent wallet.
 - `PAYMENT_BUYER_FET`      — optional wallet expected to send the payment.
 - `PAYMENT_TESTNET_AUTO_PAY` — "true" lets the fallback card submit a
                                real testnet transfer using a configured
@@ -94,12 +96,17 @@ def amount_fet() -> str:
 
 
 def recipient_fet_address(ctx: Optional[Context] = None) -> str:
-    configured = os.getenv("PAYMENT_RECIPIENT_FET", "").strip()
-    if configured:
-        return configured
+    # The native ASI/FET payment renderer expects `recipient` to be the seller
+    # agent wallet and metadata.provider_agent_wallet to match. Sending an
+    # arbitrary external payout wallet here renders but can fail before
+    # CommitPayment is delivered.
     if _agent_wallet:
         return str(_agent_wallet.address())
     return str(ctx.agent.address) if ctx is not None else ""
+
+
+def configured_payout_fet_address() -> str:
+    return os.getenv("PAYMENT_RECIPIENT_FET", "").strip()
 
 
 def expected_buyer_fet_address() -> str:
@@ -366,6 +373,9 @@ async def request_payment_from_user(
     }
     if _agent_wallet:
         metadata["provider_agent_wallet"] = str(_agent_wallet.address())
+    payout_wallet = configured_payout_fet_address()
+    if payout_wallet:
+        metadata["configured_payout_wallet"] = payout_wallet
     expected_buyer = expected_buyer_fet_address()
     if expected_buyer:
         metadata["buyer_fet_wallet"] = expected_buyer
