@@ -29,6 +29,11 @@ Configuration (env):
                              testnet; "false" against mainnet.
 - `PAYMENT_RECIPIENT_FET`  — wallet that receives the FET payment.
 - `PAYMENT_BUYER_FET`      — optional wallet expected to send the payment.
+- `PAYMENT_TESTNET_AUTO_PAY` — "true" lets the fallback card submit a
+                               real testnet transfer using a configured
+                               mnemonic. Ignored on mainnet.
+- `PAYMENT_TESTNET_PAYER_MNEMONIC` — testnet payer wallet mnemonic.
+- `PAYMENT_TESTNET_PAYER_PRIVATE_KEY` — testnet payer private key as hex.
 
 Reference implementation: `fet-example/payment.py`.
 """
@@ -101,6 +106,10 @@ def expected_buyer_fet_address() -> str:
     return os.getenv("PAYMENT_BUYER_FET", "").strip()
 
 
+def testnet_auto_pay_enabled() -> bool:
+    return use_testnet() and _env_truthy("PAYMENT_TESTNET_AUTO_PAY", default=False)
+
+
 def balance_fet(address: str, logger=None) -> Optional[str]:  # noqa: ANN001
     """Return wallet balance in FET as a compact decimal string."""
     if not address:
@@ -125,6 +134,79 @@ def balance_fet(address: str, logger=None) -> Optional[str]:  # noqa: ANN001
     fet_value = Decimal(raw_amount) / Decimal(10**18)
     text = f"{fet_value:.4f}".rstrip("0").rstrip(".")
     return text or "0"
+
+
+def execute_testnet_payment(logger) -> tuple[bool, str, Optional[str]]:  # noqa: ANN001
+    """Submit a real testnet FET transfer using a configured payer key.
+
+    Returns (success, reason_or_tx_hash, payer_address). This is deliberately
+    testnet-only; mainnet must go through a real wallet approval/CommitPayment.
+    """
+    if not use_testnet():
+        return False, "auto_pay_mainnet_disabled", None
+    if not testnet_auto_pay_enabled():
+        return False, "auto_pay_disabled", None
+
+    mnemonic = os.getenv("PAYMENT_TESTNET_PAYER_MNEMONIC", "").strip()
+    private_key_hex = os.getenv("PAYMENT_TESTNET_PAYER_PRIVATE_KEY", "").strip()
+    if not mnemonic and not private_key_hex:
+        return False, "missing_payment_testnet_payer_key", None
+
+    try:
+        from cosmpy.aerial.client import LedgerClient, NetworkConfig
+        from cosmpy.aerial.wallet import LocalWallet, PrivateKey
+        from cosmpy.crypto.address import Address
+
+        if mnemonic:
+            payer_wallet = LocalWallet.from_mnemonic(mnemonic, prefix="fetch")
+        else:
+            private_key_hex = private_key_hex.removeprefix("0x")
+            payer_wallet = LocalWallet(
+                PrivateKey(bytes.fromhex(private_key_hex)),
+                prefix="fetch",
+            )
+        payer_address = str(payer_wallet.address())
+        expected_payer = expected_buyer_fet_address()
+        if expected_payer and payer_address != expected_payer:
+            logger.error(
+                f"testnet payer mnemonic mismatch: {payer_address} "
+                f"!= {expected_payer}"
+            )
+            return False, "payer_mnemonic_address_mismatch", payer_address
+
+        recipient_address = recipient_fet_address()
+        if not recipient_address:
+            return False, "missing_recipient", payer_address
+
+        amount_atestfet = int(Decimal(amount_fet()) * Decimal(10**18))
+        ledger = LedgerClient(NetworkConfig.fetchai_stable_testnet())
+        submitted = ledger.send_tokens(
+            Address(recipient_address),
+            amount_atestfet,
+            "atestfet",
+            payer_wallet,
+            memo="job_application_orchestrator",
+        )
+        logger.info(
+            f"[payment] submitted testnet transfer tx={submitted.tx_hash} "
+            f"from={payer_address} to={recipient_address} "
+            f"amount={amount_fet()} FET"
+        )
+        submitted.wait_to_complete(timeout=30, poll_period=1)
+
+        verified = verify_fet_payment(
+            transaction_id=submitted.tx_hash,
+            expected_amount_fet=amount_fet(),
+            sender_fet_address=payer_address,
+            recipient_fet_address=recipient_address,
+            logger=logger,
+        )
+        if not verified:
+            return False, "verification_failed", payer_address
+        return True, submitted.tx_hash, payer_address
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"testnet auto payment failed: {exc}")
+        return False, f"auto_pay_error:{exc}", None
 
 
 def gate_active() -> bool:

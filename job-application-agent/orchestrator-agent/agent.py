@@ -437,10 +437,51 @@ async def _handle_payment_card_selection(
             return
 
         if payment_mod.use_testnet():
+            paid, detail, payer_address = payment_mod.execute_testnet_payment(
+                ctx.logger
+            )
+            if not paid:
+                if detail == "missing_payment_testnet_payer_key":
+                    await _say(
+                        ctx, sender,
+                        (
+                            "I cannot execute the testnet transfer yet: "
+                            "configure `PAYMENT_TESTNET_PAYER_PRIVATE_KEY` "
+                            "or `PAYMENT_TESTNET_PAYER_MNEMONIC` for the "
+                            "payer wallet."
+                        ),
+                    )
+                elif detail == "auto_pay_disabled":
+                    await _say(
+                        ctx, sender,
+                        (
+                            "Testnet auto-payment is disabled. Set "
+                            "`PAYMENT_TESTNET_AUTO_PAY=true` and configure "
+                            "`PAYMENT_TESTNET_PAYER_PRIVATE_KEY` or "
+                            "`PAYMENT_TESTNET_PAYER_MNEMONIC` to execute a "
+                            "real testnet transfer."
+                        ),
+                    )
+                elif detail == "payer_mnemonic_address_mismatch":
+                    await _say(
+                        ctx, sender,
+                        (
+                            "The configured payer mnemonic does not match "
+                            "the expected buyer wallet, so I did not send "
+                            "the testnet payment."
+                        ),
+                    )
+                else:
+                    await _say(
+                        ctx, sender,
+                        f"Testnet payment failed: {detail}",
+                    )
+                return
+
             await _say(
                 ctx, sender,
                 (
-                    "Testnet payment confirmed in the chat UI. Starting "
+                    f"Testnet payment verified (tx `{detail}`). Starting "
                     "your application now."
                 ),
             )
