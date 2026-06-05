@@ -68,15 +68,7 @@ def format_panel_compact(sess: Session) -> str:
     if missing:
         labels: list[str] = []
         for name in missing[:5]:
-            label = ""
-            for q in sess.questions:
-                for f in q.get("fields") or []:
-                    if f.get("name") == name:
-                        label = q.get("label") or ""
-                        break
-                if label:
-                    break
-            labels.append(label or name)
+            labels.append(_missing_label(sess, name))
         more = f" (+{len(missing) - 5} more)" if len(missing) > 5 else ""
         return (
             f"{head} · **Still need:** {', '.join(labels)}{more}\n"
@@ -96,6 +88,19 @@ def _value_display(value: Any, ftype: str) -> str:
         return "_(empty)_"
     s = str(value).replace("\n", " ").strip()
     return f"`{_truncate(s, 80)}`"
+
+
+def _question_and_field(sess: Session, name: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    for q in sess.questions:
+        for f in q.get("fields") or []:
+            if f.get("name") == name:
+                return q, f
+    return None, None
+
+
+def _missing_label(sess: Session, name: str) -> str:
+    q, _ = _question_and_field(sess, name)
+    return (q or {}).get("label") or name
 
 
 def format_form_panel(sess: Session) -> str:
@@ -145,7 +150,7 @@ def format_form_panel(sess: Session) -> str:
                 )
             elif name in missing:
                 body.append(
-                    f"  - ⚠️  `{name}` — _needs your input_  "
+                    f"  - ⚠️  `{name}` — _required; needs your input_  "
                     f"(reply: `answer {name} <value>`)"
                 )
             else:
@@ -211,14 +216,9 @@ def format_panel(sess: Session) -> str:
         if filled:
             lines.append("")
         for name in not_in_filled:
-            q_label = ""
-            for q in sess.questions:
-                for fld in q.get("fields") or []:
-                    if fld.get("name") == name:
-                        q_label = q.get("label") or ""
-                        break
+            q_label = _missing_label(sess, name)
             label_hint = f" — _{_truncate(q_label, 60)}_" if q_label else ""
-            lines.append(f"  ⚠️  `{name}` — **needs your input**{label_hint}")
+            lines.append(f"  ⚠️  `{name}` — **required; needs your input**{label_hint}")
 
     lines.append("")
     if missing:
@@ -255,14 +255,9 @@ def format_field_detail(sess: Session, name: str) -> str:
     idx = sess.index_of(name)
     if idx < 0:
         if name in sess.missing_required:
-            q_label = ""
-            for q in sess.questions:
-                for f in q.get("fields") or []:
-                    if f.get("name") == name:
-                        q_label = q.get("label") or ""
-                        break
+            q_label = _missing_label(sess, name)
             return (
-                f"⚠️ **{name}** — not yet filled.\n"
+                f"⚠️ **{name}** — required field, not yet filled.\n"
                 f"Question label: {q_label or '(none)'}\n"
                 f"To fill: `answer {name} <value>`"
             )
@@ -293,12 +288,11 @@ def format_next_missing(sess: Session) -> str:
     if not sess.missing_required:
         return "🎉 Nothing missing. Type `submit` to send."
     name = sess.missing_required[0]
-    q_label = ""
+    q_label = _missing_label(sess, name)
     options_hint = ""
     for q in sess.questions:
         for f in q.get("fields") or []:
             if f.get("name") == name:
-                q_label = q.get("label") or ""
                 opts = f.get("values") or f.get("options") or []
                 if isinstance(opts, list) and opts:
                     nice = []
@@ -311,7 +305,7 @@ def format_next_missing(sess: Session) -> str:
                     options_hint = "\nOptions: " + " | ".join(nice)
                 break
     return (
-        f"Next missing field: **{name}**\n"
+        f"Next required field: **{name}**\n"
         f"Question: {q_label or '(no label)'}{options_hint}\n"
         f"Reply with `answer {name} <your value>`."
     )
@@ -337,5 +331,6 @@ def format_submission_result(
     if error:
         msg += f"\n{error}"
     if missing_required:
-        msg += f"\nMissing required: {', '.join(missing_required)}"
+        labels = [str(m) for m in missing_required]
+        msg += f"\nMissing required: {', '.join(labels)}"
     return msg

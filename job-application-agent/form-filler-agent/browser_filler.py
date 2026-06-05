@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+import re
 from typing import Any, AsyncIterator, Optional
 
 from playwright.async_api import (
@@ -53,6 +54,197 @@ class FillEvent:
 
 def _css_escape(name: str) -> str:
     return name.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _norm(text: Any) -> str:
+    return re.sub(r"\s+", " ", str(text or "").strip().lower())
+
+
+def _option(label: str) -> dict[str, str]:
+    return {"label": label, "value": label}
+
+
+DEMOGRAPHIC_OPTIONS: dict[str, list[dict[str, str]]] = {
+    "gender_identity": [
+        _option("Cisgender woman"),
+        _option("Cisgender man"),
+        _option("Transgender woman"),
+        _option("Transgender man"),
+        _option("Non-binary"),
+        _option("Two-spirit"),
+        _option("My gender identity is not listed"),
+        _option("I don't wish to answer"),
+    ],
+    "race_ethnicity": [
+        _option("American Indian or Alaskan Native"),
+        _option("Black or African American"),
+        _option("East Asian"),
+        _option("Hispanic or Latino"),
+        _option("Middle Eastern or North African"),
+        _option("Native Hawaiian or Other Pacific Islander"),
+        _option("South Asian"),
+        _option("Southeast Asian"),
+        _option("White"),
+        _option("Two or More Races"),
+        _option("I don't wish to answer"),
+    ],
+    "military_status": [
+        _option("I am on active duty"),
+        _option("I am part of the national guard or on reserve"),
+        _option("I have never served in the military"),
+        _option("I identify as a protected veteran"),
+        _option("I identify as a non-protected veteran"),
+        _option("I identify in multiple military status categories"),
+        _option("I don't wish to answer"),
+    ],
+    "disability_status": [
+        _option("Yes, I have a disability"),
+        _option("No, I don't have a disability"),
+        _option("I don't wish to answer"),
+    ],
+    "lgbtq": [
+        _option("Yes"),
+        _option("No"),
+        _option("Questioning"),
+        _option("I don't wish to answer"),
+    ],
+}
+
+
+def _clean_label(label: str) -> str:
+    return re.sub(r"\s+", " ", (label or "").replace("*", " ")).strip()
+
+
+def _decline_if_requested(value: Any, options: list[dict[str, str]]) -> Optional[str]:
+    normed = _norm(value)
+    if normed in {"decline", "decline to answer", "prefer not to say", "i don't wish to answer", "do not wish to answer"}:
+        return "I don't wish to answer"
+    return None
+
+
+def _exact_option(value: Any, options: list[dict[str, str]]) -> Optional[str]:
+    normed = _norm(value)
+    for opt in options:
+        label = opt.get("label") or opt.get("value") or ""
+        if _norm(label) == normed:
+            return label
+    return None
+
+
+def _map_gender_identity(value: Any) -> Optional[str]:
+    options = DEMOGRAPHIC_OPTIONS["gender_identity"]
+    mapped = _decline_if_requested(value, options)
+    if mapped:
+        return mapped
+    exact = _exact_option(value, options)
+    if exact:
+        return exact
+    normed = _norm(value)
+    if normed in {"male", "man", "cis male", "cisgender male", "cis man", "cisgender man"}:
+        return "Cisgender man"
+    if normed in {"female", "woman", "cis female", "cisgender female", "cis woman", "cisgender woman"}:
+        return "Cisgender woman"
+    if "non-binary" in normed or "nonbinary" in normed:
+        return "Non-binary"
+    if "transgender woman" in normed or normed == "trans woman":
+        return "Transgender woman"
+    if "transgender man" in normed or normed == "trans man":
+        return "Transgender man"
+    return None
+
+
+def _map_race_ethnicity(value: Any) -> Optional[str]:
+    options = DEMOGRAPHIC_OPTIONS["race_ethnicity"]
+    mapped = _decline_if_requested(value, options)
+    if mapped:
+        return mapped
+    exact = _exact_option(value, options)
+    if exact:
+        return exact
+    normed = _norm(value)
+    # "Asian" alone is ambiguous on Robinhood's split East/South/Southeast list.
+    if normed == "asian":
+        return None
+    aliases = {
+        "black": "Black or African American",
+        "african american": "Black or African American",
+        "hispanic": "Hispanic or Latino",
+        "latino": "Hispanic or Latino",
+        "latina": "Hispanic or Latino",
+        "middle eastern": "Middle Eastern or North African",
+        "north african": "Middle Eastern or North African",
+        "native hawaiian": "Native Hawaiian or Other Pacific Islander",
+        "pacific islander": "Native Hawaiian or Other Pacific Islander",
+        "two or more races": "Two or More Races",
+        "two or more": "Two or More Races",
+    }
+    if normed in aliases:
+        return aliases[normed]
+    return None
+
+
+def _map_military_status(value: Any) -> Optional[str]:
+    options = DEMOGRAPHIC_OPTIONS["military_status"]
+    mapped = _decline_if_requested(value, options)
+    if mapped:
+        return mapped
+    exact = _exact_option(value, options)
+    if exact:
+        return exact
+    normed = _norm(value)
+    if "never served" in normed:
+        return "I have never served in the military"
+    if "active duty" in normed:
+        return "I am on active duty"
+    if "national guard" in normed or "reserve" in normed:
+        return "I am part of the national guard or on reserve"
+    if "non-protected veteran" in normed:
+        return "I identify as a non-protected veteran"
+    if "protected veteran" in normed and "not" not in normed:
+        return "I identify as a protected veteran"
+    return None
+
+
+def _map_disability_status(value: Any) -> Optional[str]:
+    options = DEMOGRAPHIC_OPTIONS["disability_status"]
+    mapped = _decline_if_requested(value, options)
+    if mapped:
+        return mapped
+    exact = _exact_option(value, options)
+    if exact:
+        return exact
+    normed = _norm(value)
+    if normed in {"yes", "true", "1", "disabled", "i have a disability"}:
+        return "Yes, I have a disability"
+    if normed in {"no", "false", "0", "none", "not disabled", "i do not have a disability"}:
+        return "No, I don't have a disability"
+    return None
+
+
+def _profile_value_for_live_label(
+    profile: dict[str, Any], label: str, *, ftype: str
+) -> tuple[Optional[str], Optional[str], list[dict[str, str]]]:
+    normed = _norm(label)
+    if "gender identity" in normed:
+        return "gender", _map_gender_identity(profile.get("gender")), DEMOGRAPHIC_OPTIONS["gender_identity"]
+    if "race or ethnicity" in normed or "race/ethnicity" in normed:
+        return "race_ethnicity", _map_race_ethnicity(profile.get("race_ethnicity")), DEMOGRAPHIC_OPTIONS["race_ethnicity"]
+    if "military status" in normed or "veteran" in normed:
+        return "veteran_status", _map_military_status(profile.get("veteran_status")), DEMOGRAPHIC_OPTIONS["military_status"]
+    if "disability status" in normed:
+        return "disability_status", _map_disability_status(profile.get("disability_status")), DEMOGRAPHIC_OPTIONS["disability_status"]
+    if "lgbtq" in normed:
+        extras = profile.get("extras") or {}
+        value = extras.get("lgbtq") or profile.get("lgbtq")
+        options = DEMOGRAPHIC_OPTIONS["lgbtq"]
+        mapped = (
+            _decline_if_requested(value, options) or _exact_option(value, options)
+            if value else None
+        )
+        return "lgbtq", mapped, options
+    if ftype == "input_checkbox" and "consent" in normed and "demographic" in normed:
+        return "demographic_consent", None, []
+    return None, None, []
 
 
 class BrowserSession:
@@ -238,6 +430,97 @@ class BrowserSession:
         except Exception:  # noqa: BLE001
             return None
 
+    async def discover_profile_fillables(
+        self, profile: dict[str, Any], *, known_names: set[str]
+    ) -> list[dict[str, Any]]:
+        """Find live-only Greenhouse fields absent from the boards API.
+
+        Greenhouse renders some demographic fields only in the browser. They
+        are required on the page, but missing from `/questions=true`; this
+        method turns safe profile matches into normal fillable session fields
+        and exposes ambiguous required fields so chat can ask the user.
+        """
+        if self._page is None or not profile:
+            return []
+
+        controls = await self._page.evaluate(
+            """() => {
+              function labelFor(el) {
+                const id = el.id;
+                if (id) {
+                  const lab = document.querySelector(`label[for="${CSS.escape(id)}"]`);
+                  if (lab) return lab.innerText.trim();
+                }
+                const wrap = el.closest('label');
+                if (wrap) return wrap.innerText.trim();
+                const group = el.closest('[class*="field"], [class*="question"], fieldset, .form-field, .application-question');
+                if (group) return group.innerText.trim().slice(0, 600);
+                return '';
+              }
+              function visible(el) {
+                const r = el.getBoundingClientRect();
+                const s = getComputedStyle(el);
+                return !!(r.width || r.height) && s.visibility !== 'hidden' && s.display !== 'none';
+              }
+              return Array.from(document.querySelectorAll('input, select, textarea, [role="combobox"]')).map(el => {
+                const tag = el.tagName.toLowerCase();
+                const type = (el.getAttribute('type') || '').toLowerCase();
+                const role = el.getAttribute('role') || '';
+                const label = labelFor(el);
+                const id = el.id || '';
+                const name = el.getAttribute('name') || '';
+                const options = tag === 'select'
+                  ? Array.from(el.options).map(o => ({label:o.textContent.trim(), value:o.value || o.textContent.trim()}))
+                  : [];
+                return {
+                  tag, type, role, id, name, label, options,
+                  required: !!el.required || el.getAttribute('aria-required') === 'true' || /\\*/.test(label),
+                  visible: visible(el),
+                };
+              });
+            }"""
+        )
+
+        discovered: list[dict[str, Any]] = []
+        for control in controls:
+            if not control.get("visible"):
+                continue
+            name = control.get("id") or control.get("name")
+            if not name or name in known_names:
+                continue
+
+            label = _clean_label(control.get("label") or "")
+            if not label:
+                continue
+            tag = control.get("tag") or "input"
+            raw_type = control.get("type") or ""
+            role = control.get("role") or ""
+            ftype = "input_checkbox" if raw_type == "checkbox" else (
+                "multi_value_single_select" if tag == "select" or role == "combobox" else "input_text"
+            )
+            attr, value, options = _profile_value_for_live_label(
+                profile, label, ftype=ftype
+            )
+            if not attr:
+                continue
+
+            required = bool(control.get("required"))
+            discovered.append(
+                {
+                    "name": name,
+                    "label": label,
+                    "required": required,
+                    "ftype": ftype,
+                    "options": options or control.get("options") or [],
+                    "value": value,
+                    "source": "profile" if value else "live_required",
+                    "confidence": 0.9 if value else 0.0,
+                    "profile_attr": attr,
+                }
+            )
+            known_names.add(name)
+        return discovered
+
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
@@ -321,11 +604,26 @@ class BrowserSession:
             tag = await loc.evaluate("el => el.tagName.toLowerCase()")
         except Exception:  # noqa: BLE001
             tag = "input"
+        try:
+            input_type = await loc.evaluate("el => (el.getAttribute('type') || '').toLowerCase()")
+        except Exception:  # noqa: BLE001
+            input_type = ""
 
         try:
             await loc.scroll_into_view_if_needed(timeout=2000)
         except Exception:  # noqa: BLE001
             pass
+
+        if ftype in {"input_checkbox", "checkbox"} or input_type == "checkbox":
+            desired = _norm(value) not in {"", "0", "false", "no", "off", "none"}
+            try:
+                if desired:
+                    await loc.check(timeout=1500)
+                    return True, "checked checkbox"
+                await loc.uncheck(timeout=1500)
+                return True, "unchecked checkbox"
+            except Exception as exc:  # noqa: BLE001
+                return False, f"checkbox failed: {exc}"
 
         # Determine the actual option label/value we want to use.
         snap = match_option(value, options) if options else None

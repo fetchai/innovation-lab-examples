@@ -65,6 +65,18 @@ SELECT_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"disab(le|ility)", re.I), "disability_status"),
 ]
 
+# Greenhouse often gives optional profile-link fields opaque names like
+# `question_12345`; use the human label so known profile values still fill.
+PROFILE_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\blinked\s*in\b|\blinkedin\b", re.I), "linkedin"),
+    (re.compile(r"\bgithub\b|\bgit\s*hub\b", re.I), "github"),
+    (re.compile(r"\bportfolio\b", re.I), "portfolio"),
+    (re.compile(r"\b(personal\s+)?web\s*site\b|\bwebsite\b", re.I), "portfolio"),
+    (re.compile(r"\btwitter\b|\bx\s*\(?twitter\)?\b", re.I), "twitter"),
+    (re.compile(r"\bphone\b|\bmobile\b|\btelephone\b", re.I), "phone"),
+    (re.compile(r"\bemail\b|\be-mail\b", re.I), "email"),
+]
+
 LLM_SYSTEM_PROMPT = (
     "You help a candidate answer a job application question. "
     "Write a concise, first-person answer (1-3 short paragraphs, max ~150 words). "
@@ -274,6 +286,17 @@ class FieldMapper:
             value = mapping.get(tag)
             if value:
                 return {"value": value, "source": "profile", "confidence": 1.0}
+
+        # Opaque optional fields (for example `question_123`) still usually
+        # have clear labels like "LinkedIn Profile" or "Website".
+        if ftype in {"input_text", "text", "url", "unknown"} and not values:
+            for pattern, attr_name in PROFILE_LABEL_MATCHERS:
+                if not pattern.search(label or ""):
+                    continue
+                value = getattr(profile, attr_name, None)
+                if value:
+                    return {"value": value, "source": "profile", "confidence": 0.95}
+                break
 
         # 2. Canned answer keyed by label (exact then normalized).
         canned = profile.canned_answers.get(label) or profile.canned_answers.get(_norm(label))

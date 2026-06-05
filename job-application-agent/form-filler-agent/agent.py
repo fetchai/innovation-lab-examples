@@ -216,17 +216,28 @@ def _existing_resume_path(raw_path: str | None) -> str | None:
 
 
 async def _resolve_resume_path(ctx: Context) -> str | None:
+    profile = await _load_profile(ctx)
+    return _resolve_resume_path_from_profile(ctx, profile)
+
+
+async def _load_profile(ctx: Context) -> dict | None:
+    if not PROFILE_ADDR:
+        return None
+    try:
+        prof_resp = await clients.call_get_profile(
+            ctx, PROFILE_ADDR, DEFAULT_USER_KEY, timeout=15
+        )
+        if prof_resp.success and prof_resp.profile_json:
+            return json.loads(prof_resp.profile_json)
+    except Exception as exc:  # noqa: BLE001
+        ctx.logger.warning(f"Could not load profile: {exc}")
+    return None
+
+
+def _resolve_resume_path_from_profile(ctx: Context, profile: dict | None) -> str | None:
     profile_resume_path: str | None = None
-    if PROFILE_ADDR:
-        try:
-            prof_resp = await clients.call_get_profile(
-                ctx, PROFILE_ADDR, DEFAULT_USER_KEY, timeout=15
-            )
-            if prof_resp.success and prof_resp.profile_json:
-                prof = json.loads(prof_resp.profile_json)
-                profile_resume_path = prof.get("resume_path")
-        except Exception as exc:  # noqa: BLE001
-            ctx.logger.warning(f"Could not load profile to read resume_path: {exc}")
+    if profile:
+        profile_resume_path = profile.get("resume_path")
 
     selected = _existing_resume_path(profile_resume_path)
     if selected:
@@ -422,9 +433,11 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         if n not in sess.missing_required:
             sess.missing_required.append(n)
 
+    profile_snapshot = await _load_profile(ctx)
+
     # Resume path: prefer the active profile/uploaded resume. DEFAULT_RESUME_PATH
     # is only a local fallback for demos with no profile resume yet.
-    sess.resume_path = await _resolve_resume_path(ctx)
+    sess.resume_path = _resolve_resume_path_from_profile(ctx, profile_snapshot)
 
     # Show the resume as a "filled" file field for visibility, if there is one.
     if sess.resume_path:
@@ -458,7 +471,7 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         )
         if application_url:
             live_fill_succeeded = await _run_live_fill(
-                ctx, sender, sess, application_url
+                ctx, sender, sess, application_url, profile_snapshot=profile_snapshot
             )
 
     sess.state = State.REVIEWING
@@ -490,7 +503,12 @@ async def _close_browser_session(sender: str) -> None:
 
 
 async def _run_live_fill(
-    ctx: Context, sender: str, sess: Session, application_url: str
+    ctx: Context,
+    sender: str,
+    sess: Session,
+    application_url: str,
+    *,
+    profile_snapshot: dict | None = None,
 ) -> bool:
     """Open a persistent Playwright session and stream the initial fill
     into chat. Browser stays OPEN after this returns — agent edits and
@@ -529,6 +547,63 @@ async def _run_live_fill(
         return False
 
     _live_browser_sessions[sender] = bs
+
+    if profile_snapshot:
+        discovered = await bs.discover_profile_fillables(
+            profile_snapshot,
+            known_names={
+                fld.get("name")
+                for q in sess.questions
+                for fld in (q.get("fields") or [])
+                if fld.get("name")
+            },
+        )
+        if discovered:
+            filled_live: list[str] = []
+            missing_live: list[str] = []
+            for item in discovered:
+                name = item["name"]
+                if not sess.field_meta(name):
+                    sess.questions.append(
+                        {
+                            "label": item["label"],
+                            "required": item["required"],
+                            "description": "Detected from the live Greenhouse form.",
+                            "fields": [
+                                {
+                                    "name": name,
+                                    "type": item["ftype"],
+                                    "required": item["required"],
+                                    "label": None,
+                                    "values": item.get("options") or [],
+                                }
+                            ],
+                        }
+                    )
+                if item.get("value") not in (None, "", []):
+                    sess.set_field(
+                        name,
+                        item["value"],
+                        source=item.get("source") or "profile",
+                        confidence=float(item.get("confidence") or 0.0),
+                    )
+                    filled_live.append(item["label"])
+                elif item.get("required") and name not in sess.missing_required:
+                    sess.missing_required.append(name)
+                    missing_live.append(item["label"])
+            if filled_live or missing_live:
+                ctx.logger.info(
+                    "live-fill: discovered live-only fields; "
+                    f"filled={filled_live} missing={missing_live}"
+                )
+            if missing_live:
+                await _say(
+                    ctx,
+                    sender,
+                    "⚠️ The live Greenhouse page has required demographic "
+                    "field(s) that were not in the public API and need your "
+                    f"choice: {', '.join(missing_live)}. Say `next` to review them.",
+                )
 
     # File fields first so user sees the resume attach early.
     fillables: list[dict] = []
