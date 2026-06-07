@@ -29,7 +29,7 @@ sequenceDiagram
 
 1. Navigate to the example directory:
    ```bash
-   cd innovation-lab-examples/gemini_ai_assistant
+   cd innovation-lab-examples/contributors/gemini_ai_assistant
    ```
 
 2. (Optional) Create and activate a virtual environment:
