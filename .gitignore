@@ -9,6 +9,9 @@
 # Claude Code MCP config (contains Agentverse API token)
 .mcp.json
 
+# Codex MCP config (contains Agentverse API token)
+.codex/
+
 # Internal/private docs (never push)
 Fetch Internship - summer Cohort Tasks.md
 
