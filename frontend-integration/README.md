@@ -140,6 +140,7 @@ User Query → Search Agent → Product List → Info Agent → Full Details
 - Comprehensive error messages with request details
 - Graceful handling of API failures
 - Frontend displays user-friendly error messages
+- Frontend requests to local agents use a 5-second timeout so stalled agents return controlled JSON errors instead of hanging the UI
 
 ## 🛠️ Technical Details
 
@@ -155,4 +156,4 @@ User Query → Search Agent → Product List → Info Agent → Full Details
 
 ---
 
-**Ready to explore? Start the agents in separate terminals and open the web interface! 🚀** 
+**Ready to explore? Start the agents in separate terminals and open the web interface! 🚀**
