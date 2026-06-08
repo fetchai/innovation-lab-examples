@@ -872,9 +872,103 @@ async def _llm_handle(
         await _say(ctx, sender, f"Cleared `{interp.field}`.")
         return
 
+    if intent == "compose":
+        await _compose_draft(ctx, sender, sess, interp.field)
+        return
+
     if intent in {"submit", "submit_live"}:
         await _do_submit(ctx, sender, sess, dry_run=(intent == "submit"))
         return
+
+
+async def _compose_draft(
+    ctx: Context, sender: str, sess: Session, requested_field: Optional[str]
+) -> None:
+    """Ask the profile agent to RAG-draft an answer for a single free-text
+    question. If the user didn't name a field, pick the next missing one.
+    Surface the draft as a suggestion plus the `answer` command to save it."""
+    name = requested_field
+    if not name:
+        for fname in sess.missing_required or []:
+            meta = sess.field_meta(fname) or {}
+            if (meta.get("type") or "").lower() in {"textarea", "input_text"}:
+                name = fname
+                break
+        if not name and sess.missing_required:
+            name = sess.missing_required[0]
+
+    if not name or not sess.field_meta(name):
+        await _say(
+            ctx, sender,
+            "Tell me which question to draft, e.g. *\"help me answer "
+            "question_14492425004\"* — `show all` lists the field names.",
+        )
+        return
+
+    meta = sess.field_meta(name) or {}
+    # Locate the originating question so we send its full label/description
+    # to the profile agent (the mapper keys off label).
+    question = None
+    for q in (sess.questions or []):
+        for f in (q.get("fields") or []):
+            if f.get("name") == name:
+                question = dict(q)
+                question["fields"] = [f]
+                break
+        if question:
+            break
+    if not question:
+        question = {
+            "label": meta.get("label", name),
+            "description": meta.get("description"),
+            "required": True,
+            "fields": [meta],
+        }
+
+    await _say(ctx, sender, f"✍️ Drafting an answer for `{name}` from your resume…")
+
+    try:
+        map_resp = await clients.call_map_fields(
+            ctx,
+            PROFILE_ADDR,
+            DEFAULT_USER_KEY,
+            json.dumps([question]),
+            timeout=PROFILE_TIMEOUT,
+        )
+    except Exception as exc:  # noqa: BLE001
+        await _say(ctx, sender, f"❌ Couldn't reach the profile agent: {exc}")
+        return
+
+    if not map_resp.success or not map_resp.result_json:
+        await _say(ctx, sender, f"❌ Draft failed: {map_resp.error or 'unknown'}")
+        return
+
+    try:
+        result = json.loads(map_resp.result_json)
+    except Exception as exc:  # noqa: BLE001
+        await _say(ctx, sender, f"❌ Could not parse draft result: {exc}")
+        return
+
+    draft = None
+    for f in (result.get("filled") or []):
+        if f.get("name") == name:
+            draft = f.get("value")
+            break
+
+    if not draft:
+        await _say(
+            ctx, sender,
+            "Hmm, I couldn't draft anything useful from your resume for that "
+            "question. Try giving me a sentence or two and I'll polish it: "
+            f"`answer {name} <your text>`.",
+        )
+        return
+
+    await _say(
+        ctx, sender,
+        f"**Draft for `{name}`:**\n\n{draft}\n\n"
+        f"Reply `answer {name} <your edits>` to save (or your own version).",
+    )
 
 
 async def _apply_field_edit(

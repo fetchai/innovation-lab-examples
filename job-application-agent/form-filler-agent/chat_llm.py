@@ -37,9 +37,18 @@ except ImportError:  # openai is optional — agent falls back to deterministic 
     OpenAI = None  # type: ignore
 
 
-ASI_ONE_API_KEY = os.getenv("ASI_ONE_API_KEY")
-ASI_ONE_MODEL = os.getenv("ASI_ONE_CHAT_MODEL", "asi1-mini")
+# Read lazily inside interpret(): agent.py imports this module *before* it
+# calls load_dotenv(), so capturing the env at module-load time would always
+# yield None and silently disable the LLM intent classifier.
 ASI_ONE_BASE_URL = "https://api.asi1.ai/v1"
+
+
+def _asi_one_key() -> Optional[str]:
+    return os.getenv("ASI_ONE_API_KEY")
+
+
+def _asi_one_model() -> str:
+    return os.getenv("ASI_ONE_CHAT_MODEL", "asi1-mini")
 
 
 ALLOWED_INTENTS = {
@@ -55,6 +64,7 @@ ALLOWED_INTENTS = {
     "answer",
     "edit",
     "unfill",
+    "compose",
     "submit",
     "submit_live",
     "noop",
@@ -85,6 +95,14 @@ Your job, on every user turn:
    - edit       : the user is changing the value of an ALREADY-FILLED field.
                   Use args.field (the exact name) + args.value.
    - unfill     : the user wants to clear a field. args.field is the name.
+   - compose    : the user wants HELP drafting an answer (no value supplied)
+                  for a free-text question — e.g. "help me answer X",
+                  "draft me one", "write something for the why-figma
+                  question", "can you help with this question". Put the
+                  exact field `name` in args.field if the user named or
+                  clearly referenced one; if they said "this" / "this one"
+                  with no field, omit args.field and the agent will pick
+                  the next missing one.
    - submit     : the user wants to submit (dry-run by default).
    - submit_live: the user is explicitly saying to actually post the
                   application live (e.g. "submit live", "send it for real").
@@ -205,7 +223,8 @@ def interpret(user_text: str, session_ctx: dict[str, Any]) -> Interpretation:
     if not user_text or not user_text.strip():
         return Interpretation(intent="noop")
 
-    if not ASI_ONE_API_KEY or OpenAI is None:
+    api_key = _asi_one_key()
+    if not api_key or OpenAI is None:
         return _heuristic_fallback(user_text, session_ctx)
 
     summary = _summarise_session(session_ctx)
@@ -216,9 +235,9 @@ def interpret(user_text: str, session_ctx: dict[str, Any]) -> Interpretation:
     )
 
     try:
-        client = OpenAI(base_url=ASI_ONE_BASE_URL, api_key=ASI_ONE_API_KEY)
+        client = OpenAI(base_url=ASI_ONE_BASE_URL, api_key=api_key)
         resp = client.chat.completions.create(
-            model=ASI_ONE_MODEL,
+            model=_asi_one_model(),
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
