@@ -66,12 +66,21 @@ from uagents_core.contrib.protocols.chat.cards import (  # noqa: E402
 )
 from uagents_core.storage import ExternalStorage  # noqa: E402
 
+import chat_assets  # noqa: E402
+import chat_llm  # noqa: E402
+import form_rendering  # noqa: E402
+import form_session  # noqa: E402
+import helper_clients  # noqa: E402
 import intents  # noqa: E402
 import payment_proto as payment_mod  # noqa: E402
 import profile_fields  # noqa: E402
 import rendering  # noqa: E402
 import resume_store  # noqa: E402
 import session as session_mod  # noqa: E402
+from browser_filler import BrowserSession, FillEvent  # noqa: E402
+from commands import Command, parse as parse_command  # noqa: E402
+from form_session import Session as FormSession, State as FormState  # noqa: E402
+from options import match_option  # noqa: E402
 from field_mapper import FieldMapper  # noqa: E402
 from models import (  # noqa: E402
     MapFieldsResult, UserProfile,
@@ -94,8 +103,21 @@ SEED_PHRASE = os.getenv(
 )
 PORT = int(os.getenv("ORCHESTRATOR_AGENT_PORT", "8014"))
 
-FORM_FILLER_ADDR = os.getenv("FORM_FILLER_AGENT_ADDRESS", "")
 DEFAULT_USER_KEY = os.getenv("DEFAULT_USER_KEY", "me")
+
+EXTRACTOR_ADDR = os.getenv("EXTRACTOR_AGENT_ADDRESS", "")
+SUBMITTER_ADDR = os.getenv("SUBMITTER_AGENT_ADDRESS", "")
+DEFAULT_RESUME_PATH = os.getenv("DEFAULT_RESUME_PATH", "")
+
+EXTRACTOR_TIMEOUT = int(os.getenv("EXTRACTOR_TIMEOUT", "30"))
+SUBMITTER_TIMEOUT = int(os.getenv("SUBMITTER_TIMEOUT", "60"))
+MAP_FIELDS_TIMEOUT = int(os.getenv("PROFILE_TIMEOUT", "90"))
+
+LIVE_FILL_MODE = os.getenv("LIVE_FILL_MODE", "headed").strip().lower()
+LIVE_FILL_SCREENSHOT_EVERY = int(os.getenv("LIVE_FILL_SCREENSHOT_EVERY", "3"))
+
+ORCHESTRATOR_DIR = Path(__file__).resolve().parent
+JOB_AGENT_DIR = ORCHESTRATOR_DIR.parent
 
 ASI_ONE_API_KEY = os.getenv("ASI_ONE_API_KEY")
 ASI_ONE_CHAT_MODEL = os.getenv("ASI_ONE_CHAT_MODEL", "asi1")
@@ -340,11 +362,38 @@ async def handle_map_fields(ctx: Context, sender: str, msg: MapFieldsRequest):
     await ctx.send(sender, MapFieldsResponse(success=True, result_json=result.model_dump_json()))
 
 
-# Apply proxy state. The orchestrator forwards a user's chat messages
-# into form-filler-agent's session and relays form-filler's replies
-# back. Form-filler keys sessions by sender, so all proxied applications
-# share *one* form-filler session at a time.
-_active_apply_user: Optional[str] = None
+_live_browser_sessions: dict[str, BrowserSession] = {}
+
+_STRUCTURED_FIELD_HINTS = {
+    "first_name": ["first_name", "given_name", "firstname"],
+    "last_name": ["last_name", "family_name", "surname", "lastname"],
+    "email": ["email", "e_mail"],
+    "phone": ["phone", "telephone", "mobile"],
+    "location": ["current_location", "location", "city"],
+    "linkedin_url": ["linkedin", "linked_in"],
+    "github_url": ["github", "git_hub"],
+    "portfolio_url": ["portfolio", "personal_site", "website"],
+    "work_authorization": ["work_auth", "authorization", "sponsorship"],
+    "gender": ["gender"],
+    "race_ethnicity": ["race", "ethnicity"],
+    "veteran_status": ["veteran"],
+    "disability_status": ["disability"],
+}
+
+FF_HELP = (
+    "**Application commands**\n"
+    "• Paste a Greenhouse URL — start a new application.\n"
+    "• `show <name>`              — full value of one field\n"
+    "• `show all` / `form`        — re-print the form preview\n"
+    "• `answer <name> <value>`    — fill a missing field\n"
+    "• `edit <name> <value>`      — change a filled value\n"
+    "• `unfill <name>`            — clear a field\n"
+    "• `next`                     — show the next missing field's prompt\n"
+    "• `submit`                   — dry-run (preview, nothing sent)\n"
+    "• `submit live`              — actually post to Greenhouse\n"
+    "• `show payload`             — dump the prepared submitter payload\n"
+    "• `cancel`                   — discard the active session"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -1177,21 +1226,519 @@ async def _handle_switch_resume(
 
 
 # ---------------------------------------------------------------------------
-# Apply proxy
+# Form-filler helpers (merged from form-filler-agent)
 # ---------------------------------------------------------------------------
 
 
-async def _forward_to_form_filler(ctx: Context, text: str) -> bool:
-    """Send a plain TextContent message to the form-filler agent. Returns
-    True on success."""
-    if not FORM_FILLER_ADDR:
+def _match_structured_attr(field_name: str, label: str) -> Optional[str]:
+    blob = f"{field_name} {label}".lower()
+    for attr, hints in _STRUCTURED_FIELD_HINTS.items():
+        for h in hints:
+            if h in blob:
+                return attr
+    return None
+
+
+def _existing_resume_path(raw_path: str | None) -> str | None:
+    if not raw_path:
+        return None
+    raw = Path(raw_path).expanduser()
+    candidates = [raw] if raw.is_absolute() else [
+        JOB_AGENT_DIR / "profile-agent" / raw,
+        JOB_AGENT_DIR / raw,
+        ORCHESTRATOR_DIR / raw,
+        Path.cwd() / raw,
+    ]
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved.is_file():
+            return str(resolved)
+    return None
+
+
+def _load_profile(ctx: Context) -> dict | None:
+    _, profile, _ = _fetch_profile(ctx, DEFAULT_USER_KEY)
+    return profile
+
+
+def _resolve_resume_path_from_profile(ctx: Context, profile: dict | None) -> str | None:
+    selected = _existing_resume_path((profile or {}).get("resume_path"))
+    if selected:
+        return selected
+    return _existing_resume_path(DEFAULT_RESUME_PATH)
+
+
+def _resolve_resume_path(ctx: Context) -> str | None:
+    return _resolve_resume_path_from_profile(ctx, _load_profile(ctx))
+
+
+def _save_edit_to_profile(ctx: Context, *, label: str, field_name: str, value: str) -> None:
+    attr = _match_structured_attr(field_name, label)
+    if attr:
+        _upsert_patch(ctx, DEFAULT_USER_KEY, {attr: value})
+    else:
+        _, profile, _ = _fetch_profile(ctx, DEFAULT_USER_KEY)
+        canned = dict((profile or {}).get("canned_answers") or {})
+        canned[(label or field_name).strip()] = value
+        _upsert_patch(ctx, DEFAULT_USER_KEY, {"canned_answers": canned})
+
+
+async def _close_browser_session(sender: str) -> None:
+    bs = _live_browser_sessions.pop(sender, None)
+    if bs is not None:
+        try:
+            await bs.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
+async def _send_screenshot(ctx: Context, sender: str, png_bytes: bytes, caption: Optional[str]) -> bool:
+    public_url = chat_assets.upload_public_image(png_bytes, filename="form-preview.png",
+                                                  mime_type="image/png", logger=ctx.logger)
+    if public_url:
+        try:
+            await ctx.send(sender, chat_assets.make_markdown_image_message(public_url, caption=caption))
+            return True
+        except Exception:  # noqa: BLE001
+            pass
+    uploaded = chat_assets.upload_image(png_bytes, name_prefix="form-fill", mime_type="image/png",
+                                         grant_to_address=sender, logger=ctx.logger)
+    if uploaded:
+        asset_id, asset_uri = uploaded
+        if caption:
+            await _say(ctx, sender, caption)
+        try:
+            await ctx.send(sender, chat_assets.make_image_message(asset_id, asset_uri))
+            return True
+        except Exception:  # noqa: BLE001
+            pass
+    if caption:
+        await _say(ctx, sender, caption)
+    return False
+
+
+async def _handle_fill_event(ctx: Context, sender: str, event: FillEvent) -> bool:
+    if event.kind in {"started", "field_filled", "field_skipped"}:
+        ctx.logger.info(f"live-fill: {event.kind} {event.field_name or ''} {event.message or ''}")
         return False
+    if event.kind in {"screenshot", "done"}:
+        if not event.screenshot_png:
+            return False
+        caption = ("📸 " + event.message) if event.message else None
+        return await _send_screenshot(ctx, sender, event.screenshot_png, caption)
+    if event.kind == "error":
+        await _say(ctx, sender, f"⚠️ live-fill: {event.error}")
+    return False
+
+
+async def _run_live_fill(ctx: Context, sender: str, sess: FormSession, application_url: str, *,
+                         profile_snapshot: dict | None = None) -> bool:
+    headed = LIVE_FILL_MODE == "headed"
+    mode_note = (
+        "I'll pop a Chrome window on your machine so you can watch / edit the form directly, "
+        "and stream screenshots into chat too." if headed
+        else "I'll stream screenshots of the real Greenhouse page into the chat."
+    )
+    await _say(ctx, sender, f"🎬 Opening the real Greenhouse form. {mode_note}")
+    await _close_browser_session(sender)
+    bs = BrowserSession(application_url, headless=not headed, resume_path=sess.resume_path)
     try:
-        await ctx.send(FORM_FILLER_ADDR, _msg(text))
-        return True
+        await bs.open()
     except Exception as exc:  # noqa: BLE001
-        ctx.logger.warning(f"forward to form-filler failed: {exc}")
+        await _say(ctx, sender, f"⚠️ Couldn't open the live form ({exc}). Showing text instead.")
         return False
+    _live_browser_sessions[sender] = bs
+
+    if profile_snapshot:
+        discovered = await bs.discover_profile_fillables(
+            profile_snapshot,
+            known_names={fld.get("name") for q in sess.questions for fld in (q.get("fields") or []) if fld.get("name")},
+        )
+        if discovered:
+            for item in discovered:
+                name = item["name"]
+                if not sess.field_meta(name):
+                    sess.questions.append({
+                        "label": item["label"], "required": item["required"],
+                        "description": "Detected from the live Greenhouse form.",
+                        "fields": [{"name": name, "type": item["ftype"], "required": item["required"],
+                                    "label": None, "values": item.get("options") or []}],
+                    })
+                if item.get("value") not in (None, "", []):
+                    sess.set_field(name, item["value"], source=item.get("source") or "profile",
+                                   confidence=float(item.get("confidence") or 0.0))
+                elif item.get("required") and name not in sess.missing_required:
+                    sess.missing_required.append(name)
+
+    fillables = []
+    for f in sess.filled:
+        ftype = (f.get("ftype") or "").lower()
+        enriched = dict(f)
+        meta = sess.field_meta(f.get("name")) or {}
+        enriched["options"] = meta.get("values") or meta.get("options") or []
+        enriched["ftype"] = ftype or meta.get("type") or ""
+        if ftype in {"input_file", "file"}:
+            fillables.insert(0, enriched)
+        else:
+            fillables.append(enriched)
+
+    streamed_any = False
+    try:
+        async for event in bs.initial_fill(fillables, screenshot_every_n_fields=LIVE_FILL_SCREENSHOT_EVERY):
+            if await _handle_fill_event(ctx, sender, event):
+                streamed_any = True
+    except Exception as exc:  # noqa: BLE001
+        ctx.logger.warning(f"live-fill: initial_fill failed: {exc}")
+    if headed:
+        await _say(ctx, sender, "_Chrome stays open — scroll, edit, or double-check anything. Say `submit` when ready._")
+    return streamed_any
+
+
+async def _apply_field_edit(ctx: Context, sender: str, sess: FormSession, name: str, value: str, kind: str) -> None:
+    if not sess.field_meta(name):
+        await _say(ctx, sender, f"Hmm, no field called `{name}` on this form. Try `show all` to see names.")
+        return
+    meta = sess.field_meta(name) or {}
+    opts = meta.get("values") or meta.get("options") or []
+    resolved = value
+    if isinstance(opts, list) and opts:
+        match = match_option(value, opts)
+        if match:
+            resolved = match["value"] or match["label"]
+            if resolved != value:
+                ctx.logger.info(f"option-snap: {name!r} {value!r} → {resolved!r}")
+    q = sess.question_for(name)
+    label = (q or {}).get("label") or ""
+    sess.set_field(name, resolved, source="user", confidence=1.0)
+    sess.user_edits.append({"name": name, "label": label, "value": resolved, "kind": kind})
+    form_session.save(ctx.storage, sess)
+    _save_edit_to_profile(ctx, label=label, field_name=name, value=resolved)
+    bs = _live_browser_sessions.get(sender)
+    if bs is not None and bs.is_open:
+        try:
+            ok, png, detail = await bs.apply_edit(name, resolved, ftype=meta.get("type") or "",
+                                                    options=opts)
+            if ok and png is not None:
+                await _send_screenshot(ctx, sender, png, caption=f"📸 Updated `{name}` → `{resolved}`")
+        except Exception as exc:  # noqa: BLE001
+            ctx.logger.warning(f"live-fill apply_edit failed: {exc}")
+    tail = ("All required fields filled — say `submit` when ready."
+            if not sess.missing_required
+            else f"Still missing: {', '.join(sess.missing_required)}.")
+    await _say(ctx, sender, f"Got it — set `{name}` to `{resolved}`. {tail}")
+
+
+async def _do_submit(ctx: Context, sender: str, sess: FormSession, *, dry_run: bool) -> None:
+    if sess.missing_required:
+        await _say(ctx, sender, f"⚠️ Still need: {', '.join(sess.missing_required)}. Use `answer <name> <value>`.")
+        return
+    if not sess.job_json:
+        await _say(ctx, sender, "No active application — paste a Greenhouse URL to start.")
+        return
+    sess.state = FormState.SUBMITTING
+    form_session.save(ctx.storage, sess)
+    await _say(ctx, sender, f"📤 Submitting ({'dry-run' if dry_run else 'live'}) to Greenhouse...")
+    filled_payload = {
+        "filled": [{"name": f.get("name"), "label": f.get("label", ""), "value": f.get("value"),
+                    "source": f.get("source", "user"), "confidence": f.get("confidence", 1.0)}
+                   for f in sess.filled if (f.get("ftype") or "").lower() not in {"input_file", "file"}],
+        "missing_required": sess.missing_required,
+    }
+    try:
+        resp = await helper_clients.call_submitter(
+            ctx, SUBMITTER_ADDR, job_json=sess.job_json,
+            filled_json=json.dumps(filled_payload),
+            resume_path=sess.resume_path or "", dry_run=dry_run,
+            timeout=SUBMITTER_TIMEOUT,
+        )
+    except Exception as exc:  # noqa: BLE001
+        sess.state = FormState.REVIEWING
+        form_session.save(ctx.storage, sess)
+        await _say(ctx, sender, f"❌ Couldn't reach the submitter: {exc}")
+        return
+    sess.last_submission = {"dry_run": resp.dry_run, "success": resp.success,
+                            "application_id": resp.application_id,
+                            "response_status": resp.response_status,
+                            "response_body": resp.response_body, "error": resp.error,
+                            "fields_submitted": resp.fields_submitted,
+                            "missing_required": resp.missing_required}
+    if resp.success and not resp.dry_run:
+        sess.state = FormState.DONE
+        await _close_browser_session(sender)
+        orch_sess = session_mod.load(ctx.storage, sender)
+        orch_sess.apply_state = ApplyState.DONE
+        orch_sess.apply_job_url = None
+        session_mod.save(ctx.storage, orch_sess)
+    else:
+        sess.state = FormState.REVIEWING
+    form_session.save(ctx.storage, sess)
+    await _say(ctx, sender,
+               form_rendering.format_submission_result(
+                   dry_run=resp.dry_run, success=resp.success, error=resp.error,
+                   application_id=resp.application_id, status_code=resp.response_status,
+                   fields_submitted=resp.fields_submitted, missing_required=resp.missing_required),
+               end_session=(resp.success and not resp.dry_run))
+
+
+async def _ff_llm_handle(ctx: Context, sender: str, sess: FormSession, user_text: str) -> None:
+    interp = chat_llm.interpret(user_text, chat_llm.build_session_context(sess))
+    ctx.logger.info(f"FF-LLM intent={interp.intent!r} field={interp.field!r}")
+    if interp.reply:
+        await _say(ctx, sender, interp.reply)
+    intent = interp.intent
+    if intent in {"greet", "smalltalk", "noop", "status"}:
+        return
+    if intent == "help":
+        await _say(ctx, sender, FF_HELP)
+        return
+    if intent == "show_all":
+        await _say(ctx, sender, form_rendering.format_form_panel(sess))
+        return
+    if intent == "show":
+        if interp.field:
+            await _say(ctx, sender, form_rendering.format_field_detail(sess, interp.field))
+        return
+    if intent == "show_payload":
+        body = (sess.last_submission or {}).get("response_body")
+        if not body:
+            await _say(ctx, sender, "Run `submit` (dry-run) first to see the payload.")
+        else:
+            snippet = body if len(body) <= 1800 else body[:1800] + "\n…(truncated)"
+            await _say(ctx, sender, f"```json\n{snippet}\n```")
+        return
+    if intent == "next":
+        await _say(ctx, sender, form_rendering.format_next_missing(sess))
+        return
+    if intent in {"answer", "edit"}:
+        if interp.field and interp.value is not None:
+            await _apply_field_edit(ctx, sender, sess, interp.field, interp.value, intent)
+        return
+    if intent == "unfill":
+        if interp.field:
+            if not sess.field_meta(interp.field):
+                await _say(ctx, sender, f"No field `{interp.field}` on this form.")
+                return
+            sess.clear_field(interp.field)
+            form_session.save(ctx.storage, sess)
+            await _say(ctx, sender, f"Cleared `{interp.field}`.")
+        return
+    if intent == "compose":
+        await _ff_compose_draft(ctx, sender, sess, interp.field)
+        return
+    if intent in {"submit", "submit_live"}:
+        await _do_submit(ctx, sender, sess, dry_run=(intent == "submit"))
+        return
+
+
+async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, requested_field: Optional[str]) -> None:
+    name = requested_field
+    if not name:
+        for fname in sess.missing_required or []:
+            meta = sess.field_meta(fname) or {}
+            if (meta.get("type") or "").lower() in {"textarea", "input_text"}:
+                name = fname
+                break
+        if not name and sess.missing_required:
+            name = sess.missing_required[0]
+    if not name or not sess.field_meta(name):
+        await _say(ctx, sender, "Tell me which question to draft — `show all` lists field names.")
+        return
+    meta = sess.field_meta(name) or {}
+    question = None
+    for q in (sess.questions or []):
+        for f in (q.get("fields") or []):
+            if f.get("name") == name:
+                question = dict(q)
+                question["fields"] = [f]
+                break
+        if question:
+            break
+    if not question:
+        question = {"label": meta.get("label", name), "description": meta.get("description"),
+                    "required": True, "fields": [meta]}
+    await _say(ctx, sender, f"✍️ Drafting an answer for `{name}` from your resume…")
+    profile_obj = _profile_store(ctx).get(DEFAULT_USER_KEY)
+    if profile_obj is None:
+        await _say(ctx, sender, "❌ No profile found — set up your profile first.")
+        return
+    try:
+        map_result = _mapper.map_questions(profile_obj, [question], user_key=DEFAULT_USER_KEY)
+        result = json.loads(map_result.model_dump_json())
+    except Exception as exc:  # noqa: BLE001
+        await _say(ctx, sender, f"❌ Draft failed: {exc}")
+        return
+    draft = next((f.get("value") for f in (result.get("filled") or []) if f.get("name") == name), None)
+    if not draft:
+        await _say(ctx, sender, f"Couldn't draft anything useful. Try: `answer {name} <your text>`.")
+        return
+    await _say(ctx, sender, f"**Draft for `{name}`:**\n\n{draft}\n\nReply `answer {name} <edits>` to save.")
+
+
+async def _handle_review_command(ctx: Context, sender: str, sess: FormSession, cmd: Command) -> None:
+    if cmd.kind == "greet":
+        await _ff_llm_handle(ctx, sender, sess, cmd.raw)
+        return
+    if cmd.kind == "show_all":
+        await _say(ctx, sender, form_rendering.format_form_panel(sess))
+        return
+    if cmd.kind == "show":
+        await _say(ctx, sender, form_rendering.format_field_detail(sess, cmd.field_name or ""))
+        return
+    if cmd.kind == "show_payload":
+        body = (sess.last_submission or {}).get("response_body")
+        if not body:
+            await _say(ctx, sender, "Run `submit` (dry-run) first.")
+            return
+        snippet = body if len(body) <= 1800 else body[:1800] + "\n…(truncated)"
+        await _say(ctx, sender, f"```json\n{snippet}\n```")
+        return
+    if cmd.kind == "next":
+        await _say(ctx, sender, form_rendering.format_next_missing(sess))
+        return
+    if cmd.kind in {"answer", "edit"}:
+        name = cmd.field_name or ""
+        value = cmd.value or ""
+        if not name or not value:
+            await _say(ctx, sender, "Try `answer first_name Aditya`.")
+            return
+        await _apply_field_edit(ctx, sender, sess, name, value, cmd.kind)
+        return
+    if cmd.kind == "unfill":
+        name = cmd.field_name or ""
+        if not sess.field_meta(name):
+            await _say(ctx, sender, f"No field named `{name}` in this form.")
+            return
+        sess.clear_field(name)
+        form_session.save(ctx.storage, sess)
+        await _say(ctx, sender, f"✓ Cleared `{name}`.")
+        return
+    if cmd.kind in {"submit", "submit_live"}:
+        await _do_submit(ctx, sender, sess, dry_run=(cmd.kind == "submit"))
+        return
+    await _ff_llm_handle(ctx, sender, sess, cmd.raw)
+
+
+async def _start_application(ctx: Context, sender: str, url: str) -> None:
+    sess = FormSession(user_address=sender, state=FormState.EXTRACTING)
+    form_session.save(ctx.storage, sess)
+    await _say(ctx, sender, f"✓ Fetching job info from\n  {url}")
+    try:
+        ext = await helper_clients.call_extractor(ctx, EXTRACTOR_ADDR, url, timeout=EXTRACTOR_TIMEOUT)
+    except Exception as exc:  # noqa: BLE001
+        form_session.clear(ctx.storage, sender)
+        await _say(ctx, sender, f"❌ Couldn't reach the extractor: {exc}")
+        return
+    if not ext.success or not ext.job_json:
+        form_session.clear(ctx.storage, sender)
+        await _say(ctx, sender, f"❌ Extractor error: {ext.error or 'no job_json returned'}")
+        return
+    try:
+        job = json.loads(ext.job_json)
+    except Exception as exc:  # noqa: BLE001
+        form_session.clear(ctx.storage, sender)
+        await _say(ctx, sender, f"❌ Could not parse extractor response: {exc}")
+        return
+    sess.job_json = ext.job_json
+    sess.job_title = job.get("title")
+    sess.job_company = job.get("company")
+    sess.job_location = job.get("location")
+    sess.board_token = job.get("board_token")
+    sess.job_id = str(job.get("job_id")) if job.get("job_id") is not None else None
+    sess.questions = job.get("questions") or []
+    sess.state = FormState.MAPPING
+    form_session.save(ctx.storage, sess)
+    await _say(ctx, sender, form_rendering.format_job_summary(sess))
+    await _say(ctx, sender, "🔍 Pulling your profile and mapping fields (RAG + ASI:One)...")
+
+    profile_obj = _profile_store(ctx).get(DEFAULT_USER_KEY)
+    if profile_obj is None:
+        sess.state = FormState.IDLE
+        form_session.save(ctx.storage, sess)
+        hint = "\n\nSet up your profile first — upload your resume or fill in your details."
+        await _say(ctx, sender, f"❌ No profile found.{hint}")
+        return
+    try:
+        map_result = _mapper.map_questions(profile_obj, sess.questions, user_key=DEFAULT_USER_KEY)
+        result = json.loads(map_result.model_dump_json())
+    except Exception as exc:  # noqa: BLE001
+        sess.state = FormState.IDLE
+        form_session.save(ctx.storage, sess)
+        await _say(ctx, sender, f"❌ Field mapping failed: {exc}")
+        return
+
+    sess.filled = []
+    for f in (result.get("filled") or []):
+        name = f.get("name")
+        value = f.get("value")
+        meta_for = sess.field_meta(name) if name else None
+        opts = (meta_for or {}).get("values") or (meta_for or {}).get("options") or []
+        if isinstance(opts, list) and opts and value not in (None, "") and not isinstance(value, list):
+            m = match_option(value, opts)
+            if m:
+                snapped = m["value"] or m["label"]
+                if snapped != value:
+                    ctx.logger.info(f"option-snap (initial): {name!r} {value!r} → {snapped!r}")
+                    value = snapped
+        sess.set_field(name, value, source=f.get("source") or "?", confidence=float(f.get("confidence") or 0.0))
+
+    flagged = list(result.get("missing_required") or [])
+    filled_names = {f.get("name") for f in sess.filled if f.get("value") not in (None, "", [])}
+    derived: list[str] = []
+    for q in sess.questions:
+        if not q.get("required"):
+            continue
+        for f in q.get("fields") or []:
+            fname = f.get("name")
+            if fname and fname not in filled_names and fname not in derived:
+                derived.append(fname)
+    sess.missing_required = []
+    for n in flagged + derived:
+        if n not in sess.missing_required:
+            sess.missing_required.append(n)
+
+    profile_snapshot = _load_profile(ctx)
+    sess.resume_path = _resolve_resume_path_from_profile(ctx, profile_snapshot)
+
+    if sess.resume_path:
+        file_field_name = None
+        for q in sess.questions:
+            for f in q.get("fields") or []:
+                if (f.get("type") or "").lower() in {"input_file", "file"}:
+                    file_field_name = f.get("name")
+                    break
+            if file_field_name:
+                break
+        if file_field_name:
+            sess.set_field(file_field_name, sess.resume_path, source="file", confidence=1.0)
+
+    sess.state = FormState.REVIEWING
+    form_session.save(ctx.storage, sess)
+
+    await _say(ctx, sender, form_rendering.format_form_panel(sess))
+
+    if LIVE_FILL_MODE != "off" and sess.job_json:
+        try:
+            job_obj = json.loads(sess.job_json)
+            app_url = job_obj.get("application_url") or url
+        except Exception:  # noqa: BLE001
+            app_url = url
+        await _run_live_fill(ctx, sender, sess, app_url, profile_snapshot=profile_snapshot)
+
+
+async def _handle_form_turn(ctx: Context, sender: str, msg: ChatMessage, user_text: str) -> None:
+    """Dispatch a user turn that arrived while apply_state == APPLYING."""
+    cmd = parse_command(user_text)
+    if cmd.kind == "help":
+        await _say(ctx, sender, FF_HELP)
+        return
+    sess = form_session.load(ctx.storage, sender)
+    if sess.state in (FormState.EXTRACTING, FormState.MAPPING, FormState.SUBMITTING):
+        await _say(ctx, sender, f"⏳ Still working on the {sess.state.value} step — hang tight.")
+        return
+    if sess.state in (FormState.IDLE, FormState.DONE):
+        await _ff_llm_handle(ctx, sender, sess, user_text)
+        return
+    await _handle_review_command(ctx, sender, sess, cmd)
 
 
 async def _start_apply(
@@ -1200,115 +1747,17 @@ async def _start_apply(
     sess: OrchestratorSession,
     job_url: str,
 ) -> None:
-    """Begin an application: hand the URL off to form-filler-agent and
-    register `sender` as the active proxied user."""
-    global _active_apply_user
-    if not FORM_FILLER_ADDR:
-        await _say(
-            ctx, sender,
-            rendering.format_error(
-                "Form-filler agent not configured — set "
-                "FORM_FILLER_AGENT_ADDRESS in orchestrator-agent/.env."
-            ),
-        )
+    """Begin an application: start filling directly (no proxy)."""
+    if not EXTRACTOR_ADDR:
+        await _say(ctx, sender, rendering.format_error(
+            "Extractor agent not configured — set EXTRACTOR_AGENT_ADDRESS in orchestrator-agent/.env."
+        ))
         return
 
     sess.apply_state = ApplyState.APPLYING
     sess.apply_job_url = job_url
     session_mod.save(ctx.storage, sess)
-    _active_apply_user = sender
-
-    sent = await _forward_to_form_filler(ctx, job_url)
-    if not sent:
-        sess.apply_state = ApplyState.IDLE
-        sess.apply_job_url = None
-        session_mod.save(ctx.storage, sess)
-        _active_apply_user = None
-        await _say(
-            ctx, sender,
-            rendering.format_error("Couldn't reach the form-filler agent."),
-        )
-
-
-async def _forward_user_followup(
-    ctx: Context, sender: str, user_text: str
-) -> None:
-    """While an application is in flight, plain-text user turns get
-    forwarded verbatim to form-filler."""
-    global _active_apply_user
-    _active_apply_user = sender  # refresh in case of agent restart
-    sent = await _forward_to_form_filler(ctx, user_text)
-    if not sent:
-        await _say(
-            ctx, sender,
-            rendering.format_error(
-                "Lost the connection to the form-filler agent — say "
-                "`cancel` to reset."
-            ),
-        )
-
-
-async def _relay_from_form_filler(ctx: Context, msg: ChatMessage) -> None:
-    """An inbound ChatMessage from FORM_FILLER_ADDR. Relay its content
-    to whichever user is currently applying.
-
-    ResourceContent attachments are permission-scoped to the
-    orchestrator's identity by ExternalStorage, so the user's chat
-    client can't download them. Strip them out and surface a short text
-    note instead. (Form-filler's screenshots are already delivered as
-    catbox markdown inside TextContent in the happy path, so dropping
-    these is usually a no-op.)"""
-    global _active_apply_user
-    if not _active_apply_user:
-        ctx.logger.warning(
-            "received form-filler reply but no active apply user; dropping"
-        )
-        return
-
-    relayed_content: list = []
-    dropped = 0
-    for c in msg.content:
-        if isinstance(c, ResourceContent):
-            dropped += 1
-            continue
-        relayed_content.append(c)
-    if dropped:
-        ctx.logger.info(
-            f"relay: stripped {dropped} ResourceContent item(s) from "
-            f"form-filler"
-        )
-        relayed_content.append(TextContent(
-            type="text",
-            text=(
-                f"_(form-filler sent {dropped} attachment(s) I can't relay "
-                f"through; the inline screenshots above are still up to "
-                f"date.)_"
-            ),
-        ))
-
-    if not relayed_content:
-        ctx.logger.warning(
-            "relay: nothing to forward after filtering; skipping send"
-        )
-    else:
-        relayed = ChatMessage(
-            timestamp=datetime.now(UTC),
-            msg_id=uuid4(),
-            content=relayed_content,
-        )
-        try:
-            await ctx.send(_active_apply_user, relayed)
-        except Exception as exc:  # noqa: BLE001
-            ctx.logger.warning(
-                f"relay to {_active_apply_user} failed: {exc}"
-            )
-
-    if _has_end_session(msg):
-        sess = session_mod.load(ctx.storage, _active_apply_user)
-        sess.apply_state = ApplyState.DONE
-        sess.apply_job_url = None
-        session_mod.save(ctx.storage, sess)
-        _active_apply_user = None
+    await _start_application(ctx, sender, job_url)
 
 
 async def _handle_stub(
@@ -1326,17 +1775,14 @@ async def _handle_stub(
 async def _handle_cancel(
     ctx: Context, sender: str, sess: OrchestratorSession
 ) -> None:
-    global _active_apply_user
-    if sess.apply_state == ApplyState.APPLYING and FORM_FILLER_ADDR:
-        await _forward_to_form_filler(ctx, "cancel")
+    if sess.apply_state == ApplyState.APPLYING:
+        form_session.clear(ctx.storage, sender)
+        await _close_browser_session(sender)
 
     was_payment_pending = sess.apply_state == ApplyState.PAYMENT_PENDING
     sess.apply_state = ApplyState.IDLE
     sess.apply_job_url = None
     session_mod.save(ctx.storage, sess)
-    if _active_apply_user == sender:
-        _active_apply_user = None
-
     if was_payment_pending:
         await _say(
             ctx, sender,
@@ -1442,7 +1888,6 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
 
     if (
         hot_apply_url
-        and sender != FORM_FILLER_ADDR
         and payment_mod.gate_active()
     ):
         await ctx.send(
@@ -1483,12 +1928,6 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
             timestamp=datetime.now(UTC), acknowledged_msg_id=msg.msg_id
         ),
     )
-
-    # Inbound from the form-filler agent: relay verbatim to the active
-    # applying user. Never run intent classification on these.
-    if FORM_FILLER_ADDR and sender == FORM_FILLER_ADDR:
-        await _relay_from_form_filler(ctx, msg)
-        return
 
     sess = session_mod.load(ctx.storage, sender)
     sess.user_key = sess.user_key or DEFAULT_USER_KEY
@@ -1566,7 +2005,7 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         and not has_attachment
         and interp.intent not in APPLY_META_VERBS
     ):
-        await _forward_user_followup(ctx, sender, user_text)
+        await _handle_form_turn(ctx, sender, msg, user_text)
         return
 
     # Conversational LLM reply (warm tone). Skip:
@@ -1644,8 +2083,8 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         # Already applying? Tear down the old session before starting the
         # new one so form-filler doesn't stack URLs.
         if sess.apply_state == ApplyState.APPLYING:
-            if FORM_FILLER_ADDR:
-                await _forward_to_form_filler(ctx, "cancel")
+            form_session.clear(ctx.storage, sender)
+            await _close_browser_session(sender)
             await _say(
                 ctx, sender,
                 "_Cancelling the current application and starting the new "
@@ -1717,7 +2156,8 @@ async def on_startup(ctx: Context):
         f"Agent starting: {ctx.agent.name} at {ctx.agent.address}"
     )
     ctx.logger.info(
-        f"Helpers: form_filler={FORM_FILLER_ADDR or '(unset)'}"
+        f"Helpers: extractor={EXTRACTOR_ADDR or '(unset)'} "
+        f"submitter={SUBMITTER_ADDR or '(unset)'}"
     )
     if payment_mod.gate_active():
         net = "testnet" if payment_mod.use_testnet() else "mainnet"
@@ -1732,10 +2172,9 @@ async def on_startup(ctx: Context):
         )
     else:
         ctx.logger.info("Payment gate disabled (PAYMENT_ENABLED=false)")
-    if not FORM_FILLER_ADDR:
-        ctx.logger.warning(
-            "FORM_FILLER_AGENT_ADDRESS is not set — set it in orchestrator-agent/.env"
-        )
+    for label, val in [("EXTRACTOR_AGENT_ADDRESS", EXTRACTOR_ADDR), ("SUBMITTER_AGENT_ADDRESS", SUBMITTER_ADDR)]:
+        if not val:
+            ctx.logger.warning(f"{label} is not set — set it in orchestrator-agent/.env")
 
     # Agentverse publication is handled by the Agent constructor. That
     # keeps the published profile in sync with both chat and seller
