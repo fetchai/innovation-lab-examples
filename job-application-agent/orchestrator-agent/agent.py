@@ -76,8 +76,10 @@ import session as session_mod  # noqa: E402
 from session import ApplyState, OrchestratorSession  # noqa: E402
 
 
+# Load env: repo-root → job-application-agent common → agent-specific (each overrides previous).
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
-load_dotenv(Path(__file__).resolve().parent / ".env")
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=True)
+load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
 
 
 AGENT_NAME = "job_application_orchestrator"
@@ -454,6 +456,24 @@ async def _handle_profile_card_selection(
         await _send_card(ctx, sender, form, caption=f"Editing {section.replace('_', ' ')}.")
         return
 
+    if section == "education":
+        edu_list = (sess.profile_summary or {}).get("education") or []
+        await _send_card(
+            ctx, sender,
+            rendering.build_education_overview_card(edu_list),
+            caption="Your education entries — click 'Add Education Details' to add one.",
+        )
+        return
+
+    if section == "experience":
+        exp_list = (sess.profile_summary or {}).get("experience") or []
+        await _send_card(
+            ctx, sender,
+            rendering.build_experience_overview_card(exp_list),
+            caption="Your experience entries — click 'Add Experience' to add one.",
+        )
+        return
+
     if section == "resume":
         await _say(
             ctx, sender,
@@ -484,6 +504,197 @@ async def _handle_profile_card_selection(
         return
 
     await _say(ctx, sender, f"I don't have an editor for `{section}` yet.")
+
+
+async def _handle_education_action(
+    ctx: Context,
+    sender: str,
+    sess: OrchestratorSession,
+    selection: dict[str, Any],
+) -> None:
+    action = str(selection.get("action") or "")
+
+    _EDU_FIELD_KEYS = frozenset({
+        "university_name", "degree", "major", "graduation_date",
+        "gpa", "gpa_scale", "degree_level",
+    })
+
+    edu_fields = {
+        k: v for k, v in selection.items()
+        if k in _EDU_FIELD_KEYS and v not in (None, "")
+    }
+    edit_index: Optional[int] = selection.get("edit_index")
+
+    if action == "edit_education_entry":
+        idx = selection.get("index")
+        edu_list = list((sess.profile_summary or {}).get("education") or [])
+        existing = edu_list[idx] if idx is not None and 0 <= idx < len(edu_list) else None
+        await _send_card(
+            ctx, sender,
+            rendering.build_education_form(entry=existing, edit_index=idx),
+            caption="Edit your education details.",
+        )
+        return
+
+    if action == "delete_education_entry":
+        if not PROFILE_ADDR:
+            await _say(ctx, sender, rendering.format_error(
+                "Profile agent not configured (PROFILE_AGENT_ADDRESS missing)."
+            ))
+            return
+        current = list((sess.profile_summary or {}).get("education") or [])
+        if edit_index is not None and 0 <= edit_index < len(current):
+            current.pop(edit_index)
+            ok, err = await profile_proxy.upsert_profile_patch(
+                ctx, PROFILE_ADDR, sess.user_key, {"education": current}
+            )
+            if not ok:
+                await _say(ctx, sender, rendering.format_error(
+                    err or "couldn't delete education entry"
+                ))
+                return
+            sess.profile_summary = None
+            session_mod.save(ctx.storage, sess)
+            await _say(ctx, sender, "✓ Education entry deleted.")
+            await _handle_show_profile(ctx, sender, sess)
+        return
+
+    if action == "add_another_education":
+        if edu_fields and PROFILE_ADDR:
+            current = list((sess.profile_summary or {}).get("education") or [])
+            current.append(edu_fields)
+            await profile_proxy.upsert_profile_patch(
+                ctx, PROFILE_ADDR, sess.user_key, {"education": current}
+            )
+            sess.profile_summary = None
+            session_mod.save(ctx.storage, sess)
+        await _send_card(ctx, sender, rendering.build_education_form(),
+                         caption="Fill in your education details.")
+        return
+
+    if action == "save_education":
+        if not edu_fields:
+            await _say(ctx, sender, "Nothing to save — fill in at least one field first.")
+            return
+        if not PROFILE_ADDR:
+            await _say(ctx, sender, rendering.format_error(
+                "Profile agent not configured (PROFILE_AGENT_ADDRESS missing)."
+            ))
+            return
+        current = list((sess.profile_summary or {}).get("education") or [])
+        if edit_index is not None and 0 <= edit_index < len(current):
+            # Merge updated fields into the existing entry.
+            current[edit_index] = {**current[edit_index], **edu_fields}
+        else:
+            current.append(edu_fields)
+        ok, err = await profile_proxy.upsert_profile_patch(
+            ctx, PROFILE_ADDR, sess.user_key, {"education": current}
+        )
+        if not ok:
+            await _say(ctx, sender, rendering.format_error(
+                err or "couldn't save education entry"
+            ))
+            return
+        sess.profile_summary = None
+        session_mod.save(ctx.storage, sess)
+        await _say(ctx, sender, "✓ Education entry saved.")
+        await _handle_show_profile(ctx, sender, sess)
+        return
+
+
+async def _handle_experience_action(
+    ctx: Context,
+    sender: str,
+    sess: OrchestratorSession,
+    selection: dict[str, Any],
+) -> None:
+    action = str(selection.get("action") or "")
+
+    _EXP_FIELD_KEYS = frozenset({
+        "company_name", "job_title", "employment_type",
+        "location", "work_mode", "start_date", "end_date", "description",
+    })
+
+    exp_fields = {
+        k: v for k, v in selection.items()
+        if k in _EXP_FIELD_KEYS and v not in (None, "")
+    }
+    edit_index: Optional[int] = selection.get("edit_index")
+
+    if action == "edit_experience_entry":
+        idx = selection.get("index")
+        exp_list = list((sess.profile_summary or {}).get("experience") or [])
+        existing = exp_list[idx] if idx is not None and 0 <= idx < len(exp_list) else None
+        await _send_card(
+            ctx, sender,
+            rendering.build_experience_form(entry=existing, edit_index=idx),
+            caption="Edit your experience details.",
+        )
+        return
+
+    if action == "delete_experience_entry":
+        if not PROFILE_ADDR:
+            await _say(ctx, sender, rendering.format_error(
+                "Profile agent not configured (PROFILE_AGENT_ADDRESS missing)."
+            ))
+            return
+        current = list((sess.profile_summary or {}).get("experience") or [])
+        if edit_index is not None and 0 <= edit_index < len(current):
+            current.pop(edit_index)
+            ok, err = await profile_proxy.upsert_profile_patch(
+                ctx, PROFILE_ADDR, sess.user_key, {"experience": current}
+            )
+            if not ok:
+                await _say(ctx, sender, rendering.format_error(
+                    err or "couldn't delete experience entry"
+                ))
+                return
+            sess.profile_summary = None
+            session_mod.save(ctx.storage, sess)
+            await _say(ctx, sender, "✓ Experience entry deleted.")
+            await _handle_show_profile(ctx, sender, sess)
+        return
+
+    if action == "add_another_experience":
+        if exp_fields and PROFILE_ADDR:
+            current = list((sess.profile_summary or {}).get("experience") or [])
+            current.append(exp_fields)
+            await profile_proxy.upsert_profile_patch(
+                ctx, PROFILE_ADDR, sess.user_key, {"experience": current}
+            )
+            sess.profile_summary = None
+            session_mod.save(ctx.storage, sess)
+        await _send_card(ctx, sender, rendering.build_experience_form(),
+                         caption="Fill in your experience details.")
+        return
+
+    if action == "save_experience":
+        if not exp_fields:
+            await _say(ctx, sender, "Nothing to save — fill in at least one field first.")
+            return
+        if not PROFILE_ADDR:
+            await _say(ctx, sender, rendering.format_error(
+                "Profile agent not configured (PROFILE_AGENT_ADDRESS missing)."
+            ))
+            return
+        current = list((sess.profile_summary or {}).get("experience") or [])
+        if edit_index is not None and 0 <= edit_index < len(current):
+            current[edit_index] = {**current[edit_index], **exp_fields}
+        else:
+            current.append(exp_fields)
+        ok, err = await profile_proxy.upsert_profile_patch(
+            ctx, PROFILE_ADDR, sess.user_key, {"experience": current}
+        )
+        if not ok:
+            await _say(ctx, sender, rendering.format_error(
+                err or "couldn't save experience entry"
+            ))
+            return
+        sess.profile_summary = None
+        session_mod.save(ctx.storage, sess)
+        await _say(ctx, sender, "✓ Experience entry saved.")
+        await _handle_show_profile(ctx, sender, sess)
+        return
 
 
 async def _handle_payment_card_selection(
@@ -566,7 +777,12 @@ async def _handle_show_profile(
         active_resume=sess.active_resume_version,
         resume_versions=sess.resume_versions,
     )
-    await _send_card(ctx, sender, card, caption="Here's your profile — tap any section to edit.")
+    caption = (
+        "Here's your profile — tap any section to fill in your details."
+        if not exists
+        else "Here's your profile — tap any section to edit."
+    )
+    await _send_card(ctx, sender, card, caption=caption)
 
     if exists and profile is not None:
         sess.profile_summary = profile
@@ -1163,7 +1379,20 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     if card_selection is not None and "payment_action" in card_selection:
         await _handle_payment_card_selection(ctx, sender, card_selection)
         return
-    if card_selection is not None and "section" in card_selection:
+    if card_selection is not None and card_selection.get("action") in (
+        "add_another_education", "save_education",
+        "edit_education_entry", "delete_education_entry",
+    ):
+        await _handle_education_action(ctx, sender, sess, card_selection)
+        return
+    if card_selection is not None and card_selection.get("action") in (
+        "add_another_experience", "save_experience",
+        "edit_experience_entry", "delete_experience_entry",
+    ):
+        await _handle_experience_action(ctx, sender, sess, card_selection)
+        return
+    if card_selection is not None and ("section" in card_selection or
+                                        card_selection.get("action") == "edit_profile"):
         await _handle_profile_card_selection(ctx, sender, sess, card_selection)
         return
 

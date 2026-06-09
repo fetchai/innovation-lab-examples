@@ -36,7 +36,11 @@ class ApplyState(str, Enum):
 @dataclass
 class OrchestratorSession:
     user_address: str
-    user_key: str = "me"
+    user_key: str = field(default="")
+
+    def __post_init__(self):
+        if not self.user_key:
+            self.user_key = self.user_address
 
     # Profile cache — last `show_profile` response so re-renders are cheap.
     profile_summary: Optional[dict[str, Any]] = None
@@ -69,6 +73,8 @@ class OrchestratorSession:
         sess = cls(user_address=data.pop("user_address"))
         sess.apply_state = ApplyState(apply_state_val)
         for key, value in data.items():
+            if key == "user_key" and value == "me":
+                continue  # migrate old sessions to per-user keys
             if hasattr(sess, key):
                 setattr(sess, key, value)
         return sess

@@ -68,7 +68,10 @@ from greenhouse_client import (  # noqa: E402
     post_application,
 )
 
+# Load env: repo-root → job-application-agent common → agent-specific (each overrides previous).
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=True)
+load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
 
 AGENT_NAME = "greenhouse_submitter_agent"
 SEED_PHRASE = os.getenv("SUBMITTER_AGENT_SEED", "submitter-agent-helper-seed-v1")

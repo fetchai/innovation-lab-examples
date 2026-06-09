@@ -76,13 +76,16 @@ from resume_ingest import (  # noqa: E402
     stats as resume_stats,
 )
 
-# Load secrets from repo-root .env (two levels up).
+# Load env: repo-root → job-application-agent common → agent-specific (each overrides previous).
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=True)
+load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
 
 AGENT_NAME = "user_profile_agent"
 SEED_PHRASE = os.getenv("PROFILE_AGENT_SEED", "profile-agent-helper-seed-v1")
 AGENTVERSE_API_KEY = os.getenv("AGENTVERSE_API_KEY")
 ASI_ONE_API_KEY = os.getenv("ASI_ONE_API_KEY")
+ASI_ONE_CHAT_MODEL = os.getenv("ASI_ONE_CHAT_MODEL", "asi1")
 PORT = int(os.getenv("PROFILE_AGENT_PORT", "8011"))
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -90,7 +93,43 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 # Module-level RAG/mapper singletons - the embedding model loads lazily on first use.
 rag = ResumeRAG(DATA_DIR)
-mapper = FieldMapper(rag=rag, asi_api_key=ASI_ONE_API_KEY)
+mapper = FieldMapper(rag=rag, asi_api_key=ASI_ONE_API_KEY, asi_model=ASI_ONE_CHAT_MODEL)
+
+_EXTRACT_SYSTEM_PROMPT = """Extract structured profile fields from the resume text below.
+Return ONLY a valid JSON object with these keys (omit keys you cannot find):
+first_name, middle_name, last_name, preferred_name, email, phone,
+address_line_1, address_line_2, city, state, country, zip_code,
+linkedin, github, portfolio, twitter, work_authorization,
+education (array of objects with keys: university_name, degree, major,
+graduation_date, gpa, gpa_scale, degree_level),
+experience (array of objects with keys: company_name, job_title, employment_type,
+location, work_mode, start_date, end_date, description).
+Use null for missing scalar fields. Omit empty arrays. No markdown, no explanation."""
+
+
+def _extract_profile_fields(resume_text: str) -> dict:
+    """Call ASI:One to extract structured fields from resume text."""
+    if not ASI_ONE_API_KEY:
+        return {}
+    try:
+        from openai import OpenAI
+        client = OpenAI(base_url="https://api.asi1.ai/v1", api_key=ASI_ONE_API_KEY)
+        resp = client.chat.completions.create(
+            model=ASI_ONE_CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": _EXTRACT_SYSTEM_PROMPT},
+                {"role": "user", "content": resume_text[:6000]},
+            ],
+            max_tokens=1200,
+            temperature=0.0,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        # Strip markdown fences if present
+        raw = re.sub(r"^```[a-z]*\n?", "", raw)
+        raw = re.sub(r"\n?```$", "", raw)
+        return json.loads(raw)
+    except Exception:  # noqa: BLE001 - extraction is best-effort
+        return {}
 
 
 # ---------------------------------------------------------------------------
@@ -188,9 +227,20 @@ async def handle_get_profile(ctx: Context, sender: str, msg: GetProfileRequest):
 async def handle_upsert_profile(ctx: Context, sender: str, msg: UpsertProfileRequest):
     ctx.logger.info(f"UpsertProfile from {sender} user_key={msg.user_key}")
     try:
-        profile = UserProfile.model_validate_json(msg.profile_json)
+        raw = json.loads(msg.profile_json)
     except Exception as exc:  # noqa: BLE001
         await ctx.send(sender, UpsertProfileResponse(success=False, error=f"Invalid profile JSON: {exc}"))
+        return
+
+    # Allow partial upserts (e.g. only work_auth filled) by defaulting required fields.
+    raw.setdefault("first_name", "")
+    raw.setdefault("last_name", "")
+    raw.setdefault("email", "")
+
+    try:
+        profile = UserProfile.model_validate(raw)
+    except Exception as exc:  # noqa: BLE001
+        await ctx.send(sender, UpsertProfileResponse(success=False, error=f"Invalid profile data: {exc}"))
         return
 
     # Merge with existing rather than overwriting silently.
@@ -220,10 +270,25 @@ async def handle_ingest_resume(ctx: Context, sender: str, msg: IngestResumeReque
         ctx.logger.warning(f"RAG indexing failed: {exc}")
         indexed = 0
 
-    # Update the stored profile with resume metadata.
-    profile = _store(ctx).get(msg.user_key) or UserProfile(
-        first_name="", last_name="", email=""  # placeholders until user upserts profile
-    )
+    # Extract structured fields from the resume text via LLM.
+    extracted = _extract_profile_fields(text)
+    ctx.logger.info(f"Extracted profile fields: {list(extracted.keys())}")
+
+    # Merge: existing profile wins for non-empty fields; extracted fills the gaps.
+    existing = _store(ctx).get(msg.user_key)
+    if existing:
+        base = existing.model_dump()
+        for k, v in extracted.items():
+            if v and not base.get(k):
+                base[k] = v
+        profile = UserProfile.model_validate(base)
+    else:
+        safe = {k: v for k, v in extracted.items() if v is not None}
+        safe.setdefault("first_name", "")
+        safe.setdefault("last_name", "")
+        safe.setdefault("email", "")
+        profile = UserProfile.model_validate(safe)
+
     profile.resume_path = str(stored_path)
     profile.resume_text = text
     profile.resume_indexed = indexed > 0

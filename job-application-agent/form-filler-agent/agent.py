@@ -78,8 +78,10 @@ from session import Session, State  # noqa: E402
 # submit-live / cancel / when a new application URL arrives.
 _live_browser_sessions: dict[str, BrowserSession] = {}
 
+# Load env: repo-root → job-application-agent common → agent-specific (each overrides previous).
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
-load_dotenv(Path(__file__).resolve().parent / ".env")
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=True)
+load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
 
 
 AGENT_NAME = "job_application_form_filler"

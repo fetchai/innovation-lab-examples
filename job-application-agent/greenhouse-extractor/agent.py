@@ -58,8 +58,10 @@ from uagents_core.utils.registration import (  # noqa: E402
 
 from extractor import ExtractionResult, extract  # noqa: E402
 
-# Load keys from repo-root .env (two levels up from this file).
+# Load env: repo-root → job-application-agent common → agent-specific (each overrides previous).
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=True)
+load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
 
 AGENT_NAME = "greenhouse_job_extractor"
 SEED_PHRASE = os.getenv("GREENHOUSE_EXTRACTOR_SEED", "greenhouse-extractor-helper-agent-seed")

@@ -16,19 +16,45 @@ from pydantic import BaseModel, Field
 DEFAULT_USER_KEY = "me"
 
 
+class EducationEntry(BaseModel):
+    university_name: Optional[str] = None
+    degree: Optional[str] = None
+    major: Optional[str] = None
+    graduation_date: Optional[str] = None
+    gpa: Optional[str] = None
+    gpa_scale: Optional[str] = None  # "4.0", "4.3", "5.0", "7.0", "10.0", "percentage", "pass_fail"
+    degree_level: Optional[str] = None  # "high_school", "associate", "bachelor", "master", "doctoral", "certificate"
+
+
+class ExperienceEntry(BaseModel):
+    company_name: Optional[str] = None
+    job_title: Optional[str] = None
+    employment_type: Optional[str] = None  # "full_time", "part_time", "internship", "contract", "freelance", "volunteer"
+    location: Optional[str] = None
+    work_mode: Optional[str] = None  # "onsite", "remote", "hybrid"
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None  # None / blank = currently working
+    description: Optional[str] = None
+
+
 class UserProfile(BaseModel):
     """Canonical user profile. All fields except first/last/email are optional."""
 
     # Identity / contact
     first_name: str
+    middle_name: Optional[str] = None
     last_name: str
+    preferred_name: Optional[str] = None
     email: str
     phone: Optional[str] = None
 
     # Location
+    address_line_1: Optional[str] = None
+    address_line_2: Optional[str] = None
     city: Optional[str] = None
     state: Optional[str] = None
     country: Optional[str] = None
+    zip_code: Optional[str] = None
 
     # Links
     linkedin: Optional[str] = None
@@ -57,6 +83,12 @@ class UserProfile(BaseModel):
 
     # Reusable free-text answers keyed by normalized question label.
     canned_answers: dict[str, str] = Field(default_factory=dict)
+
+    # Education history
+    education: list[EducationEntry] = Field(default_factory=list)
+
+    # Work experience
+    experience: list[ExperienceEntry] = Field(default_factory=list)
 
     # Extra fields the user wants to remember but doesn't fit a column.
     extras: dict[str, Any] = Field(default_factory=dict)

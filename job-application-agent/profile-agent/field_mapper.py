@@ -35,9 +35,27 @@ from rag import ResumeRAG
 # Greenhouse field-name conventions we recognize.
 PROFILE_FIELD_ALIASES: dict[str, str] = {
     "first_name": "first_name",
+    "middle_name": "middle_name",
     "last_name": "last_name",
+    "preferred_name": "preferred_name",
+    "preferred_first_name": "preferred_name",
+    "nickname": "preferred_name",
     "email": "email",
     "phone": "phone",
+    "address": "address_line_1",
+    "address_line_1": "address_line_1",
+    "address1": "address_line_1",
+    "street_address": "address_line_1",
+    "address_line_2": "address_line_2",
+    "address2": "address_line_2",
+    "city": "city",
+    "state": "state",
+    "country": "country",
+    "current_city": "city",
+    "zip": "zip_code",
+    "zip_code": "zip_code",
+    "postal_code": "zip_code",
+    "postcode": "zip_code",
     "linkedin": "linkedin",
     "linkedin_url": "linkedin",
     "github": "github",
@@ -45,10 +63,6 @@ PROFILE_FIELD_ALIASES: dict[str, str] = {
     "portfolio": "portfolio",
     "website": "portfolio",
     "twitter": "twitter",
-    "city": "city",
-    "state": "state",
-    "country": "country",
-    "current_city": "city",
     "resume": "resume_path",  # file field
     "resume_text": "resume_text",
     "cover_letter": None,  # handled as free-text via RAG/LLM
@@ -68,6 +82,11 @@ SELECT_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
 # Greenhouse often gives optional profile-link fields opaque names like
 # `question_12345`; use the human label so known profile values still fill.
 PROFILE_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\bmiddle\s*name\b", re.I), "middle_name"),
+    (re.compile(r"\bpreferred\s*(first\s*)?name\b|\bnickname\b", re.I), "preferred_name"),
+    (re.compile(r"\baddress\s*(line\s*)?1\b|\bstreet\s*address\b", re.I), "address_line_1"),
+    (re.compile(r"\baddress\s*(line\s*)?2\b|\bapt\b|\bsuite\b", re.I), "address_line_2"),
+    (re.compile(r"\bzip\b|\bzip\s*code\b|\bpostal\s*code\b|\bpostcode\b", re.I), "zip_code"),
     (re.compile(r"\blinked\s*in\b|\blinkedin\b", re.I), "linkedin"),
     (re.compile(r"\bgithub\b|\bgit\s*hub\b", re.I), "github"),
     (re.compile(r"\bportfolio\b", re.I), "portfolio"),
@@ -155,7 +174,7 @@ class FieldMapper:
         self,
         rag: Optional[ResumeRAG] = None,
         asi_api_key: Optional[str] = None,
-        asi_model: str = "asi1-mini",
+        asi_model: str = "asi1",
     ):
         self.rag = rag
         self.asi_api_key = asi_api_key or os.getenv("ASI_ONE_API_KEY")

@@ -48,7 +48,7 @@ def _asi_one_key() -> Optional[str]:
 
 
 def _asi_one_model() -> str:
-    return os.getenv("ASI_ONE_CHAT_MODEL", "asi1-mini")
+    return os.getenv("ASI_ONE_CHAT_MODEL", "asi1")
 
 
 ALLOWED_INTENTS = {
