@@ -69,10 +69,16 @@ from uagents_core.storage import ExternalStorage  # noqa: E402
 import intents  # noqa: E402
 import payment_proto as payment_mod  # noqa: E402
 import profile_fields  # noqa: E402
-import profile_proxy  # noqa: E402
 import rendering  # noqa: E402
 import resume_store  # noqa: E402
 import session as session_mod  # noqa: E402
+from field_mapper import FieldMapper  # noqa: E402
+from models import (  # noqa: E402
+    MapFieldsResult, UserProfile,
+)
+from profile_store import ContextStore  # noqa: E402
+from rag import ResumeRAG  # noqa: E402
+from resume_ingest import ResumeIngestError, chunk_text, ingest_resume  # noqa: E402
 from session import ApplyState, OrchestratorSession  # noqa: E402
 
 
@@ -88,12 +94,71 @@ SEED_PHRASE = os.getenv(
 )
 PORT = int(os.getenv("ORCHESTRATOR_AGENT_PORT", "8014"))
 
-PROFILE_ADDR = os.getenv("PROFILE_AGENT_ADDRESS", "")
 FORM_FILLER_ADDR = os.getenv("FORM_FILLER_AGENT_ADDRESS", "")
 DEFAULT_USER_KEY = os.getenv("DEFAULT_USER_KEY", "me")
 
-PROFILE_TIMEOUT = int(os.getenv("PROFILE_TIMEOUT", "30"))
-INGEST_TIMEOUT = int(os.getenv("INGEST_TIMEOUT", "120"))
+ASI_ONE_API_KEY = os.getenv("ASI_ONE_API_KEY")
+ASI_ONE_CHAT_MODEL = os.getenv("ASI_ONE_CHAT_MODEL", "asi1")
+
+DATA_DIR = Path(__file__).resolve().parent / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+_rag = ResumeRAG(DATA_DIR)
+_mapper = FieldMapper(rag=_rag, asi_api_key=ASI_ONE_API_KEY, asi_model=ASI_ONE_CHAT_MODEL)
+
+_EXTRACT_SYSTEM_PROMPT = """Extract structured profile fields from the resume text below.
+Return ONLY a valid JSON object with these keys (omit keys you cannot find):
+first_name, middle_name, last_name, preferred_name, email, phone,
+address_line_1, address_line_2, city, state, country, zip_code,
+linkedin, github, portfolio, twitter, work_authorization,
+education (array of objects with keys: university_name, degree, major,
+graduation_date, gpa, gpa_scale, degree_level),
+experience (array of objects with keys: company_name, job_title, employment_type,
+location, work_mode, start_date, end_date, description).
+Use null for missing scalar fields. Omit empty arrays. No markdown, no explanation."""
+
+
+# ---------------------------------------------------------------------------
+# Profile wire models (kept for form-filler-agent compatibility)
+# ---------------------------------------------------------------------------
+
+class GetProfileRequest(Model):
+    user_key: str = "me"
+
+class GetProfileResponse(Model):
+    success: bool
+    exists: bool = False
+    error: Optional[str] = None
+    profile_json: Optional[str] = None
+
+class UpsertProfileRequest(Model):
+    user_key: str = "me"
+    profile_json: str
+
+class UpsertProfileResponse(Model):
+    success: bool
+    error: Optional[str] = None
+
+class IngestResumeRequest(Model):
+    user_key: str = "me"
+    resume_path: str
+
+class IngestResumeResponse(Model):
+    success: bool
+    error: Optional[str] = None
+    stored_path: Optional[str] = None
+    chars_extracted: Optional[int] = None
+    chunks_indexed: Optional[int] = None
+
+class MapFieldsRequest(Model):
+    user_key: str = "me"
+    questions_json: str
+    profile_json: Optional[str] = None
+
+class MapFieldsResponse(Model):
+    success: bool
+    error: Optional[str] = None
+    result_json: Optional[str] = None
 
 AGENTVERSE_URL = os.getenv("AGENTVERSE_URL", "https://agentverse.ai")
 STORAGE_URL = f"{AGENTVERSE_URL}/v1/storage"
@@ -113,6 +178,166 @@ agent = Agent(
     publish_agent_details=True,
 )
 chat_proto = Protocol(spec=chat_protocol_spec)
+profile_proto = Protocol(name="profile_agent", version="1.0")
+
+
+# ---------------------------------------------------------------------------
+# Direct profile helpers (replace profile_proxy + network round-trips)
+# ---------------------------------------------------------------------------
+
+def _profile_store(ctx: Context) -> ContextStore:
+    return ContextStore(ctx.storage)
+
+
+def _fetch_profile(ctx: Context, user_key: str) -> tuple[bool, Optional[dict], Optional[str]]:
+    profile = _profile_store(ctx).get(user_key)
+    if profile is None:
+        return False, None, None
+    return True, profile.model_dump(mode="json"), None
+
+
+def _upsert_patch(ctx: Context, user_key: str, patch: dict) -> tuple[bool, Optional[str]]:
+    try:
+        store = _profile_store(ctx)
+        existing = store.get(user_key)
+        merged = existing.model_dump(mode="json") if existing else {
+            "first_name": "", "last_name": "", "email": "",
+        }
+        merged.update({k: v for k, v in patch.items() if v is not None})
+        store.set(user_key, UserProfile.model_validate(merged))
+        return True, None
+    except Exception as exc:  # noqa: BLE001
+        return False, str(exc)
+
+
+def _extract_profile_fields(resume_text: str) -> dict:
+    if not ASI_ONE_API_KEY:
+        return {}
+    try:
+        from openai import OpenAI
+        client = OpenAI(base_url="https://api.asi1.ai/v1", api_key=ASI_ONE_API_KEY)
+        resp = client.chat.completions.create(
+            model=ASI_ONE_CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": _EXTRACT_SYSTEM_PROMPT},
+                {"role": "user", "content": resume_text[:6000]},
+            ],
+            max_tokens=1200,
+            temperature=0.0,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        raw = re.sub(r"^```[a-z]*\n?", "", raw)
+        raw = re.sub(r"\n?```$", "", raw)
+        return json.loads(raw)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _ingest_resume_direct(
+    ctx: Context, user_key: str, resume_path: str
+) -> tuple[bool, Optional[dict], Optional[str]]:
+    try:
+        stored_path, text = ingest_resume(resume_path, user_key, DATA_DIR)
+    except ResumeIngestError as exc:
+        return False, None, str(exc)
+
+    chunks = chunk_text(text)
+    try:
+        indexed = _rag.index(user_key, chunks)
+    except Exception:  # noqa: BLE001
+        indexed = 0
+
+    extracted = _extract_profile_fields(text)
+    existing = _profile_store(ctx).get(user_key)
+    if existing:
+        base = existing.model_dump(mode="json")
+        for k, v in extracted.items():
+            if v and not base.get(k):
+                base[k] = v
+        profile = UserProfile.model_validate(base)
+    else:
+        safe = {k: v for k, v in extracted.items() if v is not None}
+        safe.setdefault("first_name", "")
+        safe.setdefault("last_name", "")
+        safe.setdefault("email", "")
+        profile = UserProfile.model_validate(safe)
+
+    profile.resume_path = str(stored_path)
+    profile.resume_text = text
+    profile.resume_indexed = indexed > 0
+    _profile_store(ctx).set(user_key, profile)
+
+    return True, {
+        "stored_path": str(stored_path),
+        "chars_extracted": len(text),
+        "chunks_indexed": indexed,
+    }, None
+
+
+# ---------------------------------------------------------------------------
+# Profile protocol handlers (for form-filler-agent compatibility)
+# ---------------------------------------------------------------------------
+
+@profile_proto.on_message(model=GetProfileRequest, replies=GetProfileResponse)
+async def handle_get_profile(ctx: Context, sender: str, msg: GetProfileRequest):
+    profile = _profile_store(ctx).get(msg.user_key)
+    if profile is None:
+        await ctx.send(sender, GetProfileResponse(success=True, exists=False))
+        return
+    await ctx.send(sender, GetProfileResponse(
+        success=True, exists=True, profile_json=profile.model_dump_json(),
+    ))
+
+
+@profile_proto.on_message(model=UpsertProfileRequest, replies=UpsertProfileResponse)
+async def handle_upsert_profile(ctx: Context, sender: str, msg: UpsertProfileRequest):
+    try:
+        raw = json.loads(msg.profile_json)
+    except Exception as exc:  # noqa: BLE001
+        await ctx.send(sender, UpsertProfileResponse(success=False, error=str(exc)))
+        return
+    raw.setdefault("first_name", "")
+    raw.setdefault("last_name", "")
+    raw.setdefault("email", "")
+    try:
+        profile = UserProfile.model_validate(raw)
+    except Exception as exc:  # noqa: BLE001
+        await ctx.send(sender, UpsertProfileResponse(success=False, error=str(exc)))
+        return
+    existing = _profile_store(ctx).get(msg.user_key)
+    if existing:
+        merged = existing.model_dump(mode="json")
+        merged.update({k: v for k, v in profile.model_dump(mode="json").items()
+                       if v not in (None, "", {}, [])})
+        profile = UserProfile.model_validate(merged)
+    _profile_store(ctx).set(msg.user_key, profile)
+    await ctx.send(sender, UpsertProfileResponse(success=True))
+
+
+@profile_proto.on_message(model=IngestResumeRequest, replies=IngestResumeResponse)
+async def handle_ingest_resume_msg(ctx: Context, sender: str, msg: IngestResumeRequest):
+    ok, info, err = _ingest_resume_direct(ctx, msg.user_key, msg.resume_path)
+    if not ok:
+        await ctx.send(sender, IngestResumeResponse(success=False, error=err))
+        return
+    await ctx.send(sender, IngestResumeResponse(success=True, **info))
+
+
+@profile_proto.on_message(model=MapFieldsRequest, replies=MapFieldsResponse)
+async def handle_map_fields(ctx: Context, sender: str, msg: MapFieldsRequest):
+    profile = _profile_store(ctx).get(msg.user_key)
+    if profile is None:
+        await ctx.send(sender, MapFieldsResponse(
+            success=False, error=f"No profile for user_key={msg.user_key!r}"
+        ))
+        return
+    try:
+        questions = json.loads(msg.questions_json)
+    except Exception as exc:  # noqa: BLE001
+        await ctx.send(sender, MapFieldsResponse(success=False, error=str(exc)))
+        return
+    result = _mapper.map_questions(profile, questions, user_key=msg.user_key)
+    await ctx.send(sender, MapFieldsResponse(success=True, result_json=result.model_dump_json()))
 
 
 # Apply proxy state. The orchestrator forwards a user's chat messages
@@ -419,12 +644,6 @@ async def _handle_profile_card_selection(
     section = str(selection.get("section") or "")
     submitted = bool(selection.get("submitted"))
 
-    if not PROFILE_ADDR:
-        await _say(ctx, sender, rendering.format_error(
-            "Profile agent not configured (PROFILE_AGENT_ADDRESS missing)."
-        ))
-        return
-
     # ---- Form submission: persist the patch and re-show the overview ----
     if submitted:
         patch: dict[str, Any] = {}
@@ -436,9 +655,7 @@ async def _handle_profile_card_selection(
             await _say(ctx, sender, "Nothing to save — try editing a field first.")
             return
 
-        ok, err = await profile_proxy.upsert_profile_patch(
-            ctx, PROFILE_ADDR, sess.user_key, patch
-        )
+        ok, err = _upsert_patch(ctx, sess.user_key, patch)
         if not ok:
             await _say(ctx, sender, rendering.format_error(
                 err or "couldn't save those changes"
@@ -537,21 +754,12 @@ async def _handle_education_action(
         return
 
     if action == "delete_education_entry":
-        if not PROFILE_ADDR:
-            await _say(ctx, sender, rendering.format_error(
-                "Profile agent not configured (PROFILE_AGENT_ADDRESS missing)."
-            ))
-            return
         current = list((sess.profile_summary or {}).get("education") or [])
         if edit_index is not None and 0 <= edit_index < len(current):
             current.pop(edit_index)
-            ok, err = await profile_proxy.upsert_profile_patch(
-                ctx, PROFILE_ADDR, sess.user_key, {"education": current}
-            )
+            ok, err = _upsert_patch(ctx, sess.user_key, {"education": current})
             if not ok:
-                await _say(ctx, sender, rendering.format_error(
-                    err or "couldn't delete education entry"
-                ))
+                await _say(ctx, sender, rendering.format_error(err or "couldn't delete education entry"))
                 return
             sess.profile_summary = None
             session_mod.save(ctx.storage, sess)
@@ -560,12 +768,10 @@ async def _handle_education_action(
         return
 
     if action == "add_another_education":
-        if edu_fields and PROFILE_ADDR:
+        if edu_fields:
             current = list((sess.profile_summary or {}).get("education") or [])
             current.append(edu_fields)
-            await profile_proxy.upsert_profile_patch(
-                ctx, PROFILE_ADDR, sess.user_key, {"education": current}
-            )
+            _upsert_patch(ctx, sess.user_key, {"education": current})
             sess.profile_summary = None
             session_mod.save(ctx.storage, sess)
         await _send_card(ctx, sender, rendering.build_education_form(),
@@ -576,24 +782,14 @@ async def _handle_education_action(
         if not edu_fields:
             await _say(ctx, sender, "Nothing to save — fill in at least one field first.")
             return
-        if not PROFILE_ADDR:
-            await _say(ctx, sender, rendering.format_error(
-                "Profile agent not configured (PROFILE_AGENT_ADDRESS missing)."
-            ))
-            return
         current = list((sess.profile_summary or {}).get("education") or [])
         if edit_index is not None and 0 <= edit_index < len(current):
-            # Merge updated fields into the existing entry.
             current[edit_index] = {**current[edit_index], **edu_fields}
         else:
             current.append(edu_fields)
-        ok, err = await profile_proxy.upsert_profile_patch(
-            ctx, PROFILE_ADDR, sess.user_key, {"education": current}
-        )
+        ok, err = _upsert_patch(ctx, sess.user_key, {"education": current})
         if not ok:
-            await _say(ctx, sender, rendering.format_error(
-                err or "couldn't save education entry"
-            ))
+            await _say(ctx, sender, rendering.format_error(err or "couldn't save education entry"))
             return
         sess.profile_summary = None
         session_mod.save(ctx.storage, sess)
@@ -633,21 +829,12 @@ async def _handle_experience_action(
         return
 
     if action == "delete_experience_entry":
-        if not PROFILE_ADDR:
-            await _say(ctx, sender, rendering.format_error(
-                "Profile agent not configured (PROFILE_AGENT_ADDRESS missing)."
-            ))
-            return
         current = list((sess.profile_summary or {}).get("experience") or [])
         if edit_index is not None and 0 <= edit_index < len(current):
             current.pop(edit_index)
-            ok, err = await profile_proxy.upsert_profile_patch(
-                ctx, PROFILE_ADDR, sess.user_key, {"experience": current}
-            )
+            ok, err = _upsert_patch(ctx, sess.user_key, {"experience": current})
             if not ok:
-                await _say(ctx, sender, rendering.format_error(
-                    err or "couldn't delete experience entry"
-                ))
+                await _say(ctx, sender, rendering.format_error(err or "couldn't delete experience entry"))
                 return
             sess.profile_summary = None
             session_mod.save(ctx.storage, sess)
@@ -656,12 +843,10 @@ async def _handle_experience_action(
         return
 
     if action == "add_another_experience":
-        if exp_fields and PROFILE_ADDR:
+        if exp_fields:
             current = list((sess.profile_summary or {}).get("experience") or [])
             current.append(exp_fields)
-            await profile_proxy.upsert_profile_patch(
-                ctx, PROFILE_ADDR, sess.user_key, {"experience": current}
-            )
+            _upsert_patch(ctx, sess.user_key, {"experience": current})
             sess.profile_summary = None
             session_mod.save(ctx.storage, sess)
         await _send_card(ctx, sender, rendering.build_experience_form(),
@@ -672,23 +857,14 @@ async def _handle_experience_action(
         if not exp_fields:
             await _say(ctx, sender, "Nothing to save — fill in at least one field first.")
             return
-        if not PROFILE_ADDR:
-            await _say(ctx, sender, rendering.format_error(
-                "Profile agent not configured (PROFILE_AGENT_ADDRESS missing)."
-            ))
-            return
         current = list((sess.profile_summary or {}).get("experience") or [])
         if edit_index is not None and 0 <= edit_index < len(current):
             current[edit_index] = {**current[edit_index], **exp_fields}
         else:
             current.append(exp_fields)
-        ok, err = await profile_proxy.upsert_profile_patch(
-            ctx, PROFILE_ADDR, sess.user_key, {"experience": current}
-        )
+        ok, err = _upsert_patch(ctx, sess.user_key, {"experience": current})
         if not ok:
-            await _say(ctx, sender, rendering.format_error(
-                err or "couldn't save experience entry"
-            ))
+            await _say(ctx, sender, rendering.format_error(err or "couldn't save experience entry"))
             return
         sess.profile_summary = None
         session_mod.save(ctx.storage, sess)
@@ -753,21 +929,8 @@ async def _handle_payment_card_selection(
 async def _handle_show_profile(
     ctx: Context, sender: str, sess: OrchestratorSession
 ) -> None:
-    if not PROFILE_ADDR:
-        await _say(
-            ctx, sender,
-            rendering.format_error(
-                "I'm not configured to talk to the profile agent yet. "
-                "Set PROFILE_AGENT_ADDRESS in orchestrator-agent/.env and "
-                "restart me."
-            ),
-        )
-        return
-
     await _say(ctx, sender, "🔎 Looking up your profile…")
-    exists, profile, err = await profile_proxy.fetch_profile(
-        ctx, PROFILE_ADDR, sess.user_key
-    )
+    exists, profile, err = _fetch_profile(ctx, sess.user_key)
     if err:
         await _say(ctx, sender, rendering.format_error(err))
         return
@@ -802,16 +965,6 @@ async def _handle_edit_profile(
     `profile_fields.ALL_KNOWN_FIELDS`. Free-form 'canned answer' edits
     (e.g. "remember to answer X with Y") will land in a follow-up commit.
     """
-    if not PROFILE_ADDR:
-        await _say(
-            ctx, sender,
-            rendering.format_error(
-                "Profile agent not configured — set PROFILE_AGENT_ADDRESS "
-                "in orchestrator-agent/.env."
-            ),
-        )
-        return
-
     field = profile_fields.normalise_field(raw_field)
     if field is None:
         await _say(ctx, sender, rendering.format_field_unknown(raw_field or "?"))
@@ -822,12 +975,7 @@ async def _handle_edit_profile(
         await _say(ctx, sender, rendering.format_error(err or "couldn't parse value"))
         return
 
-    # Read-merge-write requires a valid existing profile (UserProfile has
-    # required first_name/last_name/email). If there's no profile yet, the
-    # user has to bootstrap via resume upload first — clear redirect.
-    exists, current, fetch_err = await profile_proxy.fetch_profile(
-        ctx, PROFILE_ADDR, sess.user_key
-    )
+    exists, current, fetch_err = _fetch_profile(ctx, sess.user_key)
     if fetch_err:
         await _say(ctx, sender, rendering.format_error(fetch_err))
         return
@@ -842,9 +990,7 @@ async def _handle_edit_profile(
         )
         return
 
-    success, upsert_err = await profile_proxy.upsert_profile_patch(
-        ctx, PROFILE_ADDR, sess.user_key, {field: coerced}
-    )
+    success, upsert_err = _upsert_patch(ctx, sess.user_key, {field: coerced})
     if not success:
         await _say(
             ctx, sender,
@@ -872,21 +1018,8 @@ async def _handle_upload_resume(
     msg: ChatMessage,
     sess: OrchestratorSession,
 ) -> None:
-    """Download every ResourceContent attachment on the message, save the
-    bytes locally, call profile-agent.IngestResume on each, and register
-    the version in `sess.resume_versions`. Also flips the new version to
-    `active_resume_version` and (when there's an existing profile) syncs
-    `profile.resume_path` so the form-filler picks it up automatically."""
-    if not PROFILE_ADDR:
-        await _say(
-            ctx, sender,
-            rendering.format_error(
-                "Profile agent not configured — set PROFILE_AGENT_ADDRESS "
-                "in orchestrator-agent/.env."
-            ),
-        )
-        return
-
+    """Download every ResourceContent attachment, save locally, ingest directly
+    (no network hop), and register the version in `sess.resume_versions`."""
     resources = _resource_items(msg)
     if not resources:
         await _say(
@@ -935,14 +1068,8 @@ async def _handle_upload_resume(
             )
             continue
 
-        # Hand the saved path to the profile-agent for parsing + RAG indexing.
-        success, resp, err = await profile_proxy.ingest_resume(
-            ctx,
-            PROFILE_ADDR,
-            sess.user_key,
-            version_entry["path"],
-            timeout=INGEST_TIMEOUT,
-        )
+        # Parse + RAG-index directly (no network hop).
+        success, info, err = _ingest_resume_direct(ctx, sess.user_key, version_entry["path"])
         if not success:
             await _say(
                 ctx, sender,
@@ -956,10 +1083,10 @@ async def _handle_upload_resume(
         sess.resume_versions.append(version_entry)
         sess.active_resume_version = version_name
         session_mod.save(ctx.storage, sess)
-        ingested.append({**version_entry, "ingest_response": resp})
+        ingested.append({**version_entry, "ingest_info": info})
 
-        chunks = resp.chunks_indexed if resp else None
-        chars = resp.chars_extracted if resp else None
+        chunks = info.get("chunks_indexed") if info else None
+        chars = info.get("chars_extracted") if info else None
         details = []
         if chars:
             details.append(f"{chars} chars extracted")
@@ -1035,16 +1162,10 @@ async def _handle_switch_resume(
     sess.active_resume_version = target["name"]
     session_mod.save(ctx.storage, sess)
 
-    # Sync the profile's `resume_path` so form-filler picks the new one
-    # automatically. Best-effort: if the profile doesn't exist yet, skip.
-    exists, _, _ = await profile_proxy.fetch_profile(
-        ctx, PROFILE_ADDR, sess.user_key
-    )
-    if exists and PROFILE_ADDR:
-        ok, err = await profile_proxy.upsert_profile_patch(
-            ctx, PROFILE_ADDR, sess.user_key,
-            {"resume_path": target["path"]},
-        )
+    # Sync the profile's `resume_path` so form-filler picks the new one.
+    exists, _, _ = _fetch_profile(ctx, sess.user_key)
+    if exists:
+        ok, err = _upsert_patch(ctx, sess.user_key, {"resume_path": target["path"]})
         if not ok:
             ctx.logger.warning(f"switch_resume: profile sync failed: {err}")
 
@@ -1596,8 +1717,7 @@ async def on_startup(ctx: Context):
         f"Agent starting: {ctx.agent.name} at {ctx.agent.address}"
     )
     ctx.logger.info(
-        f"Helpers: profile={PROFILE_ADDR or '(unset)'} "
-        f"form_filler={FORM_FILLER_ADDR or '(unset)'}"
+        f"Helpers: form_filler={FORM_FILLER_ADDR or '(unset)'}"
     )
     if payment_mod.gate_active():
         net = "testnet" if payment_mod.use_testnet() else "mainnet"
@@ -1612,14 +1732,10 @@ async def on_startup(ctx: Context):
         )
     else:
         ctx.logger.info("Payment gate disabled (PAYMENT_ENABLED=false)")
-    for label, val in [
-        ("PROFILE_AGENT_ADDRESS", PROFILE_ADDR),
-        ("FORM_FILLER_AGENT_ADDRESS", FORM_FILLER_ADDR),
-    ]:
-        if not val:
-            ctx.logger.warning(
-                f"{label} is not set — set it in orchestrator-agent/.env"
-            )
+    if not FORM_FILLER_ADDR:
+        ctx.logger.warning(
+            "FORM_FILLER_AGENT_ADDRESS is not set — set it in orchestrator-agent/.env"
+        )
 
     # Agentverse publication is handled by the Agent constructor. That
     # keeps the published profile in sync with both chat and seller
@@ -1628,6 +1744,7 @@ async def on_startup(ctx: Context):
 
 
 agent.include(chat_proto, publish_manifest=True)
+agent.include(profile_proto, publish_manifest=True)
 agent.include(payment_mod.payment_proto, publish_manifest=True)
 
 
