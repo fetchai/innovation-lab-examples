@@ -220,6 +220,40 @@ def _upsert_patch(ctx: Context, user_key: str, patch: dict) -> tuple[bool, Optio
         return False, str(exc)
 
 
+_TO_MARKDOWN_PROMPT = (
+    "Convert the resume text below into clean, well-structured markdown. "
+    "Use # for the candidate's name, ## for section headings (Experience, Education, Skills, etc.), "
+    "### for job titles / degree names, and bullet points for responsibilities and achievements. "
+    "Preserve all information exactly — do not summarise or omit anything. "
+    "Output only the markdown, no commentary."
+)
+
+
+def _to_markdown(raw_text: str) -> str:
+    """Reformat raw extracted resume text into clean markdown via ASI:One.
+    Falls back to the raw text if the API is unavailable or fails."""
+    if not ASI_ONE_API_KEY:
+        return raw_text
+    try:
+        from openai import OpenAI
+        client = OpenAI(base_url="https://api.asi1.ai/v1", api_key=ASI_ONE_API_KEY)
+        resp = client.chat.completions.create(
+            model=ASI_ONE_CHAT_MODEL,
+            messages=[
+                {"role": "system", "content": _TO_MARKDOWN_PROMPT},
+                {"role": "user", "content": raw_text[:6000]},
+            ],
+            max_tokens=2000,
+            temperature=0.0,
+        )
+        md = (resp.choices[0].message.content or "").strip()
+        md = re.sub(r"^```[a-z]*\n?", "", md)
+        md = re.sub(r"\n?```$", "", md)
+        return md if md else raw_text
+    except Exception:  # noqa: BLE001 - best-effort, fall back to raw text
+        return raw_text
+
+
 def _extract_profile_fields(resume_text: str) -> dict:
     if not ASI_ONE_API_KEY:
         return {}
@@ -250,6 +284,10 @@ def _ingest_resume_direct(
         stored_path, text = ingest_resume(resume_path, user_key, DATA_DIR)
     except ResumeIngestError as exc:
         return False, None, str(exc)
+
+    # Reformat raw extracted text into clean markdown so the LLM gets
+    # structured context (section headings, bullets) rather than PDF artifacts.
+    text = _to_markdown(text)
 
     extracted = _extract_profile_fields(text)
     existing = _profile_store(ctx).get(user_key)
