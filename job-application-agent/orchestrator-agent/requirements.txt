@@ -8,7 +8,6 @@ requests>=2.31
 # FET on-chain payment verification
 cosmpy>=0.9
 # Greenhouse job extraction
-langgraph>=0.1
 html2text>=2020.1
 # Live form-fill browser automation
 playwright>=1.40
