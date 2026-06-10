@@ -43,7 +43,7 @@ ssl.create_default_context = _create_default_context_with_certifi
 ssl._create_default_https_context = _create_default_context_with_certifi
 
 from dotenv import load_dotenv  # noqa: E402
-from uagents import Agent, Context, Protocol  # noqa: E402
+from uagents import Agent, Context, Model, Protocol  # noqa: E402
 from uagents_core.contrib.protocols.chat import (  # noqa: E402
     ChatAcknowledgement,
     ChatMessage,
