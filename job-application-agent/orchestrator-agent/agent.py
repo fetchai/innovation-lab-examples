@@ -66,11 +66,11 @@ from uagents_core.contrib.protocols.chat.cards import (  # noqa: E402
 )
 from uagents_core.storage import ExternalStorage  # noqa: E402
 
+import asyncio  # noqa: E402
 import chat_assets  # noqa: E402
 import chat_llm  # noqa: E402
 import form_rendering  # noqa: E402
 import form_session  # noqa: E402
-import helper_clients  # noqa: E402
 import intents  # noqa: E402
 import payment_proto as payment_mod  # noqa: E402
 import profile_fields  # noqa: E402
@@ -81,7 +81,11 @@ from browser_filler import BrowserSession, FillEvent  # noqa: E402
 from commands import Command, parse as parse_command  # noqa: E402
 from form_session import Session as FormSession, State as FormState  # noqa: E402
 from options import match_option  # noqa: E402
+from extractor import ExtractionResult, extract as _extract_job  # noqa: E402
 from field_mapper import FieldMapper  # noqa: E402
+from greenhouse_client import (  # noqa: E402
+    SubmitError, build_payload, check_required, parse_response, post_application,
+)
 from models import (  # noqa: E402
     MapFieldsResult, UserProfile,
 )
@@ -105,13 +109,8 @@ PORT = int(os.getenv("ORCHESTRATOR_AGENT_PORT", "8014"))
 
 DEFAULT_USER_KEY = os.getenv("DEFAULT_USER_KEY", "me")
 
-EXTRACTOR_ADDR = os.getenv("EXTRACTOR_AGENT_ADDRESS", "")
-SUBMITTER_ADDR = os.getenv("SUBMITTER_AGENT_ADDRESS", "")
 DEFAULT_RESUME_PATH = os.getenv("DEFAULT_RESUME_PATH", "")
-
-EXTRACTOR_TIMEOUT = int(os.getenv("EXTRACTOR_TIMEOUT", "30"))
-SUBMITTER_TIMEOUT = int(os.getenv("SUBMITTER_TIMEOUT", "60"))
-MAP_FIELDS_TIMEOUT = int(os.getenv("PROFILE_TIMEOUT", "90"))
+DEFAULT_DRY_RUN = os.getenv("SUBMITTER_DEFAULT_DRY_RUN", "0").lower() in {"1", "true", "yes"}
 
 LIVE_FILL_MODE = os.getenv("LIVE_FILL_MODE", "headed").strip().lower()
 LIVE_FILL_SCREENSHOT_EVERY = int(os.getenv("LIVE_FILL_SCREENSHOT_EVERY", "3"))
@@ -1428,6 +1427,66 @@ async def _apply_field_edit(ctx: Context, sender: str, sess: FormSession, name: 
     await _say(ctx, sender, f"Got it — set `{name}` to `{resolved}`. {tail}")
 
 
+def _run_submission_sync(job_json: str, filled_json: str, resume_path: str, dry_run: bool) -> dict:
+    """Synchronous core of the submission — run via asyncio.to_thread."""
+    try:
+        job = json.loads(job_json)
+        filled = json.loads(filled_json)
+    except Exception as exc:  # noqa: BLE001
+        return {"success": False, "error": str(exc), "dry_run": dry_run,
+                "missing_required": [], "fields_submitted": []}
+
+    board_token = job.get("board_token")
+    job_id = job.get("job_id")
+    if not board_token or not job_id:
+        return {"success": False, "error": "job_json missing board_token / job_id",
+                "dry_run": dry_run, "missing_required": [], "fields_submitted": []}
+
+    questions = job.get("questions") or []
+    filled_fields = filled.get("filled") or []
+    have_resume = bool(resume_path) and Path(resume_path).is_file()
+
+    missing = check_required(questions, filled_fields, have_resume=have_resume)
+    if missing:
+        return {"success": False, "error": f"Missing required field(s): {', '.join(missing)}",
+                "missing_required": missing, "fields_submitted": [], "dry_run": dry_run}
+
+    text_fields, file_field_names = build_payload(filled_fields, questions=questions)
+    resume_field = file_field_names[0] if file_field_names else "resume"
+    submitted_names = sorted({name for name, _ in text_fields})
+
+    if dry_run or DEFAULT_DRY_RUN:
+        return {"success": True, "dry_run": True, "fields_submitted": submitted_names,
+                "missing_required": [], "response_body": json.dumps({
+                    "url": f"https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs/{job_id}",
+                    "text_fields": text_fields, "resume_field": resume_field,
+                    "resume_path": resume_path}, indent=2)}
+
+    if not have_resume:
+        return {"success": False, "error": f"Resume file not found at {resume_path!r}",
+                "dry_run": False, "missing_required": [], "fields_submitted": []}
+
+    try:
+        resp = post_application(board_token, str(job_id), text_fields,
+                                resume_path=resume_path, resume_field_name=resume_field)
+    except SubmitError as exc:
+        return {"success": False, "error": str(exc), "dry_run": False,
+                "missing_required": [], "fields_submitted": []}
+    except Exception as exc:  # noqa: BLE001
+        return {"success": False, "error": f"HTTP error: {exc}", "dry_run": False,
+                "missing_required": [], "fields_submitted": []}
+
+    application_id, body_text = parse_response(resp)
+    ok = 200 <= resp.status_code < 300
+    return {"success": ok, "dry_run": False,
+            "application_id": application_id if ok else None,
+            "response_status": resp.status_code,
+            "response_body": body_text[:2000],
+            "fields_submitted": submitted_names if ok else [],
+            "missing_required": [],
+            "error": None if ok else f"Greenhouse returned HTTP {resp.status_code}"}
+
+
 async def _do_submit(ctx: Context, sender: str, sess: FormSession, *, dry_run: bool) -> None:
     if sess.missing_required:
         await _say(ctx, sender, f"⚠️ Still need: {', '.join(sess.missing_required)}. Use `answer <name> <value>`.")
@@ -1445,24 +1504,19 @@ async def _do_submit(ctx: Context, sender: str, sess: FormSession, *, dry_run: b
         "missing_required": sess.missing_required,
     }
     try:
-        resp = await helper_clients.call_submitter(
-            ctx, SUBMITTER_ADDR, job_json=sess.job_json,
-            filled_json=json.dumps(filled_payload),
-            resume_path=sess.resume_path or "", dry_run=dry_run,
-            timeout=SUBMITTER_TIMEOUT,
+        resp = await asyncio.to_thread(
+            _run_submission_sync, sess.job_json, json.dumps(filled_payload),
+            sess.resume_path or "", dry_run,
         )
     except Exception as exc:  # noqa: BLE001
         sess.state = FormState.REVIEWING
         form_session.save(ctx.storage, sess)
-        await _say(ctx, sender, f"❌ Couldn't reach the submitter: {exc}")
+        await _say(ctx, sender, f"❌ Submission failed: {exc}")
         return
-    sess.last_submission = {"dry_run": resp.dry_run, "success": resp.success,
-                            "application_id": resp.application_id,
-                            "response_status": resp.response_status,
-                            "response_body": resp.response_body, "error": resp.error,
-                            "fields_submitted": resp.fields_submitted,
-                            "missing_required": resp.missing_required}
-    if resp.success and not resp.dry_run:
+    sess.last_submission = resp
+    success = resp.get("success", False)
+    is_dry = resp.get("dry_run", dry_run)
+    if success and not is_dry:
         sess.state = FormState.DONE
         await _close_browser_session(sender)
         orch_sess = session_mod.load(ctx.storage, sender)
@@ -1474,10 +1528,12 @@ async def _do_submit(ctx: Context, sender: str, sess: FormSession, *, dry_run: b
     form_session.save(ctx.storage, sess)
     await _say(ctx, sender,
                form_rendering.format_submission_result(
-                   dry_run=resp.dry_run, success=resp.success, error=resp.error,
-                   application_id=resp.application_id, status_code=resp.response_status,
-                   fields_submitted=resp.fields_submitted, missing_required=resp.missing_required),
-               end_session=(resp.success and not resp.dry_run))
+                   dry_run=is_dry, success=success, error=resp.get("error"),
+                   application_id=resp.get("application_id"),
+                   status_code=resp.get("response_status"),
+                   fields_submitted=resp.get("fields_submitted", []),
+                   missing_required=resp.get("missing_required", [])),
+               end_session=(success and not is_dry))
 
 
 async def _ff_llm_handle(ctx: Context, sender: str, sess: FormSession, user_text: str) -> None:
@@ -1623,22 +1679,23 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
     form_session.save(ctx.storage, sess)
     await _say(ctx, sender, f"✓ Fetching job info from\n  {url}")
     try:
-        ext = await helper_clients.call_extractor(ctx, EXTRACTOR_ADDR, url, timeout=EXTRACTOR_TIMEOUT)
+        ext: ExtractionResult = await asyncio.to_thread(_extract_job, url)
     except Exception as exc:  # noqa: BLE001
         form_session.clear(ctx.storage, sender)
-        await _say(ctx, sender, f"❌ Couldn't reach the extractor: {exc}")
+        await _say(ctx, sender, f"❌ Extraction failed: {exc}")
         return
-    if not ext.success or not ext.job_json:
+    if not ext.success or not ext.job:
         form_session.clear(ctx.storage, sender)
-        await _say(ctx, sender, f"❌ Extractor error: {ext.error or 'no job_json returned'}")
+        await _say(ctx, sender, f"❌ Extractor error: {ext.error or 'no job returned'}")
         return
     try:
-        job = json.loads(ext.job_json)
+        job = ext.job.model_dump()
+        ext_job_json = ext.job.model_dump_json()
     except Exception as exc:  # noqa: BLE001
         form_session.clear(ctx.storage, sender)
-        await _say(ctx, sender, f"❌ Could not parse extractor response: {exc}")
+        await _say(ctx, sender, f"❌ Could not serialise extractor result: {exc}")
         return
-    sess.job_json = ext.job_json
+    sess.job_json = ext_job_json
     sess.job_title = job.get("title")
     sess.job_company = job.get("company")
     sess.job_location = job.get("location")
@@ -1747,13 +1804,7 @@ async def _start_apply(
     sess: OrchestratorSession,
     job_url: str,
 ) -> None:
-    """Begin an application: start filling directly (no proxy)."""
-    if not EXTRACTOR_ADDR:
-        await _say(ctx, sender, rendering.format_error(
-            "Extractor agent not configured — set EXTRACTOR_AGENT_ADDRESS in orchestrator-agent/.env."
-        ))
-        return
-
+    """Begin an application: extract and fill directly."""
     sess.apply_state = ApplyState.APPLYING
     sess.apply_job_url = job_url
     session_mod.save(ctx.storage, sess)
@@ -2155,10 +2206,7 @@ async def on_startup(ctx: Context):
     ctx.logger.info(
         f"Agent starting: {ctx.agent.name} at {ctx.agent.address}"
     )
-    ctx.logger.info(
-        f"Helpers: extractor={EXTRACTOR_ADDR or '(unset)'} "
-        f"submitter={SUBMITTER_ADDR or '(unset)'}"
-    )
+    ctx.logger.info(f"default_dry_run={DEFAULT_DRY_RUN}")
     if payment_mod.gate_active():
         net = "testnet" if payment_mod.use_testnet() else "mainnet"
         ctx.logger.info(
@@ -2172,9 +2220,6 @@ async def on_startup(ctx: Context):
         )
     else:
         ctx.logger.info("Payment gate disabled (PAYMENT_ENABLED=false)")
-    for label, val in [("EXTRACTOR_AGENT_ADDRESS", EXTRACTOR_ADDR), ("SUBMITTER_AGENT_ADDRESS", SUBMITTER_ADDR)]:
-        if not val:
-            ctx.logger.warning(f"{label} is not set — set it in orchestrator-agent/.env")
 
     # Agentverse publication is handled by the Agent constructor. That
     # keeps the published profile in sync with both chat and seller
