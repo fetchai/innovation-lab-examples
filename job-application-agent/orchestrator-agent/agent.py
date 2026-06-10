@@ -995,9 +995,10 @@ async def _handle_show_profile(
     )
     await _send_card(ctx, sender, card, caption=caption)
 
-    if exists and profile is not None:
-        sess.profile_summary = profile
-        session_mod.save(ctx.storage, sess)
+    # Always update the cache — clear it when profile doesn't exist so
+    # section forms don't show stale data from a previous session.
+    sess.profile_summary = profile if exists else None
+    session_mod.save(ctx.storage, sess)
 
 
 async def _handle_edit_profile(
@@ -1255,8 +1256,8 @@ def _existing_resume_path(raw_path: str | None) -> str | None:
     return None
 
 
-def _load_profile(ctx: Context) -> dict | None:
-    _, profile, _ = _fetch_profile(ctx, DEFAULT_USER_KEY)
+def _load_profile(ctx: Context, user_key: str) -> dict | None:
+    _, profile, _ = _fetch_profile(ctx, user_key)
     return profile
 
 
@@ -1267,19 +1268,19 @@ def _resolve_resume_path_from_profile(ctx: Context, profile: dict | None) -> str
     return _existing_resume_path(DEFAULT_RESUME_PATH)
 
 
-def _resolve_resume_path(ctx: Context) -> str | None:
-    return _resolve_resume_path_from_profile(ctx, _load_profile(ctx))
+def _resolve_resume_path(ctx: Context, user_key: str) -> str | None:
+    return _resolve_resume_path_from_profile(ctx, _load_profile(ctx, user_key))
 
 
-def _save_edit_to_profile(ctx: Context, *, label: str, field_name: str, value: str) -> None:
+def _save_edit_to_profile(ctx: Context, user_key: str, *, label: str, field_name: str, value: str) -> None:
     attr = _match_structured_attr(field_name, label)
     if attr:
-        _upsert_patch(ctx, DEFAULT_USER_KEY, {attr: value})
+        _upsert_patch(ctx, user_key, {attr: value})
     else:
-        _, profile, _ = _fetch_profile(ctx, DEFAULT_USER_KEY)
+        _, profile, _ = _fetch_profile(ctx, user_key)
         canned = dict((profile or {}).get("canned_answers") or {})
         canned[(label or field_name).strip()] = value
-        _upsert_patch(ctx, DEFAULT_USER_KEY, {"canned_answers": canned})
+        _upsert_patch(ctx, user_key, {"canned_answers": canned})
 
 
 async def _close_browser_session(sender: str) -> None:
@@ -1411,7 +1412,9 @@ async def _apply_field_edit(ctx: Context, sender: str, sess: FormSession, name: 
     sess.set_field(name, resolved, source="user", confidence=1.0)
     sess.user_edits.append({"name": name, "label": label, "value": resolved, "kind": kind})
     form_session.save(ctx.storage, sess)
-    _save_edit_to_profile(ctx, label=label, field_name=name, value=resolved)
+    orch_sess = session_mod.load(ctx.storage, sender)
+    _save_edit_to_profile(ctx, orch_sess.user_key or DEFAULT_USER_KEY,
+                          label=label, field_name=name, value=resolved)
     bs = _live_browser_sessions.get(sender)
     if bs is not None and bs.is_open:
         try:
@@ -1613,12 +1616,14 @@ async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, reques
         question = {"label": meta.get("label", name), "description": meta.get("description"),
                     "required": True, "fields": [meta]}
     await _say(ctx, sender, f"✍️ Drafting an answer for `{name}` from your resume…")
-    profile_obj = _profile_store(ctx).get(DEFAULT_USER_KEY)
+    orch_sess = session_mod.load(ctx.storage, sender)
+    user_key = orch_sess.user_key or DEFAULT_USER_KEY
+    profile_obj = _profile_store(ctx).get(user_key)
     if profile_obj is None:
         await _say(ctx, sender, "❌ No profile found — set up your profile first.")
         return
     try:
-        map_result = _mapper.map_questions(profile_obj, [question], user_key=DEFAULT_USER_KEY)
+        map_result = _mapper.map_questions(profile_obj, [question], user_key=user_key)
         result = json.loads(map_result.model_dump_json())
     except Exception as exc:  # noqa: BLE001
         await _say(ctx, sender, f"❌ Draft failed: {exc}")
@@ -1707,7 +1712,9 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
     await _say(ctx, sender, form_rendering.format_job_summary(sess))
     await _say(ctx, sender, "🔍 Pulling your profile and mapping fields (RAG + ASI:One)...")
 
-    profile_obj = _profile_store(ctx).get(DEFAULT_USER_KEY)
+    orch_sess = session_mod.load(ctx.storage, sender)
+    user_key = orch_sess.user_key or DEFAULT_USER_KEY
+    profile_obj = _profile_store(ctx).get(user_key)
     if profile_obj is None:
         sess.state = FormState.IDLE
         form_session.save(ctx.storage, sess)
@@ -1715,7 +1722,7 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         await _say(ctx, sender, f"❌ No profile found.{hint}")
         return
     try:
-        map_result = _mapper.map_questions(profile_obj, sess.questions, user_key=DEFAULT_USER_KEY)
+        map_result = _mapper.map_questions(profile_obj, sess.questions, user_key=user_key)
         result = json.loads(map_result.model_dump_json())
     except Exception as exc:  # noqa: BLE001
         sess.state = FormState.IDLE
@@ -1753,7 +1760,7 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         if n not in sess.missing_required:
             sess.missing_required.append(n)
 
-    profile_snapshot = _load_profile(ctx)
+    profile_snapshot = _load_profile(ctx, user_key)
     sess.resume_path = _resolve_resume_path_from_profile(ctx, profile_snapshot)
 
     if sess.resume_path:
