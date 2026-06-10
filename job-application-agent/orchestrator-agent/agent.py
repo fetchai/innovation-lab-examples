@@ -55,12 +55,6 @@ from uagents_core.contrib.protocols.chat import (  # noqa: E402
     chat_protocol_spec,
 )
 from uagents_core.contrib.protocols.chat.cards import (  # noqa: E402
-    ButtonAction,
-    ButtonNode,
-    CustomCardPayload,
-    DividerNode,
-    SectionNode,
-    TextNode,
     create_card_content,
     extract_card_response,
 )
@@ -335,7 +329,7 @@ async def handle_upsert_profile(ctx: Context, sender: str, msg: UpsertProfileReq
 
 @profile_proto.on_message(model=IngestResumeRequest, replies=IngestResumeResponse)
 async def handle_ingest_resume_msg(ctx: Context, sender: str, msg: IngestResumeRequest):
-    ok, info, err = _ingest_resume_direct(ctx, msg.user_key, msg.resume_path)
+    ok, info, err = await asyncio.to_thread(_ingest_resume_direct, ctx, msg.user_key, msg.resume_path)
     if not ok:
         await ctx.send(sender, IngestResumeResponse(success=False, error=err))
         return
@@ -355,7 +349,7 @@ async def handle_map_fields(ctx: Context, sender: str, msg: MapFieldsRequest):
     except Exception as exc:  # noqa: BLE001
         await ctx.send(sender, MapFieldsResponse(success=False, error=str(exc)))
         return
-    result = _mapper.map_questions(profile, questions, user_key=msg.user_key)
+    result = await asyncio.to_thread(_mapper.map_questions, profile, questions, user_key=msg.user_key)
     await ctx.send(sender, MapFieldsResponse(success=True, result_json=result.model_dump_json()))
 
 
@@ -999,7 +993,7 @@ async def _handle_upload_resume(
             continue
 
         # Parse + RAG-index directly (no network hop).
-        success, info, err = _ingest_resume_direct(ctx, sess.user_key, version_entry["path"])
+        success, info, err = await asyncio.to_thread(_ingest_resume_direct, ctx, sess.user_key, version_entry["path"])
         if not success:
             await _say(
                 ctx, sender,
@@ -1504,7 +1498,7 @@ async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, reques
         await _say(ctx, sender, "❌ No profile found — set up your profile first.")
         return
     try:
-        map_result = _mapper.map_questions(profile_obj, [question], user_key=user_key)
+        map_result = await asyncio.to_thread(_mapper.map_questions, profile_obj, [question], user_key=user_key)
         result = json.loads(map_result.model_dump_json())
     except Exception as exc:  # noqa: BLE001
         await _say(ctx, sender, f"❌ Draft failed: {exc}")
@@ -1603,7 +1597,7 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         await _say(ctx, sender, f"❌ No profile found.{hint}")
         return
     try:
-        map_result = _mapper.map_questions(profile_obj, sess.questions, user_key=user_key)
+        map_result = await asyncio.to_thread(_mapper.map_questions, profile_obj, sess.questions, user_key=user_key)
         result = json.loads(map_result.model_dump_json())
     except Exception as exc:  # noqa: BLE001
         sess.state = FormState.IDLE
