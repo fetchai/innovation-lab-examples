@@ -14,9 +14,9 @@ Resolution order per question/field:
    fields, fuzzy-match a stored profile value (work auth, gender, etc.)
    against the allowed `values` list. (`source="profile"`)
 
-4. **RAG + ASI:One**: for free-text fields without canned/structured matches,
-   pull the top-k relevant resume chunks from Qdrant and ask ASI:One to draft
-   a concise answer grounded in those chunks. (`source="rag"` / `"llm"`)
+4. **Resume + ASI:One**: for free-text fields without canned/structured matches,
+   pass the full resume text to ASI:One to draft a concise answer.
+   (`source="llm"`)
 
 5. **Missing**: if none of the above produce a value, the field is added to
    `missing` and the caller can prompt the user.
@@ -30,7 +30,6 @@ import re
 from typing import Any, Optional
 
 from models import FilledField, MapFieldsResult, UserProfile
-from rag import ResumeRAG
 
 # Greenhouse field-name conventions we recognize.
 PROFILE_FIELD_ALIASES: dict[str, str] = {
@@ -172,11 +171,9 @@ def _fuzzy_pick_option(
 class FieldMapper:
     def __init__(
         self,
-        rag: Optional[ResumeRAG] = None,
         asi_api_key: Optional[str] = None,
         asi_model: str = "asi1",
     ):
-        self.rag = rag
         self.asi_api_key = asi_api_key or os.getenv("ASI_ONE_API_KEY")
         self.asi_model = asi_model
 
@@ -184,7 +181,7 @@ class FieldMapper:
     # LLM helper
     # ------------------------------------------------------------------
 
-    def _llm_compose(self, question_label: str, question_desc: Optional[str], excerpts: list[str]) -> Optional[str]:
+    def _llm_compose(self, question_label: str, question_desc: Optional[str], resume_text: str) -> Optional[str]:
         if not self.asi_api_key:
             return None
         try:
@@ -192,11 +189,10 @@ class FieldMapper:
         except ImportError:
             return None
 
-        excerpts_block = "\n\n---\n\n".join(excerpts) if excerpts else "(none)"
         prompt = (
             f"Question label: {question_label}\n"
             f"Question description: {question_desc or '(none)'}\n\n"
-            f"Resume excerpts:\n{excerpts_block}\n\n"
+            f"Resume:\n{resume_text[:4000]}\n\n"
             f"Write the candidate's answer now."
         )
 
@@ -344,31 +340,21 @@ class FieldMapper:
                     }
                 return None  # had a hint but couldn't pick a sane option
 
-        # 4. Free-text (textarea or long input_text): RAG + LLM.
+        # 4. Free-text (textarea or long input_text): full resume + LLM.
         if ftype in {"textarea", "input_text"} and label:
-            # input_text for free-form questions is rare; only attempt if the label
-            # looks like a question (contains a verb / question mark / 'why' etc.)
             if ftype == "input_text" and not re.search(r"\?|why|tell|describe|explain", label, re.I):
                 return None
 
-            excerpts: list[str] = []
-            if self.rag is not None:
-                excerpts = self.rag.search(user_key, label, k=4)
-
-            if not excerpts and not profile.resume_text:
+            if not profile.resume_text:
                 return None
 
-            # If we have resume text but no RAG index, use the whole resume (truncated).
-            if not excerpts and profile.resume_text:
-                excerpts = [profile.resume_text[:3000]]
-
-            answer = self._llm_compose(label, description, excerpts)
+            answer = self._llm_compose(label, description, profile.resume_text)
             if not answer:
                 return None
 
             return {
                 "value": answer,
-                "source": "rag" if self.rag and self.rag.has_index(user_key) else "llm",
+                "source": "llm",
                 "confidence": 0.6,
             }
 
@@ -378,13 +364,11 @@ class FieldMapper:
 def map_from_dict(
     profile_dict: dict,
     questions: list[dict],
-    rag: Optional[ResumeRAG] = None,
     user_key: str = "me",
 ) -> MapFieldsResult:
     """Convenience wrapper for callers that have a profile dict (e.g. from JSON)."""
     profile = UserProfile.model_validate(profile_dict)
-    mapper = FieldMapper(rag=rag)
-    return mapper.map_questions(profile, questions, user_key=user_key)
+    return FieldMapper().map_questions(profile, questions, user_key=user_key)
 
 
 def _self_test() -> None:  # pragma: no cover - CLI helper
@@ -401,8 +385,7 @@ def _self_test() -> None:  # pragma: no cover - CLI helper
 
     from pathlib import Path
 
-    rag = ResumeRAG(Path(__file__).resolve().parent / "data")
-    result = map_from_dict(profile_dict, questions, rag=rag)
+    result = map_from_dict(profile_dict, questions)
     print(json.dumps(result.model_dump(), indent=2))
 
 

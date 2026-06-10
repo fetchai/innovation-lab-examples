@@ -1,17 +1,9 @@
-"""Layer 2 - resume file management.
-
-Responsibilities:
-* Copy a user-provided PDF/DOCX/TXT into the agent's `data/resumes/` dir.
-* Extract plain text (so it can be sent to LLMs and indexed for RAG).
-* Return both the canonical on-disk path and the extracted text.
-"""
+"""Resume file management — copy, extract plain text, return path + text."""
 
 from __future__ import annotations
 
 import shutil
-from hashlib import sha256
 from pathlib import Path
-from typing import Optional
 
 SUPPORTED_EXTENSIONS = {".pdf", ".txt", ".md", ".docx"}
 
@@ -91,86 +83,10 @@ def ingest_resume(
     return dest, text
 
 
-def chunk_text(
-    text: str,
-    chunk_size: int = 600,
-    overlap: int = 100,
-) -> list[str]:
-    """Split resume text into overlapping chunks suitable for embedding.
-
-    Prefers paragraph boundaries; falls back to a sliding character window when
-    paragraphs are too long. Empty / whitespace-only chunks are dropped.
-    """
-    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-    chunks: list[str] = []
-    buf = ""
-
-    def flush_buf():
-        nonlocal buf
-        if buf.strip():
-            chunks.append(buf.strip())
-        buf = ""
-
-    for p in paragraphs:
-        if len(p) > chunk_size:
-            flush_buf()
-            # Sliding window over the long paragraph.
-            i = 0
-            while i < len(p):
-                chunks.append(p[i : i + chunk_size].strip())
-                i += chunk_size - overlap
-            continue
-
-        if len(buf) + len(p) + 2 > chunk_size:
-            flush_buf()
-        buf = (buf + "\n\n" + p).strip() if buf else p
-
-    flush_buf()
-    # Drop accidental dupes while preserving order.
-    seen: set[str] = set()
-    deduped: list[str] = []
-    for c in chunks:
-        if c not in seen:
-            seen.add(c)
-            deduped.append(c)
-    return deduped
-
-
-def file_fingerprint(path: Path) -> str:
-    """sha256 of a file, hex-encoded. Used to detect resume changes."""
-    h = sha256()
-    with path.open("rb") as f:
-        for block in iter(lambda: f.read(65536), b""):
-            h.update(block)
-    return h.hexdigest()
-
-
-def stats(path: Path) -> dict:
-    return {
-        "path": str(path),
-        "size_bytes": path.stat().st_size,
-        "sha256": file_fingerprint(path),
-    }
-
-
-def _self_test() -> None:  # pragma: no cover - manual CLI helper
+if __name__ == "__main__":  # pragma: no cover
     import sys
-
     if len(sys.argv) < 3:
         print("Usage: python resume_ingest.py <resume_path> <user_key>")
         sys.exit(2)
-
-    data_dir = Path(__file__).resolve().parent / "data"
-    dest, text = ingest_resume(sys.argv[1], sys.argv[2], data_dir)
-    chunks = chunk_text(text)
-    print(f"Saved to: {dest}")
-    print(f"Extracted chars: {len(text)}")
-    print(f"Chunks: {len(chunks)}")
-    print(f"First chunk:\n{chunks[0][:300] if chunks else '(empty)'}")
-
-
-if __name__ == "__main__":  # pragma: no cover
-    _self_test()
-
-
-_: Optional[str] = None  # avoid unused-import lint on `Optional` for older type-checkers
+    dest, text = ingest_resume(sys.argv[1], sys.argv[2], Path(__file__).resolve().parent / "data")
+    print(f"Saved to: {dest}\nExtracted chars: {len(text)}")

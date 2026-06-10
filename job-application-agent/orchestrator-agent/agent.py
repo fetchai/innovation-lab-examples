@@ -84,8 +84,7 @@ from models import (  # noqa: E402
     MapFieldsResult, UserProfile,
 )
 from profile_store import ContextStore  # noqa: E402
-from rag import ResumeRAG  # noqa: E402
-from resume_ingest import ResumeIngestError, chunk_text, ingest_resume  # noqa: E402
+from resume_ingest import ResumeIngestError, ingest_resume  # noqa: E402
 from session import ApplyState, OrchestratorSession  # noqa: E402
 
 
@@ -116,8 +115,7 @@ ASI_ONE_CHAT_MODEL = os.getenv("ASI_ONE_CHAT_MODEL", "asi1")
 DATA_DIR = Path(__file__).resolve().parent / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-_rag = ResumeRAG(DATA_DIR)
-_mapper = FieldMapper(rag=_rag, asi_api_key=ASI_ONE_API_KEY, asi_model=ASI_ONE_CHAT_MODEL)
+_mapper = FieldMapper(asi_api_key=ASI_ONE_API_KEY, asi_model=ASI_ONE_CHAT_MODEL)
 
 _EXTRACT_SYSTEM_PROMPT = """Extract structured profile fields from the resume text below.
 Return ONLY a valid JSON object with these keys (omit keys you cannot find):
@@ -161,7 +159,6 @@ class IngestResumeResponse(Model):
     error: Optional[str] = None
     stored_path: Optional[str] = None
     chars_extracted: Optional[int] = None
-    chunks_indexed: Optional[int] = None
 
 class MapFieldsRequest(Model):
     user_key: str = "me"
@@ -254,12 +251,6 @@ def _ingest_resume_direct(
     except ResumeIngestError as exc:
         return False, None, str(exc)
 
-    chunks = chunk_text(text)
-    try:
-        indexed = _rag.index(user_key, chunks)
-    except Exception:  # noqa: BLE001
-        indexed = 0
-
     extracted = _extract_profile_fields(text)
     existing = _profile_store(ctx).get(user_key)
     if existing:
@@ -277,13 +268,11 @@ def _ingest_resume_direct(
 
     profile.resume_path = str(stored_path)
     profile.resume_text = text
-    profile.resume_indexed = indexed > 0
     _profile_store(ctx).set(user_key, profile)
 
     return True, {
         "stored_path": str(stored_path),
         "chars_extracted": len(text),
-        "chunks_indexed": indexed,
     }, None
 
 
@@ -1009,14 +998,8 @@ async def _handle_upload_resume(
         session_mod.save(ctx.storage, sess)
         ingested.append({**version_entry, "ingest_info": info})
 
-        chunks = info.get("chunks_indexed") if info else None
         chars = info.get("chars_extracted") if info else None
-        details = []
-        if chars:
-            details.append(f"{chars} chars extracted")
-        if chunks:
-            details.append(f"{chunks} chunks indexed")
-        tail = " · ".join(details) if details else "indexed"
+        tail = f"{chars} chars extracted" if chars else "parsed"
         await _say(
             ctx, sender,
             (
@@ -1585,7 +1568,7 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
     sess.state = FormState.MAPPING
     form_session.save(ctx.storage, sess)
     await _say(ctx, sender, form_rendering.format_job_summary(sess))
-    await _say(ctx, sender, "🔍 Pulling your profile and mapping fields (RAG + ASI:One)...")
+    await _say(ctx, sender, "🔍 Pulling your profile and mapping fields…")
 
     orch_sess = session_mod.load(ctx.storage, sender)
     user_key = orch_sess.user_key or DEFAULT_USER_KEY

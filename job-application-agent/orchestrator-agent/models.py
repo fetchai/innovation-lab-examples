@@ -79,7 +79,6 @@ class UserProfile(BaseModel):
     # Resume
     resume_path: Optional[str] = Field(default=None, description="Absolute path to the resume file on disk")
     resume_text: Optional[str] = Field(default=None, description="Plain-text extraction of the resume")
-    resume_indexed: bool = Field(default=False, description="True once chunks are in the RAG index")
 
     # Reusable free-text answers keyed by normalized question label.
     canned_answers: dict[str, str] = Field(default_factory=dict)

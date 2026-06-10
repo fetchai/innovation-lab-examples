@@ -267,8 +267,7 @@ def build_profile_carousel(
         rbits = [fname]
         if active_resume:
             rbits.append(active_resume)
-        if p.get("resume_indexed"):
-            rbits.append("indexed ✓")
+        
         resume_sub = "  ·  ".join(rbits)
     else:
         resume_sub = "Not uploaded — drop a PDF or DOCX in chat"
@@ -441,9 +440,8 @@ def _section_summary(
     if section == "resume":
         if p.get("resume_path"):
             fname = p["resume_path"].rsplit("/", 1)[-1]
-            tag = "indexed ✓" if p.get("resume_indexed") else "not indexed"
             v = f"  ·  {active_resume}" if active_resume else ""
-            return f"{fname}{v}  ·  {tag}"
+            return f"{fname}{v}"
         return "Not uploaded — drop a PDF or DOCX in chat."
 
     if section == "answers":
@@ -932,8 +930,6 @@ def build_profile_card(
         rv = fname
         if active_resume:
             rv += f"  ·  {active_resume}"
-        if p.get("resume_indexed"):
-            rv += "  ·  indexed ✓"
         rows.append(DetailSummaryRow(label="Resume", value=rv))
         if resume_versions and len(resume_versions) > 1:
             others = [
@@ -1079,15 +1075,12 @@ def format_profile_summary(
 
     # ---- Resume ----
     resume_path = p.get("resume_path")
-    indexed = p.get("resume_indexed")
     resume_body: list[str] = []
     if resume_path:
         fname = resume_path.rsplit("/", 1)[-1]
         line = f"📎 `{fname}`"
         if active_resume:
             line += f"  ·  version `{active_resume}`"
-        if indexed:
-            line += "  ·  indexed ✓"
         resume_body.append(line)
         if resume_versions and len(resume_versions) > 1:
             others = [

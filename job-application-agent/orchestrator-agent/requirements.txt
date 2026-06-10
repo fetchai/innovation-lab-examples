@@ -13,5 +13,3 @@ html2text>=2020.1
 playwright>=1.40
 # Stripe payment processing
 stripe>=7.0
-# RAG / resume indexing
-qdrant-client[fastembed]>=1.9
