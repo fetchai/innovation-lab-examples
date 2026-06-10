@@ -95,10 +95,8 @@ from resume_ingest import ResumeIngestError, chunk_text, ingest_resume  # noqa: 
 from session import ApplyState, OrchestratorSession  # noqa: E402
 
 
-# Load env: repo-root → job-application-agent common → agent-specific (each overrides previous).
-load_dotenv(Path(__file__).resolve().parents[2] / ".env")
-load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=True)
-load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
+# Single source of truth: job-application-agent/.env (one level up).
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 
 AGENT_NAME = "job_application_orchestrator"
@@ -441,73 +439,9 @@ async def _send_card(
     ))
 
 
-async def _send_payment_card(ctx: Context, sender: str) -> None:
-    """Send the single visible payment card.
-
-    ASI's native FET card currently renders but fails before it sends a
-    CommitPayment callback. This card keeps the same UI shape and executes the
-    real Dorado testnet transfer through the configured payer key.
-    """
-    amount = payment_mod.amount_fet()
-    balance = payment_mod.balance_fet(
-        payment_mod.configured_provider_fet_address()
-        or payment_mod.expected_buyer_fet_address(),
-        logger=ctx.logger,
-    )
-    balance_text = (
-        f"Wallet balance: {balance} FET"
-        if balance is not None
-        else "Wallet balance: unavailable"
-    )
-    payload = CustomCardPayload(
-        root=SectionNode(
-            type="section",
-            subtitle=(
-                "Choose your preferred payment method to complete your "
-                "purchase securely."
-            ),
-            children=[
-                ButtonNode(
-                    type="button",
-                    label="Reject Payment",
-                    primary=False,
-                    action=ButtonAction(selection={"payment_action": "reject"}),
-                ),
-                DividerNode(type="divider"),
-                SectionNode(
-                    type="section",
-                    title="Pay With FET",
-                    subtitle=f"{amount} FET",
-                    children=[
-                        TextNode(
-                            type="text",
-                            value=balance_text,
-                            style="muted",
-                        ),
-                        ButtonNode(
-                            type="button",
-                            label=f"Confirm payment · FET {amount}",
-                            primary=True,
-                            action=ButtonAction(
-                                selection={"payment_action": "pay_with_fet"}
-                            ),
-                        ),
-                    ],
-                ),
-            ],
-        ),
-    )
-    await ctx.send(sender, ChatMessage(
-        timestamp=datetime.now(UTC),
-        msg_id=uuid4(),
-        content=[
-            TextContent(
-                type="text",
-                text="Payment requested by agent. Here are your options:",
-            ),
-            create_card_content(payload, preferred_drawer_width_px=640),
-        ],
-    ))
+async def _send_payment_request(ctx: Context, sender: str) -> None:
+    """Send a Stripe RequestPayment. ASI:One renders the embedded checkout."""
+    await payment_mod.send_payment_request(ctx, sender)
 
 
 _MY_MENTION_RE = re.compile(r"^\s*@agent1[a-z0-9]{50,}\s*", re.IGNORECASE)
@@ -919,59 +853,6 @@ async def _handle_experience_action(
         await _say(ctx, sender, "✓ Experience entry saved.")
         await _handle_show_profile(ctx, sender, sess)
         return
-
-
-async def _handle_payment_card_selection(
-    ctx: Context,
-    sender: str,
-    selection: dict[str, Any],
-) -> None:
-    action = str(selection.get("payment_action") or "")
-    if action == "reject":
-        await _on_payment_failed(ctx, sender, "buyer_rejected:payment_card")
-        return
-    if action != "pay_with_fet":
-        return
-
-    sess = session_mod.load(ctx.storage, sender)
-    if not sess.apply_job_url:
-        sess.apply_state = ApplyState.IDLE
-        session_mod.save(ctx.storage, sess)
-        await _say(ctx, sender, "I lost track of the job URL. Paste it again.")
-        return
-
-    if not payment_mod.use_testnet():
-        await _say(
-            ctx,
-            sender,
-            "Mainnet payment still needs the native wallet confirmation flow.",
-        )
-        return
-
-    paid, detail, payer_address = payment_mod.execute_testnet_payment(ctx.logger)
-    if not paid:
-        ctx.logger.error(
-            f"testnet payment action failed detail={detail} "
-            f"payer={payer_address}"
-        )
-        if detail == "payer_mnemonic_address_mismatch":
-            msg = (
-                "The configured testnet payer key does not match the funded "
-                "wallet in the payment settings."
-            )
-        elif detail == "missing_payment_testnet_payer_key":
-            msg = "The testnet payer private key is missing from env."
-        elif detail == "auto_pay_disabled":
-            msg = "Testnet payment execution is disabled in env."
-        else:
-            msg = "Payment failed on Dorado testnet. No application was started."
-        await _say(ctx, sender, rendering.format_error(msg))
-        return
-
-    ctx.logger.info(
-        f"[payment] testnet card payment complete tx={detail} payer={payer_address}"
-    )
-    await _on_payment_complete(ctx, sender)
 
 
 async def _handle_show_profile(
@@ -1919,7 +1800,7 @@ async def _request_payment_for_apply(
     sess.apply_job_url = job_url
     session_mod.save(ctx.storage, sess)
     try:
-        await _send_payment_card(ctx, sender)
+        await _send_payment_request(ctx, sender)
     except Exception as exc:  # noqa: BLE001
         ctx.logger.error(f"failed to send payment card: {exc}")
         sess.apply_state = ApplyState.IDLE
@@ -1960,7 +1841,7 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         sess.apply_job_url = hot_apply_url
         session_mod.save(ctx.storage, sess)
         try:
-            await _send_payment_card(ctx, sender)
+            await _send_payment_request(ctx, sender)
         except Exception as exc:  # noqa: BLE001
             ctx.logger.error(f"failed to send payment card: {exc}")
             sess.apply_state = ApplyState.IDLE
@@ -1994,9 +1875,6 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     # submission both arrive as MetadataContent and short-circuit the
     # regular intent classifier.
     card_selection = _extract_card_selection(msg)
-    if card_selection is not None and "payment_action" in card_selection:
-        await _handle_payment_card_selection(ctx, sender, card_selection)
-        return
     if card_selection is not None and card_selection.get("action") in (
         "add_another_education", "save_education",
         "edit_education_entry", "delete_education_entry",
@@ -2215,14 +2093,12 @@ async def on_startup(ctx: Context):
     )
     ctx.logger.info(f"default_dry_run={DEFAULT_DRY_RUN}")
     if payment_mod.gate_active():
-        net = "testnet" if payment_mod.use_testnet() else "mainnet"
         ctx.logger.info(
-            f"Payment gate ACTIVE — {payment_mod.amount_fet()} FET per apply "
-            f"({net}), recipient={payment_mod.recipient_fet_address(ctx)}"
+            f"Payment gate ACTIVE — {payment_mod.amount_usd()} per apply via Stripe"
         )
     elif payment_mod.is_enabled():
         ctx.logger.warning(
-            "PAYMENT_ENABLED=true but the agent wallet wasn't wired; "
+            "PAYMENT_ENABLED=true but STRIPE_SECRET_KEY is missing; "
             "payment gate is INACTIVE."
         )
     else:
