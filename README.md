@@ -157,6 +157,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [contributors/community_agent](contributors/community_agent/) | AI community growth agent for events and hackathons | Python, uAgents, ASI:One, Tavily | 🟡 Intermediate |
+| [contributors/hackflow-agent](contributors/hackflow-agent/) | LangChain Deep Agents hackathon intelligence agent with Stripe-gated competitive research briefs | Python, uAgents, ASI:One, LangChain Deep Agents, Stripe, Tavily | 🔴 Advanced |
 
 ### 🌐 Web3 & Blockchain
 

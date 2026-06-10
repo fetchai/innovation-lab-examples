@@ -105,7 +105,7 @@ hackflow-agent/
 
 ```bash
 # 1. Navigate to this directory
-cd innovation-lab-examples/langchain-agents/deep-agents/hackflow-agent
+cd innovation-lab-examples/contributors/hackflow-agent
 
 # 2. Create isolated virtual environment — required, do not skip
 python3.11 -m venv .venv

@@ -106,4 +106,5 @@ Your pull request must pass:
 
 | Agent | Description |
 |-------|-------------|
+| [hackflow-agent](./hackflow-agent/) | LangChain Deep Agents hackathon intelligence agent with Stripe-gated competitive research briefs |
 | [community_agent](./community_agent/) | AI community growth agent for events, conferences, and hackathons |
