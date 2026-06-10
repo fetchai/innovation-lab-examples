@@ -29,6 +29,7 @@ import os
 import re
 from typing import Any, Optional
 
+from answer_composer import compose_answer
 from models import FilledField, MapFieldsResult, UserProfile
 
 # Greenhouse field-name conventions we recognize.
@@ -95,15 +96,6 @@ PROFILE_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bemail\b|\be-mail\b", re.I), "email"),
 ]
 
-LLM_SYSTEM_PROMPT = (
-    "You help a candidate answer a job application question. "
-    "Write a concise, first-person answer (1-3 short paragraphs, max ~150 words). "
-    "Ground every claim in the provided resume excerpts. "
-    "Do NOT invent companies, dates, projects, technologies, or roles that are not in the excerpts. "
-    "If the excerpts don't support a confident answer, reply EXACTLY with `<NEEDS_USER_INPUT>`."
-)
-
-UNKNOWN_MARKER = "<NEEDS_USER_INPUT>"
 
 
 def _norm(s: str) -> str:
@@ -176,43 +168,6 @@ class FieldMapper:
     ):
         self.asi_api_key = asi_api_key or os.getenv("ASI_ONE_API_KEY")
         self.asi_model = asi_model
-
-    # ------------------------------------------------------------------
-    # LLM helper
-    # ------------------------------------------------------------------
-
-    def _llm_compose(self, question_label: str, question_desc: Optional[str], resume_text: str) -> Optional[str]:
-        if not self.asi_api_key:
-            return None
-        try:
-            from openai import OpenAI
-        except ImportError:
-            return None
-
-        prompt = (
-            f"Question label: {question_label}\n"
-            f"Question description: {question_desc or '(none)'}\n\n"
-            f"Resume:\n{resume_text[:4000]}\n\n"
-            f"Write the candidate's answer now."
-        )
-
-        try:
-            client = OpenAI(base_url="https://api.asi1.ai/v1", api_key=self.asi_api_key)
-            resp = client.chat.completions.create(
-                model=self.asi_model,
-                messages=[
-                    {"role": "system", "content": LLM_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt},
-                ],
-                max_tokens=400,
-                temperature=0.2,
-            )
-            text = (resp.choices[0].message.content or "").strip()
-            if not text or UNKNOWN_MARKER in text:
-                return None
-            return text
-        except Exception:  # noqa: BLE001 - LLM is best-effort enrichment
-            return None
 
     # ------------------------------------------------------------------
     # Public entry point
@@ -345,10 +300,16 @@ class FieldMapper:
             if ftype == "input_text" and not re.search(r"\?|why|tell|describe|explain", label, re.I):
                 return None
 
-            if not profile.resume_text:
+            if not profile.resume_text or not self.asi_api_key:
                 return None
 
-            answer = self._llm_compose(label, description, profile.resume_text)
+            answer = compose_answer(
+                question_label=label,
+                question_desc=description,
+                resume_text=profile.resume_text,
+                asi_api_key=self.asi_api_key,
+                asi_model=self.asi_model,
+            )
             if not answer:
                 return None
 
