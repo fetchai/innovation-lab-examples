@@ -1,8 +1,0 @@
-uagents==0.23.6
-uagents-core==0.4.0
-langgraph==0.3.20
-pydantic>=2.0,<3
-requests>=2.31
-html2text>=2024.2.26
-python-dotenv>=1.0
-certifi
