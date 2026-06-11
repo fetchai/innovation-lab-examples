@@ -974,17 +974,11 @@ async def _handle_upload_resume(
     (no network hop), and register the version in `sess.resume_versions`."""
     resources = _resource_items(msg)
     if not resources:
-        if has_attachment:
-            await _say(
-                ctx, sender,
-                "I could see an attachment but couldn't access the file. "
-                "Please try uploading your resume again.",
-            )
-        else:
-            await _say(
-                ctx, sender,
-                "Drop a PDF, DOCX, or TXT resume in chat and I'll parse it.",
-            )
+        await _say(
+            ctx, sender,
+            "I couldn't access the attached file — please try uploading "
+            "your resume again (PDF, DOCX, or TXT).",
+        )
         return
 
     ingested: list[dict] = []
@@ -1915,17 +1909,16 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         await _handle_profile_card_selection(ctx, sender, sess, card_selection)
         return
 
+    # Always re-advertise attachment support. The client needs to have seen
+    # this metadata before it will deliver files as ResourceContent. Sending
+    # it on every turn ensures a failed first upload never stays broken.
+    await ctx.send(sender, ChatMessage(
+        timestamp=datetime.now(UTC),
+        msg_id=uuid4(),
+        content=[MetadataContent(type="metadata", metadata={"attachments": "true"})],
+    ))
+
     if _is_start_session(msg):
-        # Advertise attachment support. Without this the chat client
-        # uploads files as MetadataContent stubs (or skips them entirely)
-        # instead of as ResourceContent, so `_handle_upload_resume` never
-        # sees any bytes to ingest.
-        await ctx.send(sender, ChatMessage(
-            timestamp=datetime.now(UTC),
-            msg_id=uuid4(),
-            content=[MetadataContent(type="metadata",
-                                     metadata={"attachments": "true"})],
-        ))
         if not _extract_text(msg):
             await _say(ctx, sender, rendering.WELCOME)
             session_mod.save(ctx.storage, sess)
