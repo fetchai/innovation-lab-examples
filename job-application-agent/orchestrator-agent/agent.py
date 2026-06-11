@@ -968,15 +968,23 @@ async def _handle_upload_resume(
     sender: str,
     msg: ChatMessage,
     sess: OrchestratorSession,
+    has_attachment: bool = False,
 ) -> None:
     """Download every ResourceContent attachment, save locally, ingest directly
     (no network hop), and register the version in `sess.resume_versions`."""
     resources = _resource_items(msg)
     if not resources:
-        await _say(
-            ctx, sender,
-            "Drop a PDF, DOCX, or TXT resume in chat and I'll parse it.",
-        )
+        if has_attachment:
+            await _say(
+                ctx, sender,
+                "I could see an attachment but couldn't access the file. "
+                "Please try uploading your resume again.",
+            )
+        else:
+            await _say(
+                ctx, sender,
+                "Drop a PDF, DOCX, or TXT resume in chat and I'll parse it.",
+            )
         return
 
     ingested: list[dict] = []
@@ -1968,7 +1976,7 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     if (
         interp.reply
         and sess.apply_state != ApplyState.PAYMENT_PENDING
-        and interp.intent != "apply"
+        and interp.intent not in {"apply", "upload_resume"}
     ):
         await _say(ctx, sender, interp.reply)
 
@@ -2003,7 +2011,7 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         return
 
     if interp.intent == "upload_resume":
-        await _handle_upload_resume(ctx, sender, msg, sess)
+        await _handle_upload_resume(ctx, sender, msg, sess, has_attachment=has_attachment)
         return
 
     if interp.intent == "switch_resume":
