@@ -53,21 +53,18 @@ from stripe_payments import create_checkout_session, verify_paid
 # Configuration
 # ---------------------------------------------------------------------------
 
-PAYMENT_ENABLED = os.getenv("PAYMENT_ENABLED", "false").lower() in {"1", "true", "yes"}
-STRIPE_AMOUNT_CENTS = int(os.getenv("STRIPE_AMOUNT_CENTS", "100"))
-STRIPE_CURRENCY = (os.getenv("STRIPE_CURRENCY", "usd") or "usd").strip().upper()
-
-
 def gate_active() -> bool:
-    return PAYMENT_ENABLED and bool(os.getenv("STRIPE_SECRET_KEY"))
+    enabled = os.getenv("PAYMENT_ENABLED", "false").lower() in {"1", "true", "yes"}
+    return enabled and bool(os.getenv("STRIPE_SECRET_KEY"))
 
 
 def is_enabled() -> bool:
-    return PAYMENT_ENABLED
+    return os.getenv("PAYMENT_ENABLED", "false").lower() in {"1", "true", "yes"}
 
 
 def amount_usd() -> str:
-    return f"${STRIPE_AMOUNT_CENTS / 100:.2f}"
+    cents = int(os.getenv("STRIPE_AMOUNT_CENTS", "100"))
+    return f"${cents / 100:.2f}"
 
 
 # ---------------------------------------------------------------------------
@@ -102,17 +99,19 @@ async def send_payment_request(ctx: Context, sender: str) -> None:
         user_address=sender,
         chat_session_id=str(ctx.session),
     )
-    amount_str = f"{STRIPE_AMOUNT_CENTS / 100:.2f}"
+    cents = int(os.getenv("STRIPE_AMOUNT_CENTS", "100"))
+    currency = (os.getenv("STRIPE_CURRENCY", "usd") or "usd").strip().upper()
+    amount_str = f"{cents / 100:.2f}"
     req = RequestPayment(
         accepted_funds=[Funds(
-            currency=STRIPE_CURRENCY,
+            currency=currency,
             amount=amount_str,
             payment_method="stripe",
         )],
         recipient=str(ctx.agent.address),
         deadline_seconds=1800,
         reference=str(ctx.session),
-        description=f"Job application — {amount_str} {STRIPE_CURRENCY}",
+        description=f"Job application — {amount_str} {currency}",
         metadata={"stripe": checkout, "service": "job_application"},
     )
     await ctx.send(sender, req)
