@@ -167,23 +167,6 @@ def short_circuit(
     if lower in {"cancel", "reset", "abort", "stop", "nevermind", "never mind"}:
         return Interpretation(intent="cancel", reply="Okay, cancelling.")
 
-    # Fast-path the chattiest intents so trivial turns feel snappy.
-    if lower in GREET_WORDS:
-        return Interpretation(
-            intent="greet",
-            reply=(
-                "Hey 👋 I can manage your resume + profile and apply to "
-                "Greenhouse jobs for you. Say `help` to see what I do, or "
-                "paste a Greenhouse URL to get started."
-            ),
-        )
-
-    if lower in SHOW_PROFILE_PHRASES:
-        return Interpretation(intent="show_profile")
-
-    if lower in LIST_RESUMES_PHRASES:
-        return Interpretation(intent="list_resumes")
-
     return None
 
 

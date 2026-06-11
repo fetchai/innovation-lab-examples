@@ -1976,15 +1976,17 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     if (
         interp.reply
         and sess.apply_state != ApplyState.PAYMENT_PENDING
-        and interp.intent not in {"apply", "upload_resume"}
+        and interp.intent not in {"apply", "upload_resume", "greet"}
     ):
         await _say(ctx, sender, interp.reply)
 
     if interp.intent == "greet":
-        # Greet reply already sent; if this is the very first message in the
-        # session, follow with the welcome panel to onboard them properly.
+        # New user: show the full welcome panel.
+        # Returning user: use the LLM's warm reply (already in interp.reply).
         if not sess.profile_summary:
             await _say(ctx, sender, rendering.WELCOME)
+        elif interp.reply:
+            await _say(ctx, sender, interp.reply)
         return
 
     if interp.intent == "help":
