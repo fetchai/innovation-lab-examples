@@ -263,12 +263,14 @@ def build_profile_carousel(
     # ---- 4) Resume ----
     resume_path = p.get("resume_path")
     if resume_path:
-        fname = resume_path.rsplit("/", 1)[-1]
-        rbits = [fname]
+        # Show the version name if available, otherwise just the original filename.
+        # Never show the internal path (which contains the agent address as filename).
         if active_resume:
-            rbits.append(active_resume)
-        
-        resume_sub = "  ·  ".join(rbits)
+            resume_sub = active_resume
+        else:
+            fname = resume_path.rsplit("/", 1)[-1]
+            # Strip the agent-address prefix that ingest_resume uses as filename
+            resume_sub = fname if not fname.startswith("agent1") else "resume"
     else:
         resume_sub = "Not uploaded — drop a PDF or DOCX in chat"
     items.append(CarouselItem(
@@ -439,9 +441,10 @@ def _section_summary(
 
     if section == "resume":
         if p.get("resume_path"):
+            if active_resume:
+                return active_resume
             fname = p["resume_path"].rsplit("/", 1)[-1]
-            v = f"  ·  {active_resume}" if active_resume else ""
-            return f"{fname}{v}"
+            return fname if not fname.startswith("agent1") else "resume"
         return "Not uploaded — drop a PDF or DOCX in chat."
 
     if section == "answers":

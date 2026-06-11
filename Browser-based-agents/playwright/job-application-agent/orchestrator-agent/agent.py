@@ -91,6 +91,42 @@ from session import ApplyState, OrchestratorSession  # noqa: E402
 # Single source of truth: job-application-agent/.env (one level up).
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
+# Mirror all agent output to agent.out.log.
+import logging as _logging, sys as _sys  # noqa: E402
+
+_log_file = Path(__file__).resolve().parent / "agent.out.log"
+_log_fh = open(_log_file, "w", buffering=1, encoding="utf-8")
+
+class _Tee:
+    def __init__(self, orig):
+        self._orig = orig
+    def write(self, data):
+        self._orig.write(data)
+        _log_fh.write(data)
+    def flush(self):
+        self._orig.flush()
+        _log_fh.flush()
+    def __getattr__(self, name):
+        return getattr(self._orig, name)
+
+_tee_out = _Tee(_sys.__stdout__)
+_tee_err = _Tee(_sys.__stderr__)
+_sys.stdout = _tee_out
+_sys.stderr = _tee_err
+
+# StreamHandlers cache their stream object at creation time, so replacing
+# sys.stdout above doesn't affect them. Patch every existing StreamHandler
+# that points at stdout or stderr to use the Tee instead.
+def _patch_stream_handlers():
+    for _lgr in [_logging.root] + list(_logging.root.manager.loggerDict.values()):
+        if not isinstance(_lgr, _logging.Logger):
+            continue
+        for _h in _lgr.handlers:
+            if isinstance(_h, _logging.StreamHandler):
+                if _h.stream is _sys.__stdout__:
+                    _h.stream = _tee_out
+                elif _h.stream is _sys.__stderr__:
+                    _h.stream = _tee_err
 
 AGENT_NAME = "job_application_orchestrator"
 SEED_PHRASE = os.getenv(
@@ -171,6 +207,7 @@ class MapFieldsResponse(Model):
     result_json: Optional[str] = None
 
 AGENTVERSE_URL = os.getenv("AGENTVERSE_URL", "https://agentverse.ai")
+AGENTVERSE_API_KEY = os.getenv("AGENTVERSE_API_KEY")
 STORAGE_URL = f"{AGENTVERSE_URL}/v1/storage"
 
 
@@ -187,6 +224,11 @@ agent = Agent(
     agentverse=AGENTVERSE_URL,
     publish_agent_details=True,
 )
+
+# Patch again after Agent() — it creates all its loggers during __init__.
+_patch_stream_handlers()
+
+
 chat_proto = Protocol(spec=chat_protocol_spec)
 profile_proto = Protocol(name="profile_agent", version="1.0")
 
@@ -277,6 +319,24 @@ def _extract_profile_fields(resume_text: str) -> dict:
         return {}
 
 
+_EDU_STR_FIELDS = {"gpa", "gpa_scale", "graduation_date", "degree_level", "degree", "major", "university_name"}
+_EXP_STR_FIELDS = {"start_date", "end_date", "employment_type", "work_mode", "location", "job_title", "company_name"}
+
+
+def _coerce_edu_exp(extracted: dict) -> None:
+    """Coerce numeric/non-string fields in education/experience to strings in-place."""
+    for entry in extracted.get("education") or []:
+        if isinstance(entry, dict):
+            for f in _EDU_STR_FIELDS:
+                if f in entry and entry[f] is not None and not isinstance(entry[f], str):
+                    entry[f] = str(entry[f])
+    for entry in extracted.get("experience") or []:
+        if isinstance(entry, dict):
+            for f in _EXP_STR_FIELDS:
+                if f in entry and entry[f] is not None and not isinstance(entry[f], str):
+                    entry[f] = str(entry[f])
+
+
 def _ingest_resume_direct(
     ctx: Context, user_key: str, resume_path: str
 ) -> tuple[bool, Optional[dict], Optional[str]]:
@@ -290,6 +350,7 @@ def _ingest_resume_direct(
     text = _to_markdown(text)
 
     extracted = _extract_profile_fields(text)
+    _coerce_edu_exp(extracted)
     existing = _profile_store(ctx).get(user_key)
     if existing:
         base = existing.model_dump(mode="json")
@@ -489,8 +550,17 @@ def _has_attachment(message: ChatMessage) -> bool:
     return False
 
 
-def _resource_items(message: ChatMessage) -> list[ResourceContent]:
-    return [c for c in message.content if isinstance(c, ResourceContent)]
+def _resource_items(message: ChatMessage) -> list:
+    """Return all resource content items regardless of exact type.
+
+    ASI:One sometimes deserializes ResourceContent as a generic object whose
+    type field is "resource" but that fails isinstance(c, ResourceContent).
+    Accept both forms so downloads don't silently get skipped.
+    """
+    return [
+        c for c in message.content
+        if isinstance(c, ResourceContent) or getattr(c, "type", "") == "resource"
+    ]
 
 
 def _has_end_session(message: ChatMessage) -> bool:
@@ -498,7 +568,7 @@ def _has_end_session(message: ChatMessage) -> bool:
 
 
 def _download_resource(
-    ctx: Context, item: ResourceContent
+    ctx: Context, item
 ) -> Optional[tuple[bytes, str, str]]:
     """Download a ResourceContent attachment. Returns
     (bytes, mime_type, source_filename) or None on failure.
@@ -519,52 +589,91 @@ def _download_resource(
     content_bytes: Optional[bytes] = None
     mime_type = "application/octet-stream"
 
-    # 1) Agentverse external storage
-    try:
-        storage = ExternalStorage(
-            identity=ctx.agent.identity, storage_url=STORAGE_URL
-        )
-        stored = storage.download(str(item.resource_id))
-        mime_type = stored.get("mime_type", mime_type)
-        content_b64 = stored.get("contents", "")
-        if content_b64:
-            content_bytes = base64.b64decode(content_b64)
-    except Exception as exc:  # noqa: BLE001
-        ctx.logger.info(
-            f"storage download failed for {item.resource_id} ({exc}); "
-            f"trying URI fallback"
-        )
+    # resource_id may be a UUID, a string, or buried in a dict if the item
+    # deserialized as a generic object rather than a typed ResourceContent.
+    raw_resource_id = (
+        item.get("resource_id") if isinstance(item, dict)
+        else getattr(item, "resource_id", None)
+    )
+    resource_id_str = str(raw_resource_id) if raw_resource_id is not None else ""
 
-    # 2) Public URI fallback. `item.resource` may be a single Resource
-    # object (current chat clients) or a list of them (older protocol).
+    # 1a) Agentverse external storage — agent identity attestation
+    for _storage_kwargs in [
+        {"identity": ctx.agent.identity, "storage_url": STORAGE_URL},
+        # 1b) API-key bearer token (user-uploaded assets may only be readable
+        #     with our registered API key, not the raw agent attestation)
+        *(
+            [{"api_token": AGENTVERSE_API_KEY, "storage_url": STORAGE_URL}]
+            if AGENTVERSE_API_KEY else []
+        ),
+    ]:
+        if not resource_id_str:
+            break
+        try:
+            storage = ExternalStorage(**_storage_kwargs)
+            stored = storage.download(resource_id_str)
+            mime_type = stored.get("mime_type", mime_type)
+            content_b64 = stored.get("contents", "")
+            if content_b64:
+                content_bytes = base64.b64decode(content_b64)
+                break
+        except Exception as exc:  # noqa: BLE001
+            ctx.logger.info(
+                f"storage download failed for {resource_id_str} "
+                f"(kwargs={list(_storage_kwargs)}, err={exc})"
+            )
+
+    # 2) URI fallback — try with API-key auth first (Agentverse URIs require
+    #    it), then unauthenticated (public/catbox URIs).
     if content_bytes is None:
         uri = None
-        res_obj = getattr(item, "resource", None)
+        res_obj = (
+            item.get("resource") if isinstance(item, dict)
+            else getattr(item, "resource", None)
+        )
         candidates = res_obj if isinstance(res_obj, list) else [res_obj]
         for res in candidates:
             uri = getattr(res, "uri", None) if res is not None else None
             if uri:
                 break
         if uri:
-            try:
-                import httpx  # local import keeps the top of the file unchanged
-                resp = httpx.get(uri, timeout=120)
-                resp.raise_for_status()
-                content_bytes = resp.content
-                mime_type = resp.headers.get("content-type", mime_type)
-            except Exception as exc:  # noqa: BLE001
-                ctx.logger.warning(f"URI download failed ({uri}): {exc}")
+            import httpx  # local import keeps the top of the file unchanged
+            downloaded = False
+            auth_variants: list[dict] = []
+            if AGENTVERSE_API_KEY:
+                auth_variants.append(
+                    {"Authorization": f"Bearer {AGENTVERSE_API_KEY}"}
+                )
+            auth_variants.append({})  # unauthenticated last
+            for headers in auth_variants:
+                try:
+                    resp = httpx.get(uri, timeout=120, headers=headers)
+                    resp.raise_for_status()
+                    content_bytes = resp.content
+                    mime_type = resp.headers.get("content-type", mime_type)
+                    downloaded = True
+                    break
+                except Exception as exc:  # noqa: BLE001
+                    ctx.logger.info(
+                        f"URI download attempt failed ({uri}, "
+                        f"auth={'key' if headers else 'none'}): {exc}"
+                    )
+            if not downloaded:
+                ctx.logger.warning(f"URI download failed for all auth variants ({uri})")
                 return None
         else:
             ctx.logger.warning(
-                f"resource {item.resource_id}: no storage bytes and no URI"
+                f"resource {resource_id_str}: no storage bytes and no URI"
             )
             return None
 
     # Try to recover the original filename from the resource metadata
     # (set by chat clients) or fall back to the asset id.
-    source_filename = f"resource_{item.resource_id}"
-    res_obj = getattr(item, "resource", None)
+    source_filename = f"resource_{resource_id_str}"
+    res_obj = (
+        item.get("resource") if isinstance(item, dict)
+        else getattr(item, "resource", None)
+    )
     candidates = res_obj if isinstance(res_obj, list) else [res_obj]
     for res in candidates:
         if res is None:
@@ -973,6 +1082,26 @@ async def _handle_upload_resume(
     """Download every ResourceContent attachment, save locally, ingest directly
     (no network hop), and register the version in `sess.resume_versions`."""
     resources = _resource_items(msg)
+
+    # ASI:One uploads files to Cloudinary and embeds the URL as a markdown
+    # image link in TextContent rather than sending a ResourceContent.
+    # Extract any such URLs and synthesise fake resource items for them.
+    if not resources:
+        full_text = "\n".join(
+            getattr(c, "text", "") for c in msg.content
+            if getattr(c, "type", "") == "text"
+        )
+        url_matches = re.findall(r'!\[([^\]]*)\]\((https?://\S+)\)', full_text)
+        if not url_matches:
+            # Also try bare URLs to known file CDNs
+            url_matches = [
+                ("resume", m)
+                for m in re.findall(r'https?://\S+', full_text)
+                if any(cdn in m for cdn in ("cloudinary.com", "res.cloudinary", "agentverse", "catbox.moe"))
+            ]
+        for filename, url in url_matches:
+            resources.append({"_url": url, "_filename": filename or "resume.pdf", "resource_id": None})
+
     if not resources:
         await _say(
             ctx, sender,
@@ -983,13 +1112,24 @@ async def _handle_upload_resume(
 
     ingested: list[dict] = []
     for item in resources:
-        downloaded = _download_resource(ctx, item)
+        # Inline-URL item synthesised from markdown text above
+        if isinstance(item, dict) and item.get("_url"):
+            import httpx as _httpx
+            try:
+                resp = _httpx.get(item["_url"], timeout=60, follow_redirects=True)
+                resp.raise_for_status()
+                downloaded: tuple = (resp.content, resp.headers.get("content-type", "application/octet-stream"), item["_filename"])
+            except Exception as exc:
+                ctx.logger.warning(f"inline URL download failed ({item['_url']}): {exc}")
+                await _say(ctx, sender, rendering.format_error(f"Couldn't download the file from the link: {exc}"))
+                continue
+        else:
+            downloaded = _download_resource(ctx, item)
         if not downloaded:
+            _rid = item.get("resource_id", "?") if isinstance(item, dict) else getattr(item, "resource_id", "?")
             await _say(
                 ctx, sender,
-                rendering.format_error(
-                    f"Couldn't download attachment `{item.resource_id}`."
-                ),
+                rendering.format_error(f"Couldn't download attachment `{_rid}`."),
             )
             continue
         content_bytes, mime_type, source_filename = downloaded
@@ -1239,7 +1379,14 @@ async def _run_live_fill(ctx: Context, sender: str, sess: FormSession, applicati
     )
     await _say(ctx, sender, f"🎬 Opening the real Greenhouse form. {mode_note}")
     await _close_browser_session(sender)
-    bs = BrowserSession(application_url, headless=not headed, resume_path=sess.resume_path)
+    orch = session_mod.load(ctx.storage, sender)
+    _active_ver = next(
+        (v for v in orch.resume_versions if v.get("name") == orch.active_resume_version),
+        None,
+    )
+    _resume_filename = (_active_ver or {}).get("source_filename") or None
+    bs = BrowserSession(application_url, headless=not headed, resume_path=sess.resume_path,
+                        resume_filename=_resume_filename)
     try:
         await bs.open()
     except Exception as exc:  # noqa: BLE001
@@ -1328,7 +1475,7 @@ async def _apply_field_edit(ctx: Context, sender: str, sess: FormSession, name: 
     await _say(ctx, sender, f"Got it — set `{name}` to `{resolved}`. {tail}")
 
 
-def _run_submission_sync(job_json: str, filled_json: str, resume_path: str, dry_run: bool) -> dict:
+def _run_submission_sync(job_json: str, filled_json: str, resume_path: str, dry_run: bool, resume_filename: str = "") -> dict:
     """Synchronous core of the submission — run via asyncio.to_thread."""
     try:
         job = json.loads(job_json)
@@ -1369,7 +1516,8 @@ def _run_submission_sync(job_json: str, filled_json: str, resume_path: str, dry_
 
     try:
         resp = post_application(board_token, str(job_id), text_fields,
-                                resume_path=resume_path, resume_field_name=resume_field)
+                                resume_path=resume_path, resume_field_name=resume_field,
+                                resume_filename=resume_filename or None)
     except SubmitError as exc:
         return {"success": False, "error": str(exc), "dry_run": False,
                 "missing_required": [], "fields_submitted": []}
@@ -1405,9 +1553,16 @@ async def _do_submit(ctx: Context, sender: str, sess: FormSession, *, dry_run: b
         "missing_required": sess.missing_required,
     }
     try:
+        # Use the original source filename so Greenhouse shows a clean name.
+        orch_sess = session_mod.load(ctx.storage, sender)
+        active_ver = next(
+            (v for v in orch_sess.resume_versions if v.get("name") == orch_sess.active_resume_version),
+            None,
+        )
+        resume_filename = (active_ver or {}).get("source_filename") or ""
         resp = await asyncio.to_thread(
             _run_submission_sync, sess.job_json, json.dumps(filled_payload),
-            sess.resume_path or "", dry_run,
+            sess.resume_path or "", dry_run, resume_filename,
         )
     except Exception as exc:  # noqa: BLE001
         sess.state = FormState.REVIEWING
@@ -1685,6 +1840,10 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         except Exception:  # noqa: BLE001
             app_url = url
         await _run_live_fill(ctx, sender, sess, app_url, profile_snapshot=profile_snapshot)
+        # Save after live fill — it discovers EEO/extra fields and updates
+        # missing_required in-memory, but the session was saved before this
+        # call so those changes would otherwise be lost on the next message.
+        form_session.save(ctx.storage, sess)
 
 
 async def _handle_form_turn(ctx: Context, sender: str, msg: ChatMessage, user_text: str) -> None:
@@ -1839,6 +1998,16 @@ async def _request_payment_for_apply(
 
 @chat_proto.on_message(ChatMessage)
 async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
+    # Send attachment advertisement on every single inbound message — no
+    # exceptions. The client must receive this before it will deliver files
+    # as ResourceContent. Sending it unconditionally means the user can drop
+    # a resume at any point in the conversation.
+    await ctx.send(sender, ChatMessage(
+        timestamp=datetime.now(UTC),
+        msg_id=uuid4(),
+        content=[MetadataContent(type="metadata", metadata={"attachments": "true"})],
+    ))
+
     user_text = _extract_text(msg)
     hot_apply_url = intents.find_greenhouse_url(user_text)
 
@@ -1908,15 +2077,6 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
                                         card_selection.get("action") == "edit_profile"):
         await _handle_profile_card_selection(ctx, sender, sess, card_selection)
         return
-
-    # Always re-advertise attachment support. The client needs to have seen
-    # this metadata before it will deliver files as ResourceContent. Sending
-    # it on every turn ensures a failed first upload never stays broken.
-    await ctx.send(sender, ChatMessage(
-        timestamp=datetime.now(UTC),
-        msg_id=uuid4(),
-        content=[MetadataContent(type="metadata", metadata={"attachments": "true"})],
-    ))
 
     if _is_start_session(msg):
         if not _extract_text(msg):

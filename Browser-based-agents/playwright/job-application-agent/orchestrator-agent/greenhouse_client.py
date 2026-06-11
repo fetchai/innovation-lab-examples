@@ -131,6 +131,7 @@ def post_application(
     *,
     resume_path: Optional[str] = None,
     resume_field_name: str = "resume",
+    resume_filename: Optional[str] = None,
     timeout: int = DEFAULT_TIMEOUT,
 ) -> requests.Response:
     """POST the multipart form to Greenhouse. Returns the raw `Response`."""
@@ -144,7 +145,7 @@ def post_application(
         mime, _ = mimetypes.guess_type(str(path))
         files = {
             resume_field_name: (
-                path.name,
+                resume_filename or path.name,
                 path.read_bytes(),
                 mime or "application/octet-stream",
             )

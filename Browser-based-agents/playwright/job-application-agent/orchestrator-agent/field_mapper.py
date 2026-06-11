@@ -87,6 +87,8 @@ PROFILE_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\baddress\s*(line\s*)?1\b|\bstreet\s*address\b", re.I), "address_line_1"),
     (re.compile(r"\baddress\s*(line\s*)?2\b|\bapt\b|\bsuite\b", re.I), "address_line_2"),
     (re.compile(r"\bzip\b|\bzip\s*code\b|\bpostal\s*code\b|\bpostcode\b", re.I), "zip_code"),
+    (re.compile(r"\bcity\b|\blocation\b", re.I), "city"),
+    (re.compile(r"\bstate\b|\bprovince\b|\bregion\b", re.I), "state"),
     (re.compile(r"\blinked\s*in\b|\blinkedin\b", re.I), "linkedin"),
     (re.compile(r"\bgithub\b|\bgit\s*hub\b", re.I), "github"),
     (re.compile(r"\bportfolio\b", re.I), "portfolio"),
@@ -95,6 +97,14 @@ PROFILE_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bphone\b|\bmobile\b|\btelephone\b", re.I), "phone"),
     (re.compile(r"\bemail\b|\be-mail\b", re.I), "email"),
 ]
+
+# US states/territories → country inference
+_US_STATES = {
+    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
+    "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+    "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
+    "VA","WA","WV","WI","WY","DC","PR","GU","VI","AS","MP",
+}
 
 
 
@@ -238,6 +248,11 @@ class FieldMapper:
         attr = PROFILE_FIELD_ALIASES.get(name)
         if attr:
             value = getattr(profile, attr, None)
+            # Infer country from state when not explicitly set
+            if attr == "country" and not value:
+                state = (profile.state or "").strip().upper()
+                if state in _US_STATES:
+                    value = "United States"
             if value:
                 source = "file" if attr == "resume_path" else "profile"
                 return {"value": value, "source": source, "confidence": 1.0}
@@ -275,6 +290,18 @@ class FieldMapper:
 
         # 3. Select-type fields: try to match a profile attribute against options.
         if ftype.endswith("select") or values:
+            # Country inference from state for select dropdowns
+            if re.search(r"\bcountry\b", label or name or "", re.I):
+                country_val = profile.country
+                if not country_val:
+                    state = (profile.state or "").strip().upper()
+                    if state in _US_STATES:
+                        country_val = "United States"
+                if country_val:
+                    opt = _fuzzy_pick_option(country_val, values)
+                    if opt:
+                        return {"value": opt.get("value", opt.get("label")), "source": "profile", "confidence": 0.95}
+
             for pattern, attr_name in SELECT_LABEL_MATCHERS:
                 if not pattern.search(label or ""):
                     continue

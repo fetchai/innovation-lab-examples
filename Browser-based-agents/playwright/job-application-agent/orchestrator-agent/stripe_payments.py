@@ -36,7 +36,7 @@ def create_checkout_session(*, user_address: str, chat_session_id: str) -> dict:
     )
 
     session = stripe.checkout.Session.create(
-        ui_mode="embedded",
+        ui_mode="embedded_page",
         redirect_on_completion="if_required",
         payment_method_types=["card"],
         mode="payment",
@@ -67,7 +67,7 @@ def create_checkout_session(*, user_address: str, chat_session_id: str) -> dict:
         "publishable_key": os.getenv("STRIPE_PUBLISHABLE_KEY", ""),
         "currency": currency,
         "amount_cents": amount_cents,
-        "ui_mode": "embedded",
+        "ui_mode": "embedded_page",
     }
 
 

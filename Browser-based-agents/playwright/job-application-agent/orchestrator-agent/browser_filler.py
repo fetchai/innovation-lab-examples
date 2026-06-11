@@ -221,10 +221,35 @@ def _map_disability_status(value: Any) -> Optional[str]:
     return None
 
 
+_US_STATES = {
+    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
+    "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+    "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
+    "VA","WA","WV","WI","WY","DC","PR","GU","VI","AS","MP",
+}
+
+
 def _profile_value_for_live_label(
     profile: dict[str, Any], label: str, *, ftype: str
 ) -> tuple[Optional[str], Optional[str], list[dict[str, str]]]:
     normed = _norm(label)
+
+    # Country — infer "United States" from US state when country not explicit
+    if "country" in normed and ftype in {"multi_value_single_select", "input_text"}:
+        country = profile.get("country")
+        if not country:
+            state = (profile.get("state") or "").strip().upper()
+            if state in _US_STATES:
+                country = "United States"
+        if country:
+            return "country", country, []
+
+    # City / location
+    if ("city" in normed or normed == "location" or normed.startswith("location ")) and ftype == "input_text":
+        city = profile.get("city")
+        if city:
+            return "city", city, []
+
     if "gender identity" in normed:
         return "gender", _map_gender_identity(profile.get("gender")), DEMOGRAPHIC_OPTIONS["gender_identity"]
     if "race or ethnicity" in normed or "race/ethnicity" in normed:
@@ -257,11 +282,13 @@ class BrowserSession:
         *,
         headless: bool = False,
         resume_path: Optional[str] = None,
+        resume_filename: Optional[str] = None,
         nav_timeout_ms: int = 30000,
     ):
         self.application_url = application_url
         self.headless = headless
         self.resume_path = resume_path
+        self.resume_filename = resume_filename  # override filename shown to Greenhouse
         self.nav_timeout_ms = nav_timeout_ms
 
         self._pw = None
@@ -586,13 +613,25 @@ class BrowserSession:
             if not self.resume_path:
                 return False, "no resume file on disk"
             try:
-                loc = self._page.locator(
-                    f'input[type="file"][name="{_css_escape(name)}"]'
-                ).first
-                if await loc.count() == 0:
-                    loc = self._page.locator('input[type="file"]').first
-                await loc.set_input_files(self.resume_path)
-                return True, f"attached {self.resume_path.split('/')[-1]}"
+                import shutil, tempfile
+                attach_path = self.resume_path
+                tmp_dir = None
+                if self.resume_filename:
+                    tmp_dir = tempfile.mkdtemp()
+                    attach_path = str(Path(tmp_dir) / self.resume_filename)
+                    shutil.copy2(self.resume_path, attach_path)
+                try:
+                    loc = self._page.locator(
+                        f'input[type="file"][name="{_css_escape(name)}"]'
+                    ).first
+                    if await loc.count() == 0:
+                        loc = self._page.locator('input[type="file"]').first
+                    await loc.set_input_files(attach_path)
+                finally:
+                    if tmp_dir:
+                        shutil.rmtree(tmp_dir, ignore_errors=True)
+                display_name = self.resume_filename or attach_path.split("/")[-1]
+                return True, f"attached {display_name}"
             except Exception as exc:  # noqa: BLE001
                 return False, f"file upload failed: {exc}"
 

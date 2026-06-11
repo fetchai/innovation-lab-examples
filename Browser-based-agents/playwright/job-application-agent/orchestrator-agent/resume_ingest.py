@@ -68,7 +68,9 @@ def ingest_resume(
 
     dest_dir = Path(data_dir) / "resumes"
     dest_dir.mkdir(parents=True, exist_ok=True)
-    dest = dest_dir / f"{user_key}{ext}"
+    # Keep the source filename so the original name (not the user_key / agent
+    # address) is what gets submitted to job applications.
+    dest = dest_dir / src.name
 
     # If the source IS the destination already, don't copy on top of itself.
     if src.resolve() != dest.resolve():
