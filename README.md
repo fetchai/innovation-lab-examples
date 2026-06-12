@@ -157,6 +157,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [contributors/community_agent](contributors/community_agent/) | AI community growth agent for events and hackathons | Python, uAgents, ASI:One, Tavily | 🟡 Intermediate |
+| [contributors/cardiopulse-agent](contributors/cardiopulse-agent/) | Live cardiovascular fitness test from a Garmin BLE heart-rate stream | Python, uAgents, Bleak, ASI:One | 🟡 Intermediate |
 
 ### 🌐 Web3 & Blockchain
 
