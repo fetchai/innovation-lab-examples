@@ -2830,49 +2830,55 @@ async def on_startup(ctx: Context):
     else:
         ctx.logger.info("Payment gate disabled (PAYMENT_ENABLED=false)")
 
-    # Push updated readme/description to Agentverse on every startup.
-    # _handle_connect (the REST endpoint that normally does this) is only
-    # triggered by the local agent inspector, not by mailbox polling, so
-    # we call register_in_agentverse directly here instead.
+    # Push readme/description to Agentverse only when the readme content has
+    # changed since the last successful push (hash stored in agent storage).
+    # Uses agent._endpoints so the mailbox proxy URL is preserved — never
+    # overwrite it with localhost, which would break message routing.
     if AGENTVERSE_API_KEY:
         try:
+            import hashlib
+
             from uagents.mailbox import AgentverseConnectRequest, register_in_agentverse
-            from uagents_core.registration import AgentEndpoint, AgentProfile, RegistrationRequest
+            from uagents_core.registration import AgentProfile, RegistrationRequest
 
-            readme = (
-                Path(__file__).resolve().parent / "agentverse_readme.md"
-            ).read_text()
+            readme_path = Path(__file__).resolve().parent / "agentverse_readme.md"
+            readme = readme_path.read_text()
+            readme_hash = hashlib.sha256(readme.encode()).hexdigest()
 
-            connect_req = AgentverseConnectRequest(
-                user_token=AGENTVERSE_API_KEY,
-                agent_type="mailbox",
-                endpoint=f"http://localhost:{PORT}",
-            )
-            reg_request = RegistrationRequest(
-                address=agent.address,
-                name=AGENT_NAME,
-                profile=AgentProfile(
-                    description=(
-                        "User-facing job-application agent. Manage your resume + profile, "
-                        "then paste a Greenhouse URL to apply. "
-                        "A one-time payment is required per application."
-                    ),
-                    readme=readme,
-                ),
-                endpoints=[AgentEndpoint(url=f"http://localhost:{PORT}", weight=1)],
-                protocols=list(agent.protocols.keys()),
-            )
-            result = await register_in_agentverse(
-                request=connect_req,
-                identity=agent._identity,
-                prefix=agent._prefix,
-                agentverse=agent.agentverse,
-                agent_details=reg_request,
-            )
-            if result.success:
-                ctx.logger.info("Agentverse profile (readme/description) updated.")
+            last_hash = ctx.storage.get("_agentverse_readme_hash")
+            if last_hash == readme_hash:
+                ctx.logger.info("Agentverse profile unchanged — skipping update.")
             else:
-                ctx.logger.warning(f"Agentverse profile update failed: {result.detail}")
+                connect_req = AgentverseConnectRequest(
+                    user_token=AGENTVERSE_API_KEY,
+                    agent_type="mailbox",
+                )
+                reg_request = RegistrationRequest(
+                    address=agent.address,
+                    name=AGENT_NAME,
+                    profile=AgentProfile(
+                        description=(
+                            "User-facing job-application agent. Manage your resume + profile, "
+                            "then paste a Greenhouse URL to apply. "
+                            "A one-time payment is required per application."
+                        ),
+                        readme=readme,
+                    ),
+                    endpoints=agent._endpoints,
+                    protocols=list(agent.protocols.keys()),
+                )
+                result = await register_in_agentverse(
+                    request=connect_req,
+                    identity=agent._identity,
+                    prefix=agent._prefix,
+                    agentverse=agent.agentverse,
+                    agent_details=reg_request,
+                )
+                if result.success:
+                    ctx.storage.set("_agentverse_readme_hash", readme_hash)
+                    ctx.logger.info("Agentverse profile (readme/description) updated.")
+                else:
+                    ctx.logger.warning(f"Agentverse profile update failed: {result.detail}")
         except Exception as exc:
             ctx.logger.warning(f"Agentverse profile update skipped: {exc}")
 
