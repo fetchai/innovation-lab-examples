@@ -1,0 +1,61 @@
+name: Challenge — real-time AI agent
+description: Propose or claim work on a real-time transactional agent (booking, payments, live APIs).
+title: "[Challenge] Real-time agent: "
+labels: ["enhancement", "help wanted", "challenge"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Build a **production-style demo agent** that handles a real-time or transactional workflow.  
+        Submit your implementation under **`contributors/<your-agent-name>/`**.
+
+        Reference patterns in the repo:
+        - Flights: `duffel-agent/`, `flight-tracker-openai-workflow-agent/`
+        - Payments: `stripe-payment-agents/`, `stripe-horoscope-agent/`
+        - Live discovery: `mcp-agents/ticketlens-agent/`
+
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Agent domain
+      options:
+        - Flight booking / search
+        - Hotel booking / search
+        - Payment gateway / Stripe gating
+        - Event tickets / live inventory
+        - Multi-step trip planner (flights + hotels)
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Your approach
+      description: APIs (sandbox preferred), agent flow, and Fetch.ai stack (uAgents, ASI:One, Agentverse, MCP, A2A).
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What should work in the demo?
+      value: |
+        - [ ] Runnable locally with `.env.example` and README
+        - [ ] Clear user-facing chat or CLI flow
+        - [ ] Uses sandbox/mock mode where real charges apply
+        - [ ] Demo screenshot in `assets/`
+        - [ ] Entry added to `contributors/CHANGELOG.md` and root README community table
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before opening a PR
+      options:
+        - label: Agent will live under `contributors/<name>/` only
+          required: true
+        - label: No real API keys or secrets in the PR
+          required: true

@@ -31,18 +31,25 @@ gh repo star fetchai/innovation-lab-examples
 
 ## How to Add a New Agent Example
 
-When adding a new agent, please follow this structure:
+### Community contributors (default)
 
-1. Create a dedicated folder for the agent.
+**All community-submitted agents must live under `contributors/<your-agent-name>/`.**  
+Read the full guide: [contributors/README.md](contributors/README.md).
+
+When adding a new community agent:
+
+1. Create `contributors/<your-agent-name>/` (do **not** add new top-level folders at the repo root).
 2. Add source code and dependency files.
-3. Add a complete `README.md`.
+3. Add a complete `README.md` (use [docs/AGENT_README_TEMPLATE.md](docs/AGENT_README_TEMPLATE.md)).
 4. Add demo assets (image/GIF).
 5. Add `.env.example` if env vars are required.
+6. Update [contributors/CHANGELOG.md](contributors/CHANGELOG.md).
+7. Add your agent to the **Community Contributors** table in the root [README.md](README.md).
 
 Recommended folder layout:
 
 ```text
-<agent-folder>/
+contributors/<your-agent-name>/
   README.md
   requirements.txt
   .env.example
@@ -50,6 +57,10 @@ Recommended folder layout:
   assets/
     demo.png
 ```
+
+### Maintainers / official examples
+
+Fetch.ai team examples may be added at the repository root (e.g. `gemini-quickstart/`, `stripe-payment-agents/`) following the same README and quality standards.
 
 ## Tagging and Categorization
 
@@ -163,10 +174,14 @@ Recommended README snippet:
 - Add `.env.example` if environment variables are required.
 - Include demo image/GIF and agent profile link when applicable.
 - Run `ruff check .` and `ruff format .` before submitting.
-- Add a changelog entry in `CHANGELOG.md` for non-doc changes.
+- Add a changelog entry:
+  - Community agents: [contributors/CHANGELOG.md](contributors/CHANGELOG.md)
+  - Other changes: root [CHANGELOG.md](CHANGELOG.md)
 - Ensure all CI checks pass on `pull_request`:
   - `stargazer-gate`
+  - `contributor-path-check`
   - `changelog-check`
+  - `review-required`
   - `lint`
   - `format`
   - `typecheck`
@@ -197,13 +212,26 @@ PRs also use a default template:
 ## Merge Policy
 
 - Direct merges to `main` are not allowed.
-- Every PR must have at least one review from the Fetch.ai team before merge.
-- Community users can open PRs, but merge happens only after review approval.
-- Branch protection should require:
-  - Required pull request reviews: `1`
+- **External contributors:** PRs need at least one approving review (`review-required` CI).
+- **Maintainers** (Fetch.ai org, repo `write`/`admin`, or listed in [.github/MAINTAINERS](.github/MAINTAINERS)) **skip** `review-required` and `stargazer-gate` — you can merge your own PRs after other CI checks pass.
+- Enable branch protection on `main` — see [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md).
+
+## Contributor badges (after merge)
+
+When a **fork contributor’s PR is merged** with changes under `contributors/`:
+
+1. The [**Award Contributor Badge**](.github/workflows/award-contributor-badge.yml) workflow adds the badge to the agent README and [contributors/BADGE_REGISTRY.json](contributors/BADGE_REGISTRY.json).
+2. A comment on the PR includes markdown for your **GitHub Profile README**.
+3. For **automatic** profile README updates, install the one-time workflow from [contributors/profile-badge-sync/](contributors/profile-badge-sync/README.md) in your `username/username` repo.
+- Community users can open PRs; merge happens only after review approval and passing CI.
+- New community agent folders must be under `contributors/` (`contributor-path-check`).
+- Branch protection on `main` should require:
+  - Required pull request reviews: **1** (dismiss stale reviews on new commits: recommended)
   - Required status checks:
     - `stargazer-gate`
+    - `contributor-path-check`
     - `changelog-check`
+    - `review-required`
     - `lint`
     - `format`
     - `typecheck`
