@@ -22,14 +22,20 @@ class EducationEntry(BaseModel):
     major: Optional[str] = None
     graduation_date: Optional[str] = None
     gpa: Optional[str] = None
-    gpa_scale: Optional[str] = None  # "4.0", "4.3", "5.0", "7.0", "10.0", "percentage", "pass_fail"
-    degree_level: Optional[str] = None  # "high_school", "associate", "bachelor", "master", "doctoral", "certificate"
+    gpa_scale: Optional[str] = (
+        None  # "4.0", "4.3", "5.0", "7.0", "10.0", "percentage", "pass_fail"
+    )
+    degree_level: Optional[str] = (
+        None  # "high_school", "associate", "bachelor", "master", "doctoral", "certificate"
+    )
 
 
 class ExperienceEntry(BaseModel):
     company_name: Optional[str] = None
     job_title: Optional[str] = None
-    employment_type: Optional[str] = None  # "full_time", "part_time", "internship", "contract", "freelance", "volunteer"
+    employment_type: Optional[str] = (
+        None  # "full_time", "part_time", "internship", "contract", "freelance", "volunteer"
+    )
     location: Optional[str] = None
     work_mode: Optional[str] = None  # "onsite", "remote", "hybrid"
     start_date: Optional[str] = None
@@ -79,8 +85,12 @@ class UserProfile(BaseModel):
     disability_status: Optional[str] = None
 
     # Resume
-    resume_path: Optional[str] = Field(default=None, description="Absolute path to the resume file on disk")
-    resume_text: Optional[str] = Field(default=None, description="Plain-text extraction of the resume")
+    resume_path: Optional[str] = Field(
+        default=None, description="Absolute path to the resume file on disk"
+    )
+    resume_text: Optional[str] = Field(
+        default=None, description="Plain-text extraction of the resume"
+    )
 
     # Reusable free-text answers keyed by normalized question label.
     canned_answers: dict[str, str] = Field(default_factory=dict)
@@ -106,7 +116,9 @@ class FilledField(BaseModel):
 
     name: str
     value: Any
-    source: str = Field(description="Where the value came from: 'profile', 'canned', 'rag', 'llm', 'file'")
+    source: str = Field(
+        description="Where the value came from: 'profile', 'canned', 'rag', 'llm', 'file'"
+    )
     confidence: float = Field(ge=0.0, le=1.0, default=1.0)
     question_label: Optional[str] = None
 

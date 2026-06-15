@@ -71,7 +71,10 @@ PROFILE_FIELD_ALIASES: dict[str, str] = {
 
 # Words that strongly hint a select question is about a known profile attr.
 SELECT_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(r"work\s*auth|authorized?\s*to\s*work|right\s*to\s*work", re.I), "work_authorization"),
+    (
+        re.compile(r"work\s*auth|authorized?\s*to\s*work|right\s*to\s*work", re.I),
+        "work_authorization",
+    ),
     (re.compile(r"sponsor", re.I), "needs_sponsorship"),
     (re.compile(r"visa", re.I), "requires_visa"),
     # transgender must come before gender so the longer pattern wins
@@ -89,10 +92,22 @@ SELECT_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
 # `question_12345`; use the human label so known profile values still fill.
 PROFILE_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bmiddle\s*name\b", re.I), "middle_name"),
-    (re.compile(r"\bpreferred\s*(first\s*)?name\b|\bnickname\b", re.I), "preferred_name"),
-    (re.compile(r"\baddress\s*(line\s*)?1\b|\bstreet\s*address\b", re.I), "address_line_1"),
-    (re.compile(r"\baddress\s*(line\s*)?2\b|\bapt\b|\bsuite\b", re.I), "address_line_2"),
-    (re.compile(r"\bzip\b|\bzip\s*code\b|\bpostal\s*code\b|\bpostcode\b", re.I), "zip_code"),
+    (
+        re.compile(r"\bpreferred\s*(first\s*)?name\b|\bnickname\b", re.I),
+        "preferred_name",
+    ),
+    (
+        re.compile(r"\baddress\s*(line\s*)?1\b|\bstreet\s*address\b", re.I),
+        "address_line_1",
+    ),
+    (
+        re.compile(r"\baddress\s*(line\s*)?2\b|\bapt\b|\bsuite\b", re.I),
+        "address_line_2",
+    ),
+    (
+        re.compile(r"\bzip\b|\bzip\s*code\b|\bpostal\s*code\b|\bpostcode\b", re.I),
+        "zip_code",
+    ),
     (re.compile(r"\bcity\b|\blocation\b", re.I), "city"),
     (re.compile(r"\bstate\b|\bprovince\b|\bregion\b", re.I), "state"),
     (re.compile(r"\blinked\s*in\b|\blinkedin\b", re.I), "linkedin"),
@@ -106,12 +121,63 @@ PROFILE_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
 
 # US states/territories → country inference
 _US_STATES = {
-    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
-    "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
-    "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
-    "VA","WA","WV","WI","WY","DC","PR","GU","VI","AS","MP",
+    "AL",
+    "AK",
+    "AZ",
+    "AR",
+    "CA",
+    "CO",
+    "CT",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "ID",
+    "IL",
+    "IN",
+    "IA",
+    "KS",
+    "KY",
+    "LA",
+    "ME",
+    "MD",
+    "MA",
+    "MI",
+    "MN",
+    "MS",
+    "MO",
+    "MT",
+    "NE",
+    "NV",
+    "NH",
+    "NJ",
+    "NM",
+    "NY",
+    "NC",
+    "ND",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "VT",
+    "VA",
+    "WA",
+    "WV",
+    "WI",
+    "WY",
+    "DC",
+    "PR",
+    "GU",
+    "VI",
+    "AS",
+    "MP",
 }
-
 
 
 def _norm(s: str) -> str:
@@ -290,7 +356,9 @@ class FieldMapper:
                 break
 
         # 2. Canned answer keyed by label (exact then normalized).
-        canned = profile.canned_answers.get(label) or profile.canned_answers.get(_norm(label))
+        canned = profile.canned_answers.get(label) or profile.canned_answers.get(
+            _norm(label)
+        )
         if canned:
             return {"value": canned, "source": "canned", "confidence": 1.0}
 
@@ -306,7 +374,11 @@ class FieldMapper:
                 if country_val:
                     opt = _fuzzy_pick_option(country_val, values)
                     if opt:
-                        return {"value": opt.get("value", opt.get("label")), "source": "profile", "confidence": 0.95}
+                        return {
+                            "value": opt.get("value", opt.get("label")),
+                            "source": "profile",
+                            "confidence": 0.95,
+                        }
 
             for pattern, attr_name in SELECT_LABEL_MATCHERS:
                 if not pattern.search(label or ""):
@@ -318,10 +390,16 @@ class FieldMapper:
                 # Hispanic/Latino is a yes/no question even though we store
                 # it under race_ethnicity.  Derive Yes/No from the stored value
                 # so the fuzzy match can use the yes/no prefix heuristics.
-                if re.search(r"hispanic|latino", label or "", re.I) and isinstance(desired, str):
+                if re.search(r"hispanic|latino", label or "", re.I) and isinstance(
+                    desired, str
+                ):
                     re_normed = _norm(desired)
-                    if "hispanic" in re_normed or "latino" in re_normed or "latina" in re_normed:
-                        desired = True   # Yes
+                    if (
+                        "hispanic" in re_normed
+                        or "latino" in re_normed
+                        or "latina" in re_normed
+                    ):
+                        desired = True  # Yes
                     else:
                         desired = False  # No
 
@@ -341,7 +419,9 @@ class FieldMapper:
 
         # 4. Free-text (textarea or long input_text): full resume + LLM.
         if ftype in {"textarea", "input_text"} and label:
-            if ftype == "input_text" and not re.search(r"\?|why|tell|describe|explain", label, re.I):
+            if ftype == "input_text" and not re.search(
+                r"\?|why|tell|describe|explain", label, re.I
+            ):
                 return None
 
             if not profile.resume_text or not self.asi_api_key:
@@ -387,8 +467,6 @@ def _self_test() -> None:  # pragma: no cover - CLI helper
         profile_dict = json.load(f)
     with open(sys.argv[2]) as f:
         questions = json.load(f)
-
-    from pathlib import Path
 
     result = map_from_dict(profile_dict, questions)
     print(json.dumps(result.model_dump(), indent=2))

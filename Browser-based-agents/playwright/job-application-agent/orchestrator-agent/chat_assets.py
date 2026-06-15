@@ -59,9 +59,7 @@ def upload_public_image(
                 logger.warning(f"catbox: unexpected response: {url[:200]!r}")
             return None
         if logger:
-            logger.info(
-                f"catbox: uploaded {len(image_bytes)} bytes → {url}"
-            )
+            logger.info(f"catbox: uploaded {len(image_bytes)} bytes → {url}")
         return url
     except Exception as exc:  # noqa: BLE001
         if logger:

@@ -37,9 +37,7 @@ def _opt_value(o: Any) -> str:
     return str(o)
 
 
-def match_option(
-    value: Any, options: list[Any]
-) -> Optional[dict[str, str]]:
+def match_option(value: Any, options: list[Any]) -> Optional[dict[str, str]]:
     """Return {"label", "value"} for the best matching option, or None if
     `options` is empty/no decent match exists. Strategy:
 
@@ -69,7 +67,11 @@ def match_option(
     if v in _NO_WORDS:
         for label, val in labels:
             nl = _norm(label)
-            if nl.startswith("no") or nl.startswith("i have never") or _norm(val) == "no":
+            if (
+                nl.startswith("no")
+                or nl.startswith("i have never")
+                or _norm(val) == "no"
+            ):
                 return {"label": label, "value": val}
 
     # 3. Substring containment in either direction.

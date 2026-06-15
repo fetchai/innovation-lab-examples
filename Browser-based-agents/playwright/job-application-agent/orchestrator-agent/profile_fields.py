@@ -125,8 +125,10 @@ def coerce_value(field: str, value: Any) -> tuple[bool, Any, Optional[str]]:
             return True, True, None
         if v in _FALSE_WORDS:
             return True, False, None
-        return False, None, (
-            f"`{field}` is a yes/no field — try `yes` or `no` (got {value!r})."
+        return (
+            False,
+            None,
+            (f"`{field}` is a yes/no field — try `yes` or `no` (got {value!r})."),
         )
     if field in KNOWN_STR_FIELDS:
         s = str(value).strip()

@@ -33,7 +33,9 @@ _URL_PATTERNS = [
 
 class JobQuestionField(BaseModel):
     name: str
-    type: str = Field(description="Greenhouse field type, e.g. input_text, textarea, multi_value_single_select")
+    type: str = Field(
+        description="Greenhouse field type, e.g. input_text, textarea, multi_value_single_select"
+    )
     required: bool = False
     label: Optional[str] = None
     values: list[dict[str, Any]] = Field(default_factory=list)
@@ -102,9 +104,13 @@ def _parse_url(url: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
             board_token = sub.split(".")[-1]
 
     if not board_token or not job_id:
-        return None, None, (
-            "Could not extract board token and job id from URL. "
-            "Expected something like https://boards.greenhouse.io/<company>/jobs/<id>"
+        return (
+            None,
+            None,
+            (
+                "Could not extract board token and job id from URL. "
+                "Expected something like https://boards.greenhouse.io/<company>/jobs/<id>"
+            ),
         )
 
     return board_token, job_id, None
@@ -139,14 +145,22 @@ def _assemble(board_token: str, job_id: str, raw: dict) -> JobInfo:
     markdown = converter.handle(html_unescaped).strip()
 
     location = (raw.get("location") or {}).get("name")
-    departments = [d.get("name") for d in (raw.get("departments") or []) if d.get("name")]
+    departments = [
+        d.get("name") for d in (raw.get("departments") or []) if d.get("name")
+    ]
     offices = [o.get("name") for o in (raw.get("offices") or []) if o.get("name")]
 
     employment_type = None
     for m in raw.get("metadata") or []:
         if (m.get("name") or "").lower() in {"employment type", "type"}:
             value = m.get("value")
-            employment_type = ", ".join(str(v) for v in value) if isinstance(value, list) else str(value) if value else None
+            employment_type = (
+                ", ".join(str(v) for v in value)
+                if isinstance(value, list)
+                else str(value)
+                if value
+                else None
+            )
             break
 
     questions: list[JobQuestion] = []
@@ -161,12 +175,14 @@ def _assemble(board_token: str, job_id: str, raw: dict) -> JobInfo:
             )
             for f in (q.get("fields") or [])
         ]
-        questions.append(JobQuestion(
-            label=q.get("label") or "",
-            required=bool(q.get("required")),
-            description=q.get("description"),
-            fields=fields,
-        ))
+        questions.append(
+            JobQuestion(
+                label=q.get("label") or "",
+                required=bool(q.get("required")),
+                description=q.get("description"),
+                fields=fields,
+            )
+        )
 
     return JobInfo(
         board_token=board_token,

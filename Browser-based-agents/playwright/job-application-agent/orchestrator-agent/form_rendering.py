@@ -72,7 +72,7 @@ def format_panel_compact(sess: Session) -> str:
         more = f" (+{len(missing) - 5} more)" if len(missing) > 5 else ""
         return (
             f"{head} · **Still need:** {', '.join(labels)}{more}\n"
-            f"_Reply in plain English (e.g. \"my work auth is US Citizen\") to fill anything. "
+            f'_Reply in plain English (e.g. "my work auth is US Citizen") to fill anything. '
             f"Say `submit` when ready._"
         )
     return f"{head} · 🎉 _All required fields filled — say `submit` whenever you're ready._"
@@ -90,7 +90,9 @@ def _value_display(value: Any, ftype: str) -> str:
     return f"`{_truncate(s, 80)}`"
 
 
-def _question_and_field(sess: Session, name: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+def _question_and_field(
+    sess: Session, name: str
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     for q in sess.questions:
         for f in q.get("fields") or []:
             if f.get("name") == name:
@@ -117,9 +119,7 @@ def format_form_panel(sess: Session) -> str:
 
     filled_count = len(sess.filled or [])
     missing_count = len(missing)
-    total_count = filled_count + sum(
-        1 for n in missing if n not in filled_by_name
-    )
+    total_count = filled_count + sum(1 for n in missing if n not in filled_by_name)
 
     header = [
         f"### 📋 {sess.job_title or 'Application form'}",
@@ -145,9 +145,7 @@ def format_form_panel(sess: Session) -> str:
                 src = filled.get("source") or ""
                 src_glyph = _glyph(src) if src else ""
                 value_md = _value_display(filled.get("value"), ftype)
-                body.append(
-                    f"  - {badge} `{name}` → {value_md}  {src_glyph}_{src}_"
-                )
+                body.append(f"  - {badge} `{name}` → {value_md}  {src_glyph}_{src}_")
             elif name in missing:
                 body.append(
                     f"  - ⚠️  `{name}` — _required; needs your input_  "
@@ -208,9 +206,7 @@ def format_panel(sess: Session) -> str:
             meta += f" {conf:.2f}"
         meta += "]"
 
-        lines.append(
-            f"  ✅ `{name}` = {display}  {meta}"
-        )
+        lines.append(f"  ✅ `{name}` = {display}  {meta}")
 
     if not_in_filled:
         if filled:
@@ -247,7 +243,9 @@ def format_commands_hint(have_missing: bool) -> str:
         "• `cancel`                 — discard this session",
     ]
     if not have_missing:
-        lines.insert(1, "_All required fields are filled. Review and `submit` when ready._\n")
+        lines.insert(
+            1, "_All required fields are filled. Review and `submit` when ready._\n"
+        )
     return "\n".join(lines)
 
 
@@ -312,9 +310,14 @@ def format_next_missing(sess: Session) -> str:
 
 
 def format_submission_result(
-    *, dry_run: bool, success: bool, error: str | None,
-    application_id: str | None, status_code: int | None,
-    fields_submitted: list[str] | None, missing_required: list[str] | None,
+    *,
+    dry_run: bool,
+    success: bool,
+    error: str | None,
+    application_id: str | None,
+    status_code: int | None,
+    fields_submitted: list[str] | None,
+    missing_required: list[str] | None,
 ) -> str:
     if success and dry_run:
         return (
@@ -327,7 +330,7 @@ def format_submission_result(
         if application_id:
             line += f"  application_id={application_id}"
         return line + f"\nFields submitted: {len(fields_submitted or [])}."
-    msg = f"❌ Submission failed."
+    msg = "❌ Submission failed."
     if error:
         msg += f"\n{error}"
     if missing_required:

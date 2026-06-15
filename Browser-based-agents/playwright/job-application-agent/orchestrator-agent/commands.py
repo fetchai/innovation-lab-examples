@@ -32,8 +32,8 @@ GREENHOUSE_URL_RE = re.compile(
 @dataclass
 class Command:
     kind: str  # "apply" | "show" | "show_all" | "show_payload" | "answer" |
-               # "edit" | "unfill" | "next" | "submit" | "submit_live" |
-               # "cancel" | "help" | "unknown" | "noop"
+    # "edit" | "unfill" | "next" | "submit" | "submit_live" |
+    # "cancel" | "help" | "unknown" | "noop"
     field_name: Optional[str] = None
     value: Optional[str] = None
     url: Optional[str] = None
@@ -69,9 +69,18 @@ def parse(text: str) -> Command:
     # Friendly greetings — handled separately so a "hi" mid-review doesn't
     # look like an unknown form command.
     if lower in {
-        "hi", "hello", "hey", "yo", "sup", "hii", "hiya",
-        "good morning", "good afternoon", "good evening",
-        "hi there", "hello there",
+        "hi",
+        "hello",
+        "hey",
+        "yo",
+        "sup",
+        "hii",
+        "hiya",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "hi there",
+        "hello there",
     }:
         return Command(kind="greet", raw=raw)
 

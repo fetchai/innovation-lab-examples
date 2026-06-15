@@ -22,7 +22,9 @@ from typing import Any, Optional
 
 import requests
 
-GREENHOUSE_SUBMIT_URL = "https://boards-api.greenhouse.io/v1/boards/{board}/jobs/{job_id}"
+GREENHOUSE_SUBMIT_URL = (
+    "https://boards-api.greenhouse.io/v1/boards/{board}/jobs/{job_id}"
+)
 DEFAULT_TIMEOUT = 30
 
 

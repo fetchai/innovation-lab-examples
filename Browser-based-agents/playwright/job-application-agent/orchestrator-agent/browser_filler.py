@@ -133,7 +133,13 @@ def _clean_label(label: str) -> str:
 
 def _decline_if_requested(value: Any, options: list[dict[str, str]]) -> Optional[str]:
     normed = _norm(value)
-    if normed in {"decline", "decline to answer", "prefer not to say", "i don't wish to answer", "do not wish to answer"}:
+    if normed in {
+        "decline",
+        "decline to answer",
+        "prefer not to say",
+        "i don't wish to answer",
+        "do not wish to answer",
+    }:
         return "I don't wish to answer"
     return None
 
@@ -156,9 +162,23 @@ def _map_gender_identity(value: Any) -> Optional[str]:
     if exact:
         return exact
     normed = _norm(value)
-    if normed in {"male", "man", "cis male", "cisgender male", "cis man", "cisgender man"}:
+    if normed in {
+        "male",
+        "man",
+        "cis male",
+        "cisgender male",
+        "cis man",
+        "cisgender man",
+    }:
         return "Cisgender man"
-    if normed in {"female", "woman", "cis female", "cisgender female", "cis woman", "cisgender woman"}:
+    if normed in {
+        "female",
+        "woman",
+        "cis female",
+        "cisgender female",
+        "cis woman",
+        "cisgender woman",
+    }:
         return "Cisgender woman"
     if "non-binary" in normed or "nonbinary" in normed:
         return "Non-binary"
@@ -237,16 +257,75 @@ def _map_disability_status(value: Any) -> Optional[str]:
     normed = _norm(value)
     if normed in {"yes", "true", "1", "disabled", "i have a disability"}:
         return "Yes, I have a disability"
-    if normed in {"no", "false", "0", "none", "not disabled", "i do not have a disability"}:
+    if normed in {
+        "no",
+        "false",
+        "0",
+        "none",
+        "not disabled",
+        "i do not have a disability",
+    }:
         return "No, I don't have a disability"
     return None
 
 
 _US_STATES = {
-    "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
-    "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
-    "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
-    "VA","WA","WV","WI","WY","DC","PR","GU","VI","AS","MP",
+    "AL",
+    "AK",
+    "AZ",
+    "AR",
+    "CA",
+    "CO",
+    "CT",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "ID",
+    "IL",
+    "IN",
+    "IA",
+    "KS",
+    "KY",
+    "LA",
+    "ME",
+    "MD",
+    "MA",
+    "MI",
+    "MN",
+    "MS",
+    "MO",
+    "MT",
+    "NE",
+    "NV",
+    "NH",
+    "NJ",
+    "NM",
+    "NY",
+    "NC",
+    "ND",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "VT",
+    "VA",
+    "WA",
+    "WV",
+    "WI",
+    "WY",
+    "DC",
+    "PR",
+    "GU",
+    "VI",
+    "AS",
+    "MP",
 }
 
 
@@ -266,7 +345,9 @@ def _profile_value_for_live_label(
             return "country", country, []
 
     # City / location
-    if ("city" in normed or normed == "location" or normed.startswith("location ")) and ftype == "input_text":
+    if (
+        "city" in normed or normed == "location" or normed.startswith("location ")
+    ) and ftype == "input_text":
         city = profile.get("city")
         if city:
             return "city", city, []
@@ -297,8 +378,14 @@ def _profile_value_for_live_label(
         else:
             derived = None
         return "race_ethnicity", derived, []
-    if "race or ethnicity" in normed or "race/ethnicity" in normed or (
-        "ethnicity" in normed and "hispanic" not in normed and "latino" not in normed
+    if (
+        "race or ethnicity" in normed
+        or "race/ethnicity" in normed
+        or (
+            "ethnicity" in normed
+            and "hispanic" not in normed
+            and "latino" not in normed
+        )
     ):
         return "race_ethnicity", profile.get("race_ethnicity"), []
     if "military status" in normed or "veteran" in normed:
@@ -311,7 +398,8 @@ def _profile_value_for_live_label(
         options = DEMOGRAPHIC_OPTIONS["lgbtq"]
         mapped = (
             _decline_if_requested(value, options) or _exact_option(value, options)
-            if value else None
+            if value
+            else None
         )
         return "lgbtq", mapped, options
     if ftype == "input_checkbox" and "consent" in normed and "demographic" in normed:
@@ -569,8 +657,14 @@ class BrowserSession:
             tag = control.get("tag") or "input"
             raw_type = control.get("type") or ""
             role = control.get("role") or ""
-            ftype = "input_checkbox" if raw_type == "checkbox" else (
-                "multi_value_single_select" if tag == "select" or role == "combobox" else "input_text"
+            ftype = (
+                "input_checkbox"
+                if raw_type == "checkbox"
+                else (
+                    "multi_value_single_select"
+                    if tag == "select" or role == "combobox"
+                    else "input_text"
+                )
             )
             attr, value, options = _profile_value_for_live_label(
                 profile, label, ftype=ftype
@@ -615,7 +709,9 @@ class BrowserSession:
             known_names.add(name)
         return discovered
 
-    async def fill_eeo_fields(self, profile: dict[str, Any]) -> list[tuple[str, bool, str]]:
+    async def fill_eeo_fields(
+        self, profile: dict[str, Any]
+    ) -> list[tuple[str, bool, str]]:
         """Directly fill EEO demographic dropdowns by matching their visible
         label text on the page.
 
@@ -634,8 +730,15 @@ class BrowserSession:
         # EEO label keywords — only process elements whose label matches one
         # of these to avoid touching unrelated dropdowns.
         EEO_KEYWORDS = {
-            "gender", "hispanic", "latino", "veteran", "disab",
-            "ethnicity", "race", "sexual orientation", "transgender",
+            "gender",
+            "hispanic",
+            "latino",
+            "veteran",
+            "disab",
+            "ethnicity",
+            "race",
+            "sexual orientation",
+            "transgender",
         }
 
         results: list[tuple[str, bool, str]] = []
@@ -683,8 +786,14 @@ class BrowserSession:
             if not any(kw in label_lc for kw in EEO_KEYWORDS):
                 continue
 
-            ftype = "multi_value_single_select" if ctrl.get("tag") == "select" or ctrl.get("role") == "combobox" else "input_text"
-            attr, value, _ = _profile_value_for_live_label(profile, raw_label, ftype=ftype)
+            ftype = (
+                "multi_value_single_select"
+                if ctrl.get("tag") == "select" or ctrl.get("role") == "combobox"
+                else "input_text"
+            )
+            attr, value, _ = _profile_value_for_live_label(
+                profile, raw_label, ftype=ftype
+            )
             if not attr or value is None:
                 continue
 
@@ -700,7 +809,9 @@ class BrowserSession:
                     continue
                 try:
                     candidate = self._page.locator(sel).first
-                    if await candidate.count() > 0 and await candidate.is_visible(timeout=300):
+                    if await candidate.count() > 0 and await candidate.is_visible(
+                        timeout=300
+                    ):
                         loc = candidate
                         break
                 except Exception:  # noqa: BLE001
@@ -736,14 +847,18 @@ class BrowserSession:
                     ):
                         try:
                             await attempt_fn()
-                            results.append((raw_label, True, f"selected `{target_label}`"))
+                            results.append(
+                                (raw_label, True, f"selected `{target_label}`")
+                            )
                             break
                         except Exception:  # noqa: BLE001
                             continue
                     else:
                         results.append((raw_label, False, "select_option exhausted"))
                 else:
-                    ok, detail = await self._select_styled_dropdown(loc, el_id or el_name, target_label, target_value)
+                    ok, detail = await self._select_styled_dropdown(
+                        loc, el_id or el_name, target_label, target_value
+                    )
                     results.append((raw_label, ok, detail))
             except Exception as exc:  # noqa: BLE001
                 results.append((raw_label, False, str(exc)))
@@ -758,7 +873,7 @@ class BrowserSession:
         if self._page is None:
             return False
         candidates = [
-            '#application_form',
+            "#application_form",
             'form[action*="applications"]',
             'input[name="first_name"]',
             'input[name="job_application[first_name]"]',
@@ -814,7 +929,9 @@ class BrowserSession:
         if ftype in {"input_file", "file", "attachment"}:
             if not self.resume_path:
                 return False, "no resume file on disk"
-            import shutil, tempfile
+            import shutil
+            import tempfile
+
             attach_path = self.resume_path
             tmp_dir = None
             try:
@@ -852,7 +969,9 @@ class BrowserSession:
                 used_chooser = False
                 try:
                     if await trigger.count() > 0:
-                        async with self._page.expect_file_chooser(timeout=8000) as fc_info:
+                        async with self._page.expect_file_chooser(
+                            timeout=8000
+                        ) as fc_info:
                             try:
                                 await trigger.click(timeout=3000)
                             except Exception:  # noqa: BLE001
@@ -898,7 +1017,9 @@ class BrowserSession:
         except Exception:  # noqa: BLE001
             tag = "input"
         try:
-            input_type = await loc.evaluate("el => (el.getAttribute('type') || '').toLowerCase()")
+            input_type = await loc.evaluate(
+                "el => (el.getAttribute('type') || '').toLowerCase()"
+            )
         except Exception:  # noqa: BLE001
             input_type = ""
 
@@ -946,8 +1067,12 @@ class BrowserSession:
             # comboboxes are closed React dropdowns whose options aren't in the
             # DOM until clicked, so discover_profile_fillables returns options=[].
             # The ftype check ensures we still open-and-click for select fields.
-            if options or ftype in {"multi_value_single_select", "multi_value_multi_select",
-                                    "select", "combobox"}:
+            if options or ftype in {
+                "multi_value_single_select",
+                "multi_value_multi_select",
+                "select",
+                "combobox",
+            }:
                 ok, detail = await self._select_styled_dropdown(
                     loc, name, target_label, target_value
                 )
@@ -972,9 +1097,7 @@ class BrowserSession:
             except Exception:  # noqa: BLE001
                 pass
 
-            text_value = (
-                str(value) if not isinstance(value, list) else ", ".join(value)
-            )
+            text_value = str(value) if not isinstance(value, list) else ", ".join(value)
             if len(text_value) <= 80:
                 await loc.type(text_value, delay=type_delay_ms)
             else:
@@ -1001,7 +1124,7 @@ class BrowserSession:
             # container is — click the container.
             try:
                 await trigger.evaluate(
-                    "el => (el.closest('[class*=\"select\"],[class*=\"Select\"]') || el).click()"
+                    'el => (el.closest(\'[class*="select"],[class*="Select"]\') || el).click()'
                 )
             except Exception:  # noqa: BLE001
                 return False, "couldn't open dropdown"
@@ -1036,7 +1159,9 @@ class BrowserSession:
                     if pass_num == 0:
                         match = nt == normalized_target
                     elif pass_num == 1:
-                        match = nt.startswith(normalized_target) or normalized_target.startswith(nt)
+                        match = nt.startswith(
+                            normalized_target
+                        ) or normalized_target.startswith(nt)
                     else:
                         match = normalized_target in nt or nt in normalized_target
                     if match:

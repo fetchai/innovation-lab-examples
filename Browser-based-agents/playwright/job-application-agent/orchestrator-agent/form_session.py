@@ -113,9 +113,7 @@ class Session:
 
         # Drop from missing list once we have a non-empty value.
         if value not in (None, "", []):
-            self.missing_required = [
-                m for m in self.missing_required if m != name
-            ]
+            self.missing_required = [m for m in self.missing_required if m != name]
         self.updated_at = time.time()
 
     def clear_field(self, name: str) -> None:

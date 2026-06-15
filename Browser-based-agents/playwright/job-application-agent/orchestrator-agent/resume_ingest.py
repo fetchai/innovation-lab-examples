@@ -87,8 +87,11 @@ def ingest_resume(
 
 if __name__ == "__main__":  # pragma: no cover
     import sys
+
     if len(sys.argv) < 3:
         print("Usage: python resume_ingest.py <resume_path> <user_key>")
         sys.exit(2)
-    dest, text = ingest_resume(sys.argv[1], sys.argv[2], Path(__file__).resolve().parent / "data")
+    dest, text = ingest_resume(
+        sys.argv[1], sys.argv[2], Path(__file__).resolve().parent / "data"
+    )
     print(f"Saved to: {dest}\nExtracted chars: {len(text)}")

@@ -118,19 +118,42 @@ GREENHOUSE_URL_RE = re.compile(
 # response lands, which makes the agent feel laggy even when nothing is
 # actually being computed.
 GREET_WORDS = {
-    "hi", "hii", "hey", "heya", "hello", "hellooo", "yo", "sup",
-    "howdy", "gm", "good morning", "good afternoon", "good evening",
-    "hi there", "hey there", "hello there",
+    "hi",
+    "hii",
+    "hey",
+    "heya",
+    "hello",
+    "hellooo",
+    "yo",
+    "sup",
+    "howdy",
+    "gm",
+    "good morning",
+    "good afternoon",
+    "good evening",
+    "hi there",
+    "hey there",
+    "hello there",
 }
 
 SHOW_PROFILE_PHRASES = {
-    "show profile", "show my profile", "my profile", "view profile",
-    "see profile", "whoami", "who am i", "what do you have on me",
-    "what do you know about me", "profile",
+    "show profile",
+    "show my profile",
+    "my profile",
+    "view profile",
+    "see profile",
+    "whoami",
+    "who am i",
+    "what do you have on me",
+    "what do you know about me",
+    "profile",
 }
 
 LIST_RESUMES_PHRASES = {
-    "list resumes", "my resumes", "show resumes", "resumes",
+    "list resumes",
+    "my resumes",
+    "show resumes",
+    "resumes",
     "list my resumes",
 }
 
@@ -218,9 +241,8 @@ def interpret(
         return _heuristic_fallback(user_text)
 
     user_prompt = (
-        (f"Session context:\n{session_summary}\n\n" if session_summary else "")
-        + f"User said: {user_text!r}\n\nReply with JSON only."
-    )
+        f"Session context:\n{session_summary}\n\n" if session_summary else ""
+    ) + f"User said: {user_text!r}\n\nReply with JSON only."
 
     try:
         client = OpenAI(base_url=ASI_ONE_BASE_URL, api_key=api_key)

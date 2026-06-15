@@ -48,9 +48,7 @@ def _ext_for(mime_type: str, source_filename: Optional[str]) -> str:
     return _MIME_TO_EXT.get((mime_type or "").lower(), "bin")
 
 
-def make_version_name(
-    source_filename: Optional[str], existing: list[str]
-) -> str:
+def make_version_name(source_filename: Optional[str], existing: list[str]) -> str:
     """Pick a version slug. Try the file's basename first; if that already
     exists, append `-2`, `-3`, ..."""
     base = "resume"

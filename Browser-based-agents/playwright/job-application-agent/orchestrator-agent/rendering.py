@@ -37,7 +37,16 @@ from uagents_core.contrib.protocols.chat.cards import (
 # Profile section schema — used by both the list card and the section forms.
 # ---------------------------------------------------------------------------
 
-SECTIONS = ["personal", "education", "experience", "links", "work_auth", "eeo", "resume", "answers"]
+SECTIONS = [
+    "personal",
+    "education",
+    "experience",
+    "links",
+    "work_auth",
+    "eeo",
+    "resume",
+    "answers",
+]
 
 _PERSONAL_FIELDS = [
     ("first_name", "First name", "text", True),
@@ -111,8 +120,8 @@ HELP = (
     "**Here's what I can do:**\n\n"
     "**Profile**\n"
     "• `show my profile` / `whoami` — see what I have stored.\n"
-    "• Plain English edits, e.g. *\"my phone is +1-555-1234\"* or "
-    "*\"set my work auth to US Citizen\"*.\n\n"
+    '• Plain English edits, e.g. *"my phone is +1-555-1234"* or '
+    '*"set my work auth to US Citizen"*.\n\n'
     "**Resume**\n"
     "• Drop a PDF/DOCX/TXT in chat — I'll parse and index it.\n"
     "• `list resumes` / `switch resume <name>` *(coming soon)*.\n\n"
@@ -205,60 +214,78 @@ def build_profile_carousel(
     items: list[CarouselItem] = []
 
     # ---- 1) Personal ----
-    loc = ", ".join(
-        s for s in (p.get("city"), p.get("state"), p.get("country")) if s
+    loc = ", ".join(s for s in (p.get("city"), p.get("state"), p.get("country")) if s)
+    personal_sub = (
+        _join(
+            [
+                name or None,
+                p.get("email"),
+                p.get("phone"),
+                loc or None,
+            ]
+        )
+        or "Tell me your name and contact info"
     )
-    personal_sub = _join([
-        name or None, p.get("email"), p.get("phone"), loc or None,
-    ]) or "Tell me your name and contact info"
-    items.append(CarouselItem(
-        id="personal",
-        title="👤  Personal",
-        subtitle=personal_sub,
-        primary_cta=CtaAction(
-            label="Edit",
-            selection={"action": "edit_profile", "section": "personal"},
-            primary=True,
-        ),
-    ))
+    items.append(
+        CarouselItem(
+            id="personal",
+            title="👤  Personal",
+            subtitle=personal_sub,
+            primary_cta=CtaAction(
+                label="Edit",
+                selection={"action": "edit_profile", "section": "personal"},
+                primary=True,
+            ),
+        )
+    )
 
     # ---- 2) Education ----
     edu_list = p.get("education") or []
     if edu_list:
-        edu_sub = f"{len(edu_list)} entr{'y' if len(edu_list) == 1 else 'ies'}  ·  " + ", ".join(
-            e.get("university_name") or e.get("degree") or "?" for e in edu_list[:3]
+        edu_sub = (
+            f"{len(edu_list)} entr{'y' if len(edu_list) == 1 else 'ies'}  ·  "
+            + ", ".join(
+                e.get("university_name") or e.get("degree") or "?" for e in edu_list[:3]
+            )
         )
     else:
         edu_sub = "Add your education history"
-    items.append(CarouselItem(
-        id="education",
-        title="🎓  Education",
-        subtitle=edu_sub,
-        primary_cta=CtaAction(
-            label="Edit",
-            selection={"action": "edit_profile", "section": "education"},
-            primary=True,
-        ),
-    ))
+    items.append(
+        CarouselItem(
+            id="education",
+            title="🎓  Education",
+            subtitle=edu_sub,
+            primary_cta=CtaAction(
+                label="Edit",
+                selection={"action": "edit_profile", "section": "education"},
+                primary=True,
+            ),
+        )
+    )
 
     # ---- 3) Experience ----
     exp_list = p.get("experience") or []
     if exp_list:
-        exp_sub = f"{len(exp_list)} entr{'y' if len(exp_list) == 1 else 'ies'}  ·  " + ", ".join(
-            e.get("job_title") or e.get("company_name") or "?" for e in exp_list[:3]
+        exp_sub = (
+            f"{len(exp_list)} entr{'y' if len(exp_list) == 1 else 'ies'}  ·  "
+            + ", ".join(
+                e.get("job_title") or e.get("company_name") or "?" for e in exp_list[:3]
+            )
         )
     else:
         exp_sub = "Add your work experience"
-    items.append(CarouselItem(
-        id="experience",
-        title="💼  Experience",
-        subtitle=exp_sub,
-        primary_cta=CtaAction(
-            label="Edit",
-            selection={"action": "edit_profile", "section": "experience"},
-            primary=True,
-        ),
-    ))
+    items.append(
+        CarouselItem(
+            id="experience",
+            title="💼  Experience",
+            subtitle=exp_sub,
+            primary_cta=CtaAction(
+                label="Edit",
+                selection={"action": "edit_profile", "section": "experience"},
+                primary=True,
+            ),
+        )
+    )
 
     # ---- 4) Resume ----
     resume_path = p.get("resume_path")
@@ -273,16 +300,18 @@ def build_profile_carousel(
             resume_sub = fname if not fname.startswith("agent1") else "resume"
     else:
         resume_sub = "Not uploaded — drop a PDF or DOCX in chat"
-    items.append(CarouselItem(
-        id="resume",
-        title="📎  Resume",
-        subtitle=resume_sub,
-        primary_cta=CtaAction(
-            label="Replace resume",
-            selection={"action": "upload_resume"},
-            primary=True,
-        ),
-    ))
+    items.append(
+        CarouselItem(
+            id="resume",
+            title="📎  Resume",
+            subtitle=resume_sub,
+            primary_cta=CtaAction(
+                label="Replace resume",
+                selection={"action": "upload_resume"},
+                primary=True,
+            ),
+        )
+    )
 
     # ---- 3) Links ----
     link_pairs = [
@@ -298,16 +327,18 @@ def build_profile_carousel(
         )
     else:
         link_sub = "Add LinkedIn, GitHub, portfolio, or Twitter"
-    items.append(CarouselItem(
-        id="links",
-        title="🔗  Links",
-        subtitle=link_sub,
-        primary_cta=CtaAction(
-            label="Edit links",
-            selection={"action": "edit_profile", "section": "links"},
-            primary=True,
-        ),
-    ))
+    items.append(
+        CarouselItem(
+            id="links",
+            title="🔗  Links",
+            subtitle=link_sub,
+            primary_cta=CtaAction(
+                label="Edit links",
+                selection={"action": "edit_profile", "section": "links"},
+                primary=True,
+            ),
+        )
+    )
 
     # ---- 4) Work authorization ----
     wa_bits = []
@@ -318,20 +349,20 @@ def build_profile_carousel(
             "needs sponsorship" if p["needs_sponsorship"] else "no sponsorship"
         )
     if p.get("requires_visa") is not None:
-        wa_bits.append(
-            "visa required" if p["requires_visa"] else "no visa"
-        )
+        wa_bits.append("visa required" if p["requires_visa"] else "no visa")
     wa_sub = "  ·  ".join(wa_bits) if wa_bits else "Status, sponsorship, visa — not set"
-    items.append(CarouselItem(
-        id="work_auth",
-        title="🛂  Work authorization",
-        subtitle=wa_sub,
-        primary_cta=CtaAction(
-            label="Edit work auth",
-            selection={"action": "edit_profile", "section": "work_auth"},
-            primary=True,
-        ),
-    ))
+    items.append(
+        CarouselItem(
+            id="work_auth",
+            title="🛂  Work authorization",
+            subtitle=wa_sub,
+            primary_cta=CtaAction(
+                label="Edit work auth",
+                selection={"action": "edit_profile", "section": "work_auth"},
+                primary=True,
+            ),
+        )
+    )
 
     # ---- 5) Demographics / EEO ----
     eeo_pairs = [
@@ -347,16 +378,18 @@ def build_profile_carousel(
         if set_eeo
         else "Optional EEO questions — answer when ready"
     )
-    items.append(CarouselItem(
-        id="eeo",
-        title="📊  Demographics",
-        subtitle=eeo_sub,
-        primary_cta=CtaAction(
-            label="Edit demographics",
-            selection={"action": "edit_profile", "section": "eeo"},
-            primary=True,
-        ),
-    ))
+    items.append(
+        CarouselItem(
+            id="eeo",
+            title="📊  Demographics",
+            subtitle=eeo_sub,
+            primary_cta=CtaAction(
+                label="Edit demographics",
+                selection={"action": "edit_profile", "section": "eeo"},
+                primary=True,
+            ),
+        )
+    )
 
     # ---- 6) Saved answers ----
     canned = p.get("canned_answers") or {}
@@ -366,16 +399,18 @@ def build_profile_carousel(
         canned_sub = f"{len(canned)} saved  ·  e.g. “{preview_q}”"
     else:
         canned_sub = "No saved answers yet — I'll remember tricky ones for you"
-    items.append(CarouselItem(
-        id="answers",
-        title="💬  Saved answers",
-        subtitle=canned_sub,
-        primary_cta=CtaAction(
-            label="View answers",
-            selection={"action": "show_canned_answers"},
-            primary=True,
-        ),
-    ))
+    items.append(
+        CarouselItem(
+            id="answers",
+            title="💬  Saved answers",
+            subtitle=canned_sub,
+            primary_cta=CtaAction(
+                label="View answers",
+                selection={"action": "show_canned_answers"},
+                primary=True,
+            ),
+        )
+    )
 
     return CarouselCardPayload(
         title=f"👤 {header_name}",
@@ -394,7 +429,9 @@ def _section_summary(
     p = profile
 
     if section == "personal":
-        loc = ", ".join(s for s in (p.get("city"), p.get("state"), p.get("country")) if s)
+        loc = ", ".join(
+            s for s in (p.get("city"), p.get("state"), p.get("country")) if s
+        )
         bits = [p.get("email"), p.get("phone"), loc or None]
         return _join(bits) or "Tap to add contact details."
 
@@ -402,22 +439,33 @@ def _section_summary(
         edu_list = p.get("education") or []
         if not edu_list:
             return "No education added yet — tap to add."
-        return f"{len(edu_list)} entr{'y' if len(edu_list) == 1 else 'ies'}  ·  " + ", ".join(
-            e.get("university_name") or e.get("degree") or "?" for e in edu_list[:3]
+        return (
+            f"{len(edu_list)} entr{'y' if len(edu_list) == 1 else 'ies'}  ·  "
+            + ", ".join(
+                e.get("university_name") or e.get("degree") or "?" for e in edu_list[:3]
+            )
         )
 
     if section == "experience":
         exp_list = p.get("experience") or []
         if not exp_list:
             return "No experience added yet — tap to add."
-        return f"{len(exp_list)} entr{'y' if len(exp_list) == 1 else 'ies'}  ·  " + ", ".join(
-            e.get("job_title") or e.get("company_name") or "?" for e in exp_list[:3]
+        return (
+            f"{len(exp_list)} entr{'y' if len(exp_list) == 1 else 'ies'}  ·  "
+            + ", ".join(
+                e.get("job_title") or e.get("company_name") or "?" for e in exp_list[:3]
+            )
         )
 
     if section == "links":
         names = [
-            n for n, k in [("LinkedIn", "linkedin"), ("GitHub", "github"),
-                            ("Portfolio", "portfolio"), ("Twitter", "twitter")]
+            n
+            for n, k in [
+                ("LinkedIn", "linkedin"),
+                ("GitHub", "github"),
+                ("Portfolio", "portfolio"),
+                ("Twitter", "twitter"),
+            ]
             if _has(p.get(k))
         ]
         return ", ".join(names) if names else "No links saved yet."
@@ -427,14 +475,17 @@ def _section_summary(
         if p.get("work_authorization"):
             bits.append(str(p["work_authorization"]))
         if p.get("needs_sponsorship") is not None:
-            bits.append("needs sponsorship" if p["needs_sponsorship"] else "no sponsorship")
+            bits.append(
+                "needs sponsorship" if p["needs_sponsorship"] else "no sponsorship"
+            )
         if p.get("requires_visa") is not None:
             bits.append("visa required" if p["requires_visa"] else "no visa")
         return _join(bits) or "Status, sponsorship, visa — not set."
 
     if section == "eeo":
         set_n = sum(
-            1 for k in ("gender", "race_ethnicity", "veteran_status", "disability_status")
+            1
+            for k in ("gender", "race_ethnicity", "veteran_status", "disability_status")
             if _has(p.get(k))
         )
         return f"{set_n} of 4 optional EEO questions answered."
@@ -451,7 +502,8 @@ def _section_summary(
         canned = p.get("canned_answers") or {}
         return (
             f"{len(canned)} reusable answer{'s' if len(canned) != 1 else ''} saved."
-            if canned else "Nothing saved yet — I'll remember tricky answers for you."
+            if canned
+            else "Nothing saved yet — I'll remember tricky answers for you."
         )
 
     return ""
@@ -460,14 +512,14 @@ def _section_summary(
 def _section_meta(section: str) -> tuple[str, str]:
     """(emoji-title, hint)."""
     return {
-        "personal":   ("👤  Personal", "Name, email, phone, location."),
-        "education":  ("🎓  Education", "Degrees, universities, GPA."),
+        "personal": ("👤  Personal", "Name, email, phone, location."),
+        "education": ("🎓  Education", "Degrees, universities, GPA."),
         "experience": ("💼  Experience", "Jobs, internships, freelance work."),
-        "links":      ("🔗  Links", "LinkedIn, GitHub, portfolio, Twitter."),
+        "links": ("🔗  Links", "LinkedIn, GitHub, portfolio, Twitter."),
         "work_auth": ("🛂  Work authorization", "Status, sponsorship, visa."),
-        "eeo":       ("📊  Demographics (EEO)", "Optional EEO fields."),
-        "resume":    ("📎  Resume", "Upload or replace your resume."),
-        "answers":   ("💬  Saved answers", "Reusable answers I've remembered."),
+        "eeo": ("📊  Demographics (EEO)", "Optional EEO fields."),
+        "resume": ("📎  Resume", "Upload or replace your resume."),
+        "answers": ("💬  Saved answers", "Reusable answers I've remembered."),
     }[section]
 
 
@@ -494,20 +546,24 @@ def build_profile_list_card(
     for sec in SECTIONS:
         title, _ = _section_meta(sec)
         summary = _section_summary(sec, p, active_resume=active_resume)
-        list_items.append(ListItem(
-            children=[
-                HeadingNode(type="heading", value=title, level=3),
-                TextNode(type="text", value=summary, style="muted"),
-            ],
-            action=ButtonAction(selection={"section": sec}),
-        ))
+        list_items.append(
+            ListItem(
+                children=[
+                    HeadingNode(type="heading", value=title, level=3),
+                    TextNode(type="text", value=summary, style="muted"),
+                ],
+                action=ButtonAction(selection={"section": sec}),
+            )
+        )
 
-    return CustomCardPayload(root=SectionNode(
-        type="section",
-        title=f"👤 {name or 'Profile'}",
-        subtitle=subtitle,
-        children=[ListNode(type="list", items=list_items)],
-    ))
+    return CustomCardPayload(
+        root=SectionNode(
+            type="section",
+            title=f"👤 {name or 'Profile'}",
+            subtitle=subtitle,
+            children=[ListNode(type="list", items=list_items)],
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -535,13 +591,15 @@ def _simple_fields(
 ) -> list[FormField]:
     out: list[FormField] = []
     for name, label, kind, required in spec:
-        out.append(FormField(
-            name=name,
-            kind=kind,
-            label=label,
-            required=required,
-            placeholder=_placeholder(profile, name),
-        ))
+        out.append(
+            FormField(
+                name=name,
+                kind=kind,
+                label=label,
+                required=required,
+                placeholder=_placeholder(profile, name),
+            )
+        )
     return out
 
 
@@ -558,7 +616,7 @@ def _select_field(
         kind="select",
         label=label,
         required=required,
-        options=[_opt(v, l) for v, l in options],
+        options=[_opt(v, lbl) for v, lbl in options],
         placeholder=_placeholder(profile, name),
     )
 
@@ -611,29 +669,39 @@ def build_education_overview_card(
             title = e.get("university_name") or f"Education {i + 1}"
             bits = [e.get("degree"), e.get("major"), e.get("graduation_date")]
             subtitle = "  ·  ".join(b for b in bits if b) or "No details"
-            entry_items.append(ListItem(
-                children=[
-                    HeadingNode(type="heading", value=title, level=3),
-                    TextNode(type="text", value=subtitle, style="muted"),
-                ],
-                action=ButtonAction(selection={"action": "edit_education_entry", "index": i}),
-            ))
+            entry_items.append(
+                ListItem(
+                    children=[
+                        HeadingNode(type="heading", value=title, level=3),
+                        TextNode(type="text", value=subtitle, style="muted"),
+                    ],
+                    action=ButtonAction(
+                        selection={"action": "edit_education_entry", "index": i}
+                    ),
+                )
+            )
         children.append(ListNode(type="list", items=entry_items))
 
-    children.append(ButtonNode(
-        type="button",
-        label="Add Education Details",
-        primary=not education,
-        action=ButtonAction(selection={"action": "add_another_education"}),
-    ))
+    children.append(
+        ButtonNode(
+            type="button",
+            label="Add Education Details",
+            primary=not education,
+            action=ButtonAction(selection={"action": "add_another_education"}),
+        )
+    )
 
-    subtitle = None if education else "No education added yet — click to add your first entry."
-    return CustomCardPayload(root=SectionNode(
-        type="section",
-        title="🎓 Education Details",
-        subtitle=subtitle,
-        children=children,
-    ))
+    subtitle = (
+        None if education else "No education added yet — click to add your first entry."
+    )
+    return CustomCardPayload(
+        root=SectionNode(
+            type="section",
+            title="🎓 Education Details",
+            subtitle=subtitle,
+            children=children,
+        )
+    )
 
 
 def build_education_form(
@@ -654,57 +722,125 @@ def build_education_form(
     title = "Edit Education" if edit_index is not None else "Education Details"
 
     action_row: list[Any] = [
-        ButtonNode(type="button", label="Save", primary=True,
-                   action=ButtonAction(selection=save_selection)),
+        ButtonNode(
+            type="button",
+            label="Save",
+            primary=True,
+            action=ButtonAction(selection=save_selection),
+        ),
     ]
     if edit_index is not None:
-        action_row.append(ButtonNode(
-            type="button", label="Delete", primary=False,
-            action=ButtonAction(selection={"action": "delete_education_entry", "edit_index": edit_index}),
-        ))
+        action_row.append(
+            ButtonNode(
+                type="button",
+                label="Delete",
+                primary=False,
+                action=ButtonAction(
+                    selection={
+                        "action": "delete_education_entry",
+                        "edit_index": edit_index,
+                    }
+                ),
+            )
+        )
 
-    return CustomCardPayload(root=SectionNode(
-        type="section",
-        title=title,
-        children=[GroupNode(
-            type="group",
-            direction="column",
-            gap=16,
+    return CustomCardPayload(
+        root=SectionNode(
+            type="section",
+            title=title,
             children=[
-                InputNode(type="input", name="university_name", kind="text",
-                          label="University Name", required=False,
-                          placeholder=_ph("university_name")),
-                GroupNode(type="group", direction="row", gap=16, children=[
-                    InputNode(type="input", name="degree", kind="text",
-                              label="Degree", required=False,
-                              placeholder=_ph("degree")),
-                    InputNode(type="input", name="major", kind="text",
-                              label="Major", required=False,
-                              placeholder=_ph("major")),
-                ]),
-                GroupNode(type="group", direction="row", gap=16, children=[
-                    InputNode(type="input", name="graduation_date", kind="text",
-                              label="Graduation Date", required=False,
-                              placeholder=_ph("graduation_date")),
-                    InputNode(type="input", name="gpa", kind="text",
-                              label="GPA", required=False,
-                              placeholder=_ph("gpa")),
-                ]),
-                GroupNode(type="group", direction="row", gap=16, children=[
-                    InputNode(type="input", name="gpa_scale", kind="select",
-                              label="GPA Scale", required=False,
-                              options=_GPA_SCALE_OPTIONS,
-                              placeholder=_ph("gpa_scale")),
-                    InputNode(type="input", name="degree_level", kind="select",
-                              label="Degree Level", required=False,
-                              options=_DEGREE_LEVEL_OPTIONS,
-                              placeholder=_ph("degree_level")),
-                ]),
-                GroupNode(type="group", direction="row", gap=12,
-                          children=action_row),
+                GroupNode(
+                    type="group",
+                    direction="column",
+                    gap=16,
+                    children=[
+                        InputNode(
+                            type="input",
+                            name="university_name",
+                            kind="text",
+                            label="University Name",
+                            required=False,
+                            placeholder=_ph("university_name"),
+                        ),
+                        GroupNode(
+                            type="group",
+                            direction="row",
+                            gap=16,
+                            children=[
+                                InputNode(
+                                    type="input",
+                                    name="degree",
+                                    kind="text",
+                                    label="Degree",
+                                    required=False,
+                                    placeholder=_ph("degree"),
+                                ),
+                                InputNode(
+                                    type="input",
+                                    name="major",
+                                    kind="text",
+                                    label="Major",
+                                    required=False,
+                                    placeholder=_ph("major"),
+                                ),
+                            ],
+                        ),
+                        GroupNode(
+                            type="group",
+                            direction="row",
+                            gap=16,
+                            children=[
+                                InputNode(
+                                    type="input",
+                                    name="graduation_date",
+                                    kind="text",
+                                    label="Graduation Date",
+                                    required=False,
+                                    placeholder=_ph("graduation_date"),
+                                ),
+                                InputNode(
+                                    type="input",
+                                    name="gpa",
+                                    kind="text",
+                                    label="GPA",
+                                    required=False,
+                                    placeholder=_ph("gpa"),
+                                ),
+                            ],
+                        ),
+                        GroupNode(
+                            type="group",
+                            direction="row",
+                            gap=16,
+                            children=[
+                                InputNode(
+                                    type="input",
+                                    name="gpa_scale",
+                                    kind="select",
+                                    label="GPA Scale",
+                                    required=False,
+                                    options=_GPA_SCALE_OPTIONS,
+                                    placeholder=_ph("gpa_scale"),
+                                ),
+                                InputNode(
+                                    type="input",
+                                    name="degree_level",
+                                    kind="select",
+                                    label="Degree Level",
+                                    required=False,
+                                    options=_DEGREE_LEVEL_OPTIONS,
+                                    placeholder=_ph("degree_level"),
+                                ),
+                            ],
+                        ),
+                        GroupNode(
+                            type="group", direction="row", gap=12, children=action_row
+                        ),
+                    ],
+                )
             ],
-        )],
-    ))
+        )
+    )
 
 
 def build_experience_overview_card(
@@ -719,31 +855,45 @@ def build_experience_overview_card(
         for i, e in enumerate(experience):
             title = e.get("job_title") or f"Experience {i + 1}"
             company = e.get("company_name")
-            dates = "  ·  ".join(d for d in (e.get("start_date"), e.get("end_date") or "Present") if d)
+            dates = "  ·  ".join(
+                d for d in (e.get("start_date"), e.get("end_date") or "Present") if d
+            )
             subtitle = "  ·  ".join(s for s in [company, dates] if s) or "No details"
-            entry_items.append(ListItem(
-                children=[
-                    HeadingNode(type="heading", value=title, level=3),
-                    TextNode(type="text", value=subtitle, style="muted"),
-                ],
-                action=ButtonAction(selection={"action": "edit_experience_entry", "index": i}),
-            ))
+            entry_items.append(
+                ListItem(
+                    children=[
+                        HeadingNode(type="heading", value=title, level=3),
+                        TextNode(type="text", value=subtitle, style="muted"),
+                    ],
+                    action=ButtonAction(
+                        selection={"action": "edit_experience_entry", "index": i}
+                    ),
+                )
+            )
         children.append(ListNode(type="list", items=entry_items))
 
-    children.append(ButtonNode(
-        type="button",
-        label="Add Experience",
-        primary=not experience,
-        action=ButtonAction(selection={"action": "add_another_experience"}),
-    ))
+    children.append(
+        ButtonNode(
+            type="button",
+            label="Add Experience",
+            primary=not experience,
+            action=ButtonAction(selection={"action": "add_another_experience"}),
+        )
+    )
 
-    subtitle = None if experience else "No experience added yet — click to add your first entry."
-    return CustomCardPayload(root=SectionNode(
-        type="section",
-        title="💼 Work Experience",
-        subtitle=subtitle,
-        children=children,
-    ))
+    subtitle = (
+        None
+        if experience
+        else "No experience added yet — click to add your first entry."
+    )
+    return CustomCardPayload(
+        root=SectionNode(
+            type="section",
+            title="💼 Work Experience",
+            subtitle=subtitle,
+            children=children,
+        )
+    )
 
 
 def build_experience_form(
@@ -764,60 +914,134 @@ def build_experience_form(
     title = "Edit Experience" if edit_index is not None else "Add Experience"
 
     action_row: list[Any] = [
-        ButtonNode(type="button", label="Save", primary=True,
-                   action=ButtonAction(selection=save_selection)),
+        ButtonNode(
+            type="button",
+            label="Save",
+            primary=True,
+            action=ButtonAction(selection=save_selection),
+        ),
     ]
     if edit_index is not None:
-        action_row.append(ButtonNode(
-            type="button", label="Delete", primary=False,
-            action=ButtonAction(selection={"action": "delete_experience_entry", "edit_index": edit_index}),
-        ))
+        action_row.append(
+            ButtonNode(
+                type="button",
+                label="Delete",
+                primary=False,
+                action=ButtonAction(
+                    selection={
+                        "action": "delete_experience_entry",
+                        "edit_index": edit_index,
+                    }
+                ),
+            )
+        )
 
-    return CustomCardPayload(root=SectionNode(
-        type="section",
-        title=title,
-        children=[GroupNode(
-            type="group",
-            direction="column",
-            gap=16,
+    return CustomCardPayload(
+        root=SectionNode(
+            type="section",
+            title=title,
             children=[
-                InputNode(type="input", name="company_name", kind="text",
-                          label="Company Name", required=False,
-                          placeholder=_ph("company_name")),
-                GroupNode(type="group", direction="row", gap=16, children=[
-                    InputNode(type="input", name="job_title", kind="text",
-                              label="Job Title", required=False,
-                              placeholder=_ph("job_title")),
-                    InputNode(type="input", name="employment_type", kind="select",
-                              label="Employment Type", required=False,
-                              options=_EMPLOYMENT_TYPE_OPTIONS,
-                              placeholder=_ph("employment_type")),
-                ]),
-                GroupNode(type="group", direction="row", gap=16, children=[
-                    InputNode(type="input", name="start_date", kind="text",
-                              label="Start Date", required=False,
-                              placeholder=_ph("start_date") or "e.g. Jan 2022"),
-                    InputNode(type="input", name="end_date", kind="text",
-                              label="End Date", required=False,
-                              placeholder=_ph("end_date") or "Leave blank if current"),
-                ]),
-                GroupNode(type="group", direction="row", gap=16, children=[
-                    InputNode(type="input", name="location", kind="text",
-                              label="Location", required=False,
-                              placeholder=_ph("location")),
-                    InputNode(type="input", name="work_mode", kind="select",
-                              label="Work Mode", required=False,
-                              options=_WORK_MODE_OPTIONS,
-                              placeholder=_ph("work_mode")),
-                ]),
-                InputNode(type="input", name="description", kind="text",
-                          label="Description / Responsibilities", required=False,
-                          placeholder=_ph("description")),
-                GroupNode(type="group", direction="row", gap=12,
-                          children=action_row),
+                GroupNode(
+                    type="group",
+                    direction="column",
+                    gap=16,
+                    children=[
+                        InputNode(
+                            type="input",
+                            name="company_name",
+                            kind="text",
+                            label="Company Name",
+                            required=False,
+                            placeholder=_ph("company_name"),
+                        ),
+                        GroupNode(
+                            type="group",
+                            direction="row",
+                            gap=16,
+                            children=[
+                                InputNode(
+                                    type="input",
+                                    name="job_title",
+                                    kind="text",
+                                    label="Job Title",
+                                    required=False,
+                                    placeholder=_ph("job_title"),
+                                ),
+                                InputNode(
+                                    type="input",
+                                    name="employment_type",
+                                    kind="select",
+                                    label="Employment Type",
+                                    required=False,
+                                    options=_EMPLOYMENT_TYPE_OPTIONS,
+                                    placeholder=_ph("employment_type"),
+                                ),
+                            ],
+                        ),
+                        GroupNode(
+                            type="group",
+                            direction="row",
+                            gap=16,
+                            children=[
+                                InputNode(
+                                    type="input",
+                                    name="start_date",
+                                    kind="text",
+                                    label="Start Date",
+                                    required=False,
+                                    placeholder=_ph("start_date") or "e.g. Jan 2022",
+                                ),
+                                InputNode(
+                                    type="input",
+                                    name="end_date",
+                                    kind="text",
+                                    label="End Date",
+                                    required=False,
+                                    placeholder=_ph("end_date")
+                                    or "Leave blank if current",
+                                ),
+                            ],
+                        ),
+                        GroupNode(
+                            type="group",
+                            direction="row",
+                            gap=16,
+                            children=[
+                                InputNode(
+                                    type="input",
+                                    name="location",
+                                    kind="text",
+                                    label="Location",
+                                    required=False,
+                                    placeholder=_ph("location"),
+                                ),
+                                InputNode(
+                                    type="input",
+                                    name="work_mode",
+                                    kind="select",
+                                    label="Work Mode",
+                                    required=False,
+                                    options=_WORK_MODE_OPTIONS,
+                                    placeholder=_ph("work_mode"),
+                                ),
+                            ],
+                        ),
+                        InputNode(
+                            type="input",
+                            name="description",
+                            kind="text",
+                            label="Description / Responsibilities",
+                            required=False,
+                            placeholder=_ph("description"),
+                        ),
+                        GroupNode(
+                            type="group", direction="row", gap=12, children=action_row
+                        ),
+                    ],
+                )
             ],
-        )],
-    ))
+        )
+    )
 
 
 def build_section_form(
@@ -854,14 +1078,25 @@ def build_section_form(
         return FormCardPayload(
             title="🛂 Work authorization",
             fields=[
-                _select_field(p, "work_authorization", "Authorization status",
-                              _WORK_AUTH_SELECT, required=True),
-                FormField(name="needs_sponsorship", kind="checkbox",
-                          label="I will need visa sponsorship now or in the future",
-                          placeholder=_placeholder(p, "needs_sponsorship")),
-                FormField(name="requires_visa", kind="checkbox",
-                          label="I currently require a visa to work",
-                          placeholder=_placeholder(p, "requires_visa")),
+                _select_field(
+                    p,
+                    "work_authorization",
+                    "Authorization status",
+                    _WORK_AUTH_SELECT,
+                    required=True,
+                ),
+                FormField(
+                    name="needs_sponsorship",
+                    kind="checkbox",
+                    label="I will need visa sponsorship now or in the future",
+                    placeholder=_placeholder(p, "needs_sponsorship"),
+                ),
+                FormField(
+                    name="requires_visa",
+                    kind="checkbox",
+                    label="I currently require a visa to work",
+                    placeholder=_placeholder(p, "requires_visa"),
+                ),
             ],
             submit_cta=CtaAction(
                 label="Save work authorization",
@@ -877,8 +1112,9 @@ def build_section_form(
                 _select_field(p, "gender", "Gender", _GENDER_SELECT),
                 _select_field(p, "race_ethnicity", "Race / ethnicity", _RACE_SELECT),
                 _select_field(p, "veteran_status", "Veteran status", _VETERAN_SELECT),
-                _select_field(p, "disability_status", "Disability status",
-                              _DISABILITY_SELECT),
+                _select_field(
+                    p, "disability_status", "Disability status", _DISABILITY_SELECT
+                ),
             ],
             submit_cta=CtaAction(
                 label="Save demographics",
@@ -936,20 +1172,19 @@ def build_profile_card(
         rows.append(DetailSummaryRow(label="Resume", value=rv))
         if resume_versions and len(resume_versions) > 1:
             others = [
-                v["name"] for v in resume_versions
+                v["name"]
+                for v in resume_versions
                 if v.get("name") and v.get("name") != active_resume
             ]
             if others:
-                rows.append(DetailSummaryRow(
-                    label="Other resumes", value=", ".join(others)
-                ))
+                rows.append(
+                    DetailSummaryRow(label="Other resumes", value=", ".join(others))
+                )
     else:
         rows.append(DetailSummaryRow(label="Resume", value="Not uploaded"))
 
     # ---- Location ----
-    loc = ", ".join(
-        s for s in (p.get("city"), p.get("state"), p.get("country")) if s
-    )
+    loc = ", ".join(s for s in (p.get("city"), p.get("state"), p.get("country")) if s)
     if loc:
         rows.append(DetailSummaryRow(label="Location", value=loc))
 
@@ -970,9 +1205,9 @@ def build_profile_card(
     if p.get("requires_visa") is not None:
         wa_bits.append("visa required" if p["requires_visa"] else "no visa")
     if wa_bits:
-        rows.append(DetailSummaryRow(
-            label="Work authorization", value="  ·  ".join(wa_bits)
-        ))
+        rows.append(
+            DetailSummaryRow(label="Work authorization", value="  ·  ".join(wa_bits))
+        )
 
     # ---- EEO (single combined line of whatever is set) ----
     eeo_pairs = [
@@ -983,19 +1218,21 @@ def build_profile_card(
     ]
     eeo_filled = [f"{k}: {v}" for k, v in eeo_pairs if v]
     if eeo_filled:
-        rows.append(DetailSummaryRow(
-            label="Demographics", value="  ·  ".join(eeo_filled)
-        ))
+        rows.append(
+            DetailSummaryRow(label="Demographics", value="  ·  ".join(eeo_filled))
+        )
 
     # ---- Canned answers (count + preview question) ----
     canned = p.get("canned_answers") or {}
     if canned:
         preview_key = next(iter(canned))
         preview_q = preview_key if len(preview_key) <= 60 else preview_key[:59] + "…"
-        rows.append(DetailSummaryRow(
-            label=f"Saved answers · {len(canned)}",
-            value=f"e.g. “{preview_q}”",
-        ))
+        rows.append(
+            DetailSummaryRow(
+                label=f"Saved answers · {len(canned)}",
+                value=f"e.g. “{preview_q}”",
+            )
+        )
 
     updated = p.get("updated_at")
     if updated:
@@ -1005,10 +1242,8 @@ def build_profile_card(
         title=title,
         summary_rows=rows,
         ctas=[
-            CtaAction(label="Edit profile",
-                      selection={"action": "edit_profile"}),
-            CtaAction(label="Replace resume",
-                      selection={"action": "upload_resume"}),
+            CtaAction(label="Edit profile", selection={"action": "edit_profile"}),
+            CtaAction(label="Replace resume", selection={"action": "upload_resume"}),
         ],
     )
 
@@ -1058,7 +1293,9 @@ def format_profile_summary(
             uni = e.get("university_name")
             grad = e.get("graduation_date")
             gpa = e.get("gpa")
-            line = "  ·  ".join(s for s in [deg or None, uni, grad, f"GPA {gpa}" if gpa else None] if s)
+            line = "  ·  ".join(
+                s for s in [deg or None, uni, grad, f"GPA {gpa}" if gpa else None] if s
+            )
             edu_lines.append(f"• {line}" if line else "• (no details)")
         section("EDUCATION", edu_lines)
 
@@ -1087,7 +1324,8 @@ def format_profile_summary(
         resume_body.append(line)
         if resume_versions and len(resume_versions) > 1:
             others = [
-                v["name"] for v in resume_versions
+                v["name"]
+                for v in resume_versions
                 if v.get("name") and v.get("name") != active_resume
             ]
             if others:

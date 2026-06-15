@@ -79,10 +79,14 @@ from extractor import ExtractionResult, extract as _extract_job  # noqa: E402
 from answer_composer import compose_answer  # noqa: E402
 from field_mapper import FieldMapper  # noqa: E402
 from greenhouse_client import (  # noqa: E402
-    SubmitError, build_payload, check_required, parse_response, post_application,
+    SubmitError,
+    build_payload,
+    check_required,
+    parse_response,
+    post_application,
 )
 from models import (  # noqa: E402
-    MapFieldsResult, UserProfile,
+    UserProfile,
 )
 from profile_store import ContextStore  # noqa: E402
 from resume_ingest import ResumeIngestError, ingest_resume  # noqa: E402
@@ -93,27 +97,34 @@ from session import ApplyState, OrchestratorSession  # noqa: E402
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 # Mirror all agent output to agent.out.log.
-import logging as _logging, sys as _sys  # noqa: E402
+import logging as _logging  # noqa: E402
+import sys as _sys  # noqa: E402
 
 _log_file = Path(__file__).resolve().parent / "agent.out.log"
 _log_fh = open(_log_file, "w", buffering=1, encoding="utf-8")
 
+
 class _Tee:
     def __init__(self, orig):
         self._orig = orig
+
     def write(self, data):
         self._orig.write(data)
         _log_fh.write(data)
+
     def flush(self):
         self._orig.flush()
         _log_fh.flush()
+
     def __getattr__(self, name):
         return getattr(self._orig, name)
+
 
 _tee_out = _Tee(_sys.__stdout__)
 _tee_err = _Tee(_sys.__stderr__)
 _sys.stdout = _tee_out
 _sys.stderr = _tee_err
+
 
 # StreamHandlers cache their stream object at creation time, so replacing
 # sys.stdout above doesn't affect them. Patch every existing StreamHandler
@@ -129,6 +140,7 @@ def _patch_stream_handlers():
                 elif _h.stream is _sys.__stderr__:
                     _h.stream = _tee_err
 
+
 AGENT_NAME = "job_application_orchestrator"
 SEED_PHRASE = os.getenv(
     "ORCHESTRATOR_AGENT_SEED", "orchestrator-agent-user-facing-seed-v1"
@@ -138,7 +150,11 @@ PORT = int(os.getenv("ORCHESTRATOR_AGENT_PORT", "8014"))
 DEFAULT_USER_KEY = os.getenv("DEFAULT_USER_KEY", "me")
 
 DEFAULT_RESUME_PATH = os.getenv("DEFAULT_RESUME_PATH", "")
-DEFAULT_DRY_RUN = os.getenv("SUBMITTER_DEFAULT_DRY_RUN", "0").lower() in {"1", "true", "yes"}
+DEFAULT_DRY_RUN = os.getenv("SUBMITTER_DEFAULT_DRY_RUN", "0").lower() in {
+    "1",
+    "true",
+    "yes",
+}
 
 LIVE_FILL_MODE = os.getenv("LIVE_FILL_MODE", "headed").strip().lower()
 LIVE_FILL_SCREENSHOT_EVERY = int(os.getenv("LIVE_FILL_SCREENSHOT_EVERY", "3"))
@@ -170,8 +186,10 @@ Use null for missing scalar fields. Omit empty arrays. No markdown, no explanati
 # Profile wire models (kept for form-filler-agent compatibility)
 # ---------------------------------------------------------------------------
 
+
 class GetProfileRequest(Model):
     user_key: str = "me"
+
 
 class GetProfileResponse(Model):
     success: bool
@@ -179,17 +197,21 @@ class GetProfileResponse(Model):
     error: Optional[str] = None
     profile_json: Optional[str] = None
 
+
 class UpsertProfileRequest(Model):
     user_key: str = "me"
     profile_json: str
+
 
 class UpsertProfileResponse(Model):
     success: bool
     error: Optional[str] = None
 
+
 class IngestResumeRequest(Model):
     user_key: str = "me"
     resume_path: str
+
 
 class IngestResumeResponse(Model):
     success: bool
@@ -197,15 +219,18 @@ class IngestResumeResponse(Model):
     stored_path: Optional[str] = None
     chars_extracted: Optional[int] = None
 
+
 class MapFieldsRequest(Model):
     user_key: str = "me"
     questions_json: str
     profile_json: Optional[str] = None
 
+
 class MapFieldsResponse(Model):
     success: bool
     error: Optional[str] = None
     result_json: Optional[str] = None
+
 
 AGENTVERSE_URL = os.getenv("AGENTVERSE_URL", "https://agentverse.ai")
 AGENTVERSE_API_KEY = os.getenv("AGENTVERSE_API_KEY")
@@ -241,24 +266,35 @@ profile_proto = Protocol(name="profile_agent", version="1.0")
 # Direct profile helpers (replace profile_proxy + network round-trips)
 # ---------------------------------------------------------------------------
 
+
 def _profile_store(ctx: Context) -> ContextStore:
     return ContextStore(ctx.storage)
 
 
-def _fetch_profile(ctx: Context, user_key: str) -> tuple[bool, Optional[dict], Optional[str]]:
+def _fetch_profile(
+    ctx: Context, user_key: str
+) -> tuple[bool, Optional[dict], Optional[str]]:
     profile = _profile_store(ctx).get(user_key)
     if profile is None:
         return False, None, None
     return True, profile.model_dump(mode="json"), None
 
 
-def _upsert_patch(ctx: Context, user_key: str, patch: dict) -> tuple[bool, Optional[str]]:
+def _upsert_patch(
+    ctx: Context, user_key: str, patch: dict
+) -> tuple[bool, Optional[str]]:
     try:
         store = _profile_store(ctx)
         existing = store.get(user_key)
-        merged = existing.model_dump(mode="json") if existing else {
-            "first_name": "", "last_name": "", "email": "",
-        }
+        merged = (
+            existing.model_dump(mode="json")
+            if existing
+            else {
+                "first_name": "",
+                "last_name": "",
+                "email": "",
+            }
+        )
         merged.update({k: v for k, v in patch.items() if v is not None})
         store.set(user_key, UserProfile.model_validate(merged))
         return True, None
@@ -282,6 +318,7 @@ def _to_markdown(raw_text: str) -> str:
         return raw_text
     try:
         from openai import OpenAI
+
         client = OpenAI(base_url="https://api.asi1.ai/v1", api_key=ASI_ONE_API_KEY)
         resp = client.chat.completions.create(
             model=ASI_ONE_CHAT_MODEL,
@@ -305,6 +342,7 @@ def _extract_profile_fields(resume_text: str) -> dict:
         return {}
     try:
         from openai import OpenAI
+
         client = OpenAI(base_url="https://api.asi1.ai/v1", api_key=ASI_ONE_API_KEY)
         resp = client.chat.completions.create(
             model=ASI_ONE_CHAT_MODEL,
@@ -323,8 +361,24 @@ def _extract_profile_fields(resume_text: str) -> dict:
         return {}
 
 
-_EDU_STR_FIELDS = {"gpa", "gpa_scale", "graduation_date", "degree_level", "degree", "major", "university_name"}
-_EXP_STR_FIELDS = {"start_date", "end_date", "employment_type", "work_mode", "location", "job_title", "company_name"}
+_EDU_STR_FIELDS = {
+    "gpa",
+    "gpa_scale",
+    "graduation_date",
+    "degree_level",
+    "degree",
+    "major",
+    "university_name",
+}
+_EXP_STR_FIELDS = {
+    "start_date",
+    "end_date",
+    "employment_type",
+    "work_mode",
+    "location",
+    "job_title",
+    "company_name",
+}
 
 
 def _coerce_edu_exp(extracted: dict) -> None:
@@ -332,12 +386,20 @@ def _coerce_edu_exp(extracted: dict) -> None:
     for entry in extracted.get("education") or []:
         if isinstance(entry, dict):
             for f in _EDU_STR_FIELDS:
-                if f in entry and entry[f] is not None and not isinstance(entry[f], str):
+                if (
+                    f in entry
+                    and entry[f] is not None
+                    and not isinstance(entry[f], str)
+                ):
                     entry[f] = str(entry[f])
     for entry in extracted.get("experience") or []:
         if isinstance(entry, dict):
             for f in _EXP_STR_FIELDS:
-                if f in entry and entry[f] is not None and not isinstance(entry[f], str):
+                if (
+                    f in entry
+                    and entry[f] is not None
+                    and not isinstance(entry[f], str)
+                ):
                     entry[f] = str(entry[f])
 
 
@@ -373,15 +435,20 @@ def _ingest_resume_direct(
     profile.resume_text = text
     _profile_store(ctx).set(user_key, profile)
 
-    return True, {
-        "stored_path": str(stored_path),
-        "chars_extracted": len(text),
-    }, None
+    return (
+        True,
+        {
+            "stored_path": str(stored_path),
+            "chars_extracted": len(text),
+        },
+        None,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Profile protocol handlers (for form-filler-agent compatibility)
 # ---------------------------------------------------------------------------
+
 
 @profile_proto.on_message(model=GetProfileRequest, replies=GetProfileResponse)
 async def handle_get_profile(ctx: Context, sender: str, msg: GetProfileRequest):
@@ -389,9 +456,14 @@ async def handle_get_profile(ctx: Context, sender: str, msg: GetProfileRequest):
     if profile is None:
         await ctx.send(sender, GetProfileResponse(success=True, exists=False))
         return
-    await ctx.send(sender, GetProfileResponse(
-        success=True, exists=True, profile_json=profile.model_dump_json(),
-    ))
+    await ctx.send(
+        sender,
+        GetProfileResponse(
+            success=True,
+            exists=True,
+            profile_json=profile.model_dump_json(),
+        ),
+    )
 
 
 @profile_proto.on_message(model=UpsertProfileRequest, replies=UpsertProfileResponse)
@@ -412,8 +484,13 @@ async def handle_upsert_profile(ctx: Context, sender: str, msg: UpsertProfileReq
     existing = _profile_store(ctx).get(msg.user_key)
     if existing:
         merged = existing.model_dump(mode="json")
-        merged.update({k: v for k, v in profile.model_dump(mode="json").items()
-                       if v not in (None, "", {}, [])})
+        merged.update(
+            {
+                k: v
+                for k, v in profile.model_dump(mode="json").items()
+                if v not in (None, "", {}, [])
+            }
+        )
         profile = UserProfile.model_validate(merged)
     _profile_store(ctx).set(msg.user_key, profile)
     await ctx.send(sender, UpsertProfileResponse(success=True))
@@ -421,7 +498,9 @@ async def handle_upsert_profile(ctx: Context, sender: str, msg: UpsertProfileReq
 
 @profile_proto.on_message(model=IngestResumeRequest, replies=IngestResumeResponse)
 async def handle_ingest_resume_msg(ctx: Context, sender: str, msg: IngestResumeRequest):
-    ok, info, err = await asyncio.to_thread(_ingest_resume_direct, ctx, msg.user_key, msg.resume_path)
+    ok, info, err = await asyncio.to_thread(
+        _ingest_resume_direct, ctx, msg.user_key, msg.resume_path
+    )
     if not ok:
         await ctx.send(sender, IngestResumeResponse(success=False, error=err))
         return
@@ -432,17 +511,24 @@ async def handle_ingest_resume_msg(ctx: Context, sender: str, msg: IngestResumeR
 async def handle_map_fields(ctx: Context, sender: str, msg: MapFieldsRequest):
     profile = _profile_store(ctx).get(msg.user_key)
     if profile is None:
-        await ctx.send(sender, MapFieldsResponse(
-            success=False, error=f"No profile for user_key={msg.user_key!r}"
-        ))
+        await ctx.send(
+            sender,
+            MapFieldsResponse(
+                success=False, error=f"No profile for user_key={msg.user_key!r}"
+            ),
+        )
         return
     try:
         questions = json.loads(msg.questions_json)
     except Exception as exc:  # noqa: BLE001
         await ctx.send(sender, MapFieldsResponse(success=False, error=str(exc)))
         return
-    result = await asyncio.to_thread(_mapper.map_questions, profile, questions, user_key=msg.user_key)
-    await ctx.send(sender, MapFieldsResponse(success=True, result_json=result.model_dump_json()))
+    result = await asyncio.to_thread(
+        _mapper.map_questions, profile, questions, user_key=msg.user_key
+    )
+    await ctx.send(
+        sender, MapFieldsResponse(success=True, result_json=result.model_dump_json())
+    )
 
 
 _live_browser_sessions: dict[str, BrowserSession] = {}
@@ -512,17 +598,21 @@ async def _send_card(
     """Send an interactive card. We pair it with a small text caption in
     the same ChatMessage — without a companion TextContent the platform
     drops the message entirely (verified by trial)."""
-    content: list = [TextContent(type="text",
-                                 text=caption or "Here's your profile.")]
-    content.append(create_card_content(
-        payload,
-        preferred_drawer_width_px=drawer_width_px,
-    ))
-    await ctx.send(sender, ChatMessage(
-        timestamp=datetime.now(UTC),
-        msg_id=uuid4(),
-        content=content,
-    ))
+    content: list = [TextContent(type="text", text=caption or "Here's your profile.")]
+    content.append(
+        create_card_content(
+            payload,
+            preferred_drawer_width_px=drawer_width_px,
+        )
+    )
+    await ctx.send(
+        sender,
+        ChatMessage(
+            timestamp=datetime.now(UTC),
+            msg_id=uuid4(),
+            content=content,
+        ),
+    )
 
 
 async def _send_payment_request(ctx: Context, sender: str) -> None:
@@ -585,7 +675,8 @@ def _resource_items(message: ChatMessage) -> list:
     Accept both forms so downloads don't silently get skipped.
     """
     return [
-        c for c in message.content
+        c
+        for c in message.content
         if isinstance(c, ResourceContent) or getattr(c, "type", "") == "resource"
     ]
 
@@ -594,9 +685,7 @@ def _has_end_session(message: ChatMessage) -> bool:
     return any(isinstance(c, EndSessionContent) for c in message.content)
 
 
-def _download_resource(
-    ctx: Context, item
-) -> Optional[tuple[bytes, str, str]]:
+def _download_resource(ctx: Context, item) -> Optional[tuple[bytes, str, str]]:
     """Download a ResourceContent attachment. Returns
     (bytes, mime_type, source_filename) or None on failure.
 
@@ -619,7 +708,8 @@ def _download_resource(
     # resource_id may be a UUID, a string, or buried in a dict if the item
     # deserialized as a generic object rather than a typed ResourceContent.
     raw_resource_id = (
-        item.get("resource_id") if isinstance(item, dict)
+        item.get("resource_id")
+        if isinstance(item, dict)
         else getattr(item, "resource_id", None)
     )
     resource_id_str = str(raw_resource_id) if raw_resource_id is not None else ""
@@ -631,7 +721,8 @@ def _download_resource(
         #     with our registered API key, not the raw agent attestation)
         *(
             [{"api_token": AGENTVERSE_API_KEY, "storage_url": STORAGE_URL}]
-            if AGENTVERSE_API_KEY else []
+            if AGENTVERSE_API_KEY
+            else []
         ),
     ]:
         if not resource_id_str:
@@ -655,7 +746,8 @@ def _download_resource(
     if content_bytes is None:
         uri = None
         res_obj = (
-            item.get("resource") if isinstance(item, dict)
+            item.get("resource")
+            if isinstance(item, dict)
             else getattr(item, "resource", None)
         )
         candidates = res_obj if isinstance(res_obj, list) else [res_obj]
@@ -665,12 +757,11 @@ def _download_resource(
                 break
         if uri:
             import httpx  # local import keeps the top of the file unchanged
+
             downloaded = False
             auth_variants: list[dict] = []
             if AGENTVERSE_API_KEY:
-                auth_variants.append(
-                    {"Authorization": f"Bearer {AGENTVERSE_API_KEY}"}
-                )
+                auth_variants.append({"Authorization": f"Bearer {AGENTVERSE_API_KEY}"})
             auth_variants.append({})  # unauthenticated last
             for headers in auth_variants:
                 try:
@@ -698,7 +789,8 @@ def _download_resource(
     # (set by chat clients) or fall back to the asset id.
     source_filename = f"resource_{resource_id_str}"
     res_obj = (
-        item.get("resource") if isinstance(item, dict)
+        item.get("resource")
+        if isinstance(item, dict)
         else getattr(item, "resource", None)
     )
     candidates = res_obj if isinstance(res_obj, list) else [res_obj]
@@ -796,9 +888,11 @@ async def _handle_profile_card_selection(
 
         ok, err = _upsert_patch(ctx, sess.user_key, patch)
         if not ok:
-            await _say(ctx, sender, rendering.format_error(
-                err or "couldn't save those changes"
-            ))
+            await _say(
+                ctx,
+                sender,
+                rendering.format_error(err or "couldn't save those changes"),
+            )
             return
 
         saved = ", ".join(f"`{k}`" for k in patch)
@@ -809,13 +903,16 @@ async def _handle_profile_card_selection(
     # ---- Section click: open the matching form (or fall back to a hint) ----
     form = rendering.build_section_form(section, sess.profile_summary)
     if form is not None:
-        await _send_card(ctx, sender, form, caption=f"Editing {section.replace('_', ' ')}.")
+        await _send_card(
+            ctx, sender, form, caption=f"Editing {section.replace('_', ' ')}."
+        )
         return
 
     if section == "education":
         edu_list = (sess.profile_summary or {}).get("education") or []
         await _send_card(
-            ctx, sender,
+            ctx,
+            sender,
             rendering.build_education_overview_card(edu_list),
             caption="Your education entries — click 'Add Education Details' to add one.",
         )
@@ -824,7 +921,8 @@ async def _handle_profile_card_selection(
     if section == "experience":
         exp_list = (sess.profile_summary or {}).get("experience") or []
         await _send_card(
-            ctx, sender,
+            ctx,
+            sender,
             rendering.build_experience_overview_card(exp_list),
             caption="Your experience entries — click 'Add Experience' to add one.",
         )
@@ -832,7 +930,8 @@ async def _handle_profile_card_selection(
 
     if section == "resume":
         await _say(
-            ctx, sender,
+            ctx,
+            sender,
             "Drop a PDF, DOCX, or TXT in chat and I'll parse and index it as "
             "your active resume.",
         )
@@ -842,7 +941,8 @@ async def _handle_profile_card_selection(
         canned = (sess.profile_summary or {}).get("canned_answers") or {}
         if not canned:
             await _say(
-                ctx, sender,
+                ctx,
+                sender,
                 "No saved answers yet — whenever you answer a tricky "
                 "application question, I'll remember it for next time.",
             )
@@ -870,13 +970,21 @@ async def _handle_education_action(
 ) -> None:
     action = str(selection.get("action") or "")
 
-    _EDU_FIELD_KEYS = frozenset({
-        "university_name", "degree", "major", "graduation_date",
-        "gpa", "gpa_scale", "degree_level",
-    })
+    _EDU_FIELD_KEYS = frozenset(
+        {
+            "university_name",
+            "degree",
+            "major",
+            "graduation_date",
+            "gpa",
+            "gpa_scale",
+            "degree_level",
+        }
+    )
 
     edu_fields = {
-        k: v for k, v in selection.items()
+        k: v
+        for k, v in selection.items()
         if k in _EDU_FIELD_KEYS and v not in (None, "")
     }
     edit_index: Optional[int] = selection.get("edit_index")
@@ -884,9 +992,12 @@ async def _handle_education_action(
     if action == "edit_education_entry":
         idx = selection.get("index")
         edu_list = list((sess.profile_summary or {}).get("education") or [])
-        existing = edu_list[idx] if idx is not None and 0 <= idx < len(edu_list) else None
+        existing = (
+            edu_list[idx] if idx is not None and 0 <= idx < len(edu_list) else None
+        )
         await _send_card(
-            ctx, sender,
+            ctx,
+            sender,
             rendering.build_education_form(entry=existing, edit_index=idx),
             caption="Edit your education details.",
         )
@@ -898,7 +1009,11 @@ async def _handle_education_action(
             current.pop(edit_index)
             ok, err = _upsert_patch(ctx, sess.user_key, {"education": current})
             if not ok:
-                await _say(ctx, sender, rendering.format_error(err or "couldn't delete education entry"))
+                await _say(
+                    ctx,
+                    sender,
+                    rendering.format_error(err or "couldn't delete education entry"),
+                )
                 return
             sess.profile_summary = None
             session_mod.save(ctx.storage, sess)
@@ -913,13 +1028,19 @@ async def _handle_education_action(
             _upsert_patch(ctx, sess.user_key, {"education": current})
             sess.profile_summary = None
             session_mod.save(ctx.storage, sess)
-        await _send_card(ctx, sender, rendering.build_education_form(),
-                         caption="Fill in your education details.")
+        await _send_card(
+            ctx,
+            sender,
+            rendering.build_education_form(),
+            caption="Fill in your education details.",
+        )
         return
 
     if action == "save_education":
         if not edu_fields:
-            await _say(ctx, sender, "Nothing to save — fill in at least one field first.")
+            await _say(
+                ctx, sender, "Nothing to save — fill in at least one field first."
+            )
             return
         current = list((sess.profile_summary or {}).get("education") or [])
         if edit_index is not None and 0 <= edit_index < len(current):
@@ -928,7 +1049,11 @@ async def _handle_education_action(
             current.append(edu_fields)
         ok, err = _upsert_patch(ctx, sess.user_key, {"education": current})
         if not ok:
-            await _say(ctx, sender, rendering.format_error(err or "couldn't save education entry"))
+            await _say(
+                ctx,
+                sender,
+                rendering.format_error(err or "couldn't save education entry"),
+            )
             return
         sess.profile_summary = None
         session_mod.save(ctx.storage, sess)
@@ -945,13 +1070,22 @@ async def _handle_experience_action(
 ) -> None:
     action = str(selection.get("action") or "")
 
-    _EXP_FIELD_KEYS = frozenset({
-        "company_name", "job_title", "employment_type",
-        "location", "work_mode", "start_date", "end_date", "description",
-    })
+    _EXP_FIELD_KEYS = frozenset(
+        {
+            "company_name",
+            "job_title",
+            "employment_type",
+            "location",
+            "work_mode",
+            "start_date",
+            "end_date",
+            "description",
+        }
+    )
 
     exp_fields = {
-        k: v for k, v in selection.items()
+        k: v
+        for k, v in selection.items()
         if k in _EXP_FIELD_KEYS and v not in (None, "")
     }
     edit_index: Optional[int] = selection.get("edit_index")
@@ -959,9 +1093,12 @@ async def _handle_experience_action(
     if action == "edit_experience_entry":
         idx = selection.get("index")
         exp_list = list((sess.profile_summary or {}).get("experience") or [])
-        existing = exp_list[idx] if idx is not None and 0 <= idx < len(exp_list) else None
+        existing = (
+            exp_list[idx] if idx is not None and 0 <= idx < len(exp_list) else None
+        )
         await _send_card(
-            ctx, sender,
+            ctx,
+            sender,
             rendering.build_experience_form(entry=existing, edit_index=idx),
             caption="Edit your experience details.",
         )
@@ -973,7 +1110,11 @@ async def _handle_experience_action(
             current.pop(edit_index)
             ok, err = _upsert_patch(ctx, sess.user_key, {"experience": current})
             if not ok:
-                await _say(ctx, sender, rendering.format_error(err or "couldn't delete experience entry"))
+                await _say(
+                    ctx,
+                    sender,
+                    rendering.format_error(err or "couldn't delete experience entry"),
+                )
                 return
             sess.profile_summary = None
             session_mod.save(ctx.storage, sess)
@@ -988,13 +1129,19 @@ async def _handle_experience_action(
             _upsert_patch(ctx, sess.user_key, {"experience": current})
             sess.profile_summary = None
             session_mod.save(ctx.storage, sess)
-        await _send_card(ctx, sender, rendering.build_experience_form(),
-                         caption="Fill in your experience details.")
+        await _send_card(
+            ctx,
+            sender,
+            rendering.build_experience_form(),
+            caption="Fill in your experience details.",
+        )
         return
 
     if action == "save_experience":
         if not exp_fields:
-            await _say(ctx, sender, "Nothing to save — fill in at least one field first.")
+            await _say(
+                ctx, sender, "Nothing to save — fill in at least one field first."
+            )
             return
         current = list((sess.profile_summary or {}).get("experience") or [])
         if edit_index is not None and 0 <= edit_index < len(current):
@@ -1003,7 +1150,11 @@ async def _handle_experience_action(
             current.append(exp_fields)
         ok, err = _upsert_patch(ctx, sess.user_key, {"experience": current})
         if not ok:
-            await _say(ctx, sender, rendering.format_error(err or "couldn't save experience entry"))
+            await _say(
+                ctx,
+                sender,
+                rendering.format_error(err or "couldn't save experience entry"),
+            )
             return
         sess.profile_summary = None
         session_mod.save(ctx.storage, sess)
@@ -1068,7 +1219,8 @@ async def _handle_edit_profile(
         return
     if not exists:
         await _say(
-            ctx, sender,
+            ctx,
+            sender,
             (
                 "I don't have a profile for you yet — drop your resume in "
                 "chat first and I'll bootstrap one. Then I can apply this "
@@ -1080,7 +1232,8 @@ async def _handle_edit_profile(
     success, upsert_err = _upsert_patch(ctx, sess.user_key, {field: coerced})
     if not success:
         await _say(
-            ctx, sender,
+            ctx,
+            sender,
             rendering.format_error(upsert_err or "profile save failed"),
         )
         return
@@ -1094,7 +1247,8 @@ async def _handle_edit_profile(
 
     ctx.logger.info(f"edit_profile: {field}={coerced!r} for {sess.user_key}")
     await _say(
-        ctx, sender,
+        ctx,
+        sender,
         rendering.format_edit_confirmation(field, str(coerced)),
     )
 
@@ -1115,23 +1269,39 @@ async def _handle_upload_resume(
     # Extract any such URLs and synthesise fake resource items for them.
     if not resources:
         full_text = "\n".join(
-            getattr(c, "text", "") for c in msg.content
+            getattr(c, "text", "")
+            for c in msg.content
             if getattr(c, "type", "") == "text"
         )
-        url_matches = re.findall(r'!\[([^\]]*)\]\((https?://\S+)\)', full_text)
+        url_matches = re.findall(r"!\[([^\]]*)\]\((https?://\S+)\)", full_text)
         if not url_matches:
             # Also try bare URLs to known file CDNs
             url_matches = [
                 ("resume", m)
-                for m in re.findall(r'https?://\S+', full_text)
-                if any(cdn in m for cdn in ("cloudinary.com", "res.cloudinary", "agentverse", "catbox.moe"))
+                for m in re.findall(r"https?://\S+", full_text)
+                if any(
+                    cdn in m
+                    for cdn in (
+                        "cloudinary.com",
+                        "res.cloudinary",
+                        "agentverse",
+                        "catbox.moe",
+                    )
+                )
             ]
         for filename, url in url_matches:
-            resources.append({"_url": url, "_filename": filename or "resume.pdf", "resource_id": None})
+            resources.append(
+                {
+                    "_url": url,
+                    "_filename": filename or "resume.pdf",
+                    "resource_id": None,
+                }
+            )
 
     if not resources:
         await _say(
-            ctx, sender,
+            ctx,
+            sender,
             "I couldn't access the attached file — please try uploading "
             "your resume again (PDF, DOCX, or TXT).",
         )
@@ -1142,33 +1312,50 @@ async def _handle_upload_resume(
         # Inline-URL item synthesised from markdown text above
         if isinstance(item, dict) and item.get("_url"):
             import httpx as _httpx
+
             try:
                 resp = _httpx.get(item["_url"], timeout=60, follow_redirects=True)
                 resp.raise_for_status()
-                downloaded: tuple = (resp.content, resp.headers.get("content-type", "application/octet-stream"), item["_filename"])
+                downloaded: tuple = (
+                    resp.content,
+                    resp.headers.get("content-type", "application/octet-stream"),
+                    item["_filename"],
+                )
             except Exception as exc:
-                ctx.logger.warning(f"inline URL download failed ({item['_url']}): {exc}")
-                await _say(ctx, sender, rendering.format_error(f"Couldn't download the file from the link: {exc}"))
+                ctx.logger.warning(
+                    f"inline URL download failed ({item['_url']}): {exc}"
+                )
+                await _say(
+                    ctx,
+                    sender,
+                    rendering.format_error(
+                        f"Couldn't download the file from the link: {exc}"
+                    ),
+                )
                 continue
         else:
             downloaded = _download_resource(ctx, item)
         if not downloaded:
-            _rid = item.get("resource_id", "?") if isinstance(item, dict) else getattr(item, "resource_id", "?")
+            _rid = (
+                item.get("resource_id", "?")
+                if isinstance(item, dict)
+                else getattr(item, "resource_id", "?")
+            )
             await _say(
-                ctx, sender,
+                ctx,
+                sender,
                 rendering.format_error(f"Couldn't download attachment `{_rid}`."),
             )
             continue
         content_bytes, mime_type, source_filename = downloaded
 
         existing_names = [v.get("name", "") for v in sess.resume_versions]
-        version_name = resume_store.make_version_name(
-            source_filename, existing_names
-        )
+        version_name = resume_store.make_version_name(source_filename, existing_names)
 
         await _say(
-            ctx, sender,
-            f"📎 Got `{source_filename}` ({len(content_bytes)//1024} KB). "
+            ctx,
+            sender,
+            f"📎 Got `{source_filename}` ({len(content_bytes) // 1024} KB). "
             f"Saving as version `{version_name}` and parsing — give me a "
             f"sec…",
         )
@@ -1183,16 +1370,20 @@ async def _handle_upload_resume(
             )
         except Exception as exc:  # noqa: BLE001
             await _say(
-                ctx, sender,
+                ctx,
+                sender,
                 rendering.format_error(f"Couldn't save resume to disk: {exc}"),
             )
             continue
 
         # Parse + RAG-index directly (no network hop).
-        success, info, err = await asyncio.to_thread(_ingest_resume_direct, ctx, sess.user_key, version_entry["path"])
+        success, info, err = await asyncio.to_thread(
+            _ingest_resume_direct, ctx, sess.user_key, version_entry["path"]
+        )
         if not success:
             await _say(
-                ctx, sender,
+                ctx,
+                sender,
                 rendering.format_error(
                     f"Saved the file but couldn't index it: {err or 'unknown error'}"
                 ),
@@ -1208,7 +1399,8 @@ async def _handle_upload_resume(
         chars = info.get("chars_extracted") if info else None
         tail = f"{chars} chars extracted" if chars else "parsed"
         await _say(
-            ctx, sender,
+            ctx,
+            sender,
             (
                 f"✅ Resume `{version_name}` is ready ({tail}).\n"
                 f"It's now your **active** resume — any application you "
@@ -1219,11 +1411,13 @@ async def _handle_upload_resume(
     # If there are other versions, gently mention how to switch.
     if ingested and len(sess.resume_versions) > 1:
         others = [
-            v["name"] for v in sess.resume_versions
+            v["name"]
+            for v in sess.resume_versions
             if v["name"] != sess.active_resume_version
         ]
         await _say(
-            ctx, sender,
+            ctx,
+            sender,
             f"_You also have these stored: {', '.join(f'`{n}`' for n in others)}. "
             f"Say `switch resume <name>` to flip back._",
         )
@@ -1234,7 +1428,8 @@ async def _handle_list_resumes(
 ) -> None:
     if not sess.resume_versions:
         await _say(
-            ctx, sender,
+            ctx,
+            sender,
             "📭 No resumes stored yet. Drop a PDF/DOCX/TXT in chat and I'll "
             "parse it for you.",
         )
@@ -1245,13 +1440,10 @@ async def _handle_list_resumes(
         marker = "✅" if v.get("name") == sess.active_resume_version else "  "
         when = v.get("ingested_at", "")[:10]
         src = v.get("source_filename") or ""
-        lines.append(
-            f"{marker} `{v['name']}` — _{src}_  ({when})"
-        )
+        lines.append(f"{marker} `{v['name']}` — _{src}_  ({when})")
     lines.append("")
     lines.append(
-        "Switch with `switch resume <name>`, or drop a new one to add a "
-        "version."
+        "Switch with `switch resume <name>`, or drop a new one to add a version."
     )
     await _say(ctx, sender, "\n".join(lines))
 
@@ -1265,7 +1457,8 @@ async def _handle_switch_resume(
     target = resume_store.find_version(sess.resume_versions, requested_name)
     if not target:
         await _say(
-            ctx, sender,
+            ctx,
+            sender,
             (
                 f"I don't have a resume version called `{requested_name}`.\n"
                 f"Say `list resumes` to see what's stored."
@@ -1284,7 +1477,8 @@ async def _handle_switch_resume(
             ctx.logger.warning(f"switch_resume: profile sync failed: {err}")
 
     await _say(
-        ctx, sender,
+        ctx,
+        sender,
         f"✓ Active resume is now `{target['name']}` "
         f"(`{target.get('source_filename', '')}`).",
     )
@@ -1308,12 +1502,16 @@ def _existing_resume_path(raw_path: str | None) -> str | None:
     if not raw_path:
         return None
     raw = Path(raw_path).expanduser()
-    candidates = [raw] if raw.is_absolute() else [
-        JOB_AGENT_DIR / "profile-agent" / raw,
-        JOB_AGENT_DIR / raw,
-        ORCHESTRATOR_DIR / raw,
-        Path.cwd() / raw,
-    ]
+    candidates = (
+        [raw]
+        if raw.is_absolute()
+        else [
+            JOB_AGENT_DIR / "profile-agent" / raw,
+            JOB_AGENT_DIR / raw,
+            ORCHESTRATOR_DIR / raw,
+            Path.cwd() / raw,
+        ]
+    )
     for candidate in candidates:
         resolved = candidate.resolve()
         if resolved.is_file():
@@ -1337,7 +1535,9 @@ def _resolve_resume_path(ctx: Context, user_key: str) -> str | None:
     return _resolve_resume_path_from_profile(ctx, _load_profile(ctx, user_key))
 
 
-def _save_edit_to_profile(ctx: Context, user_key: str, *, label: str, field_name: str, value: str) -> None:
+def _save_edit_to_profile(
+    ctx: Context, user_key: str, *, label: str, field_name: str, value: str
+) -> None:
     attr = _match_structured_attr(field_name, label)
     if attr:
         _upsert_patch(ctx, user_key, {attr: value})
@@ -1357,17 +1557,28 @@ async def _close_browser_session(sender: str) -> None:
             pass
 
 
-async def _send_screenshot(ctx: Context, sender: str, png_bytes: bytes, caption: Optional[str]) -> bool:
-    public_url = chat_assets.upload_public_image(png_bytes, filename="form-preview.png",
-                                                  mime_type="image/png", logger=ctx.logger)
+async def _send_screenshot(
+    ctx: Context, sender: str, png_bytes: bytes, caption: Optional[str]
+) -> bool:
+    public_url = chat_assets.upload_public_image(
+        png_bytes, filename="form-preview.png", mime_type="image/png", logger=ctx.logger
+    )
     if public_url:
         try:
-            await ctx.send(sender, chat_assets.make_markdown_image_message(public_url, caption=caption))
+            await ctx.send(
+                sender,
+                chat_assets.make_markdown_image_message(public_url, caption=caption),
+            )
             return True
         except Exception:  # noqa: BLE001
             pass
-    uploaded = chat_assets.upload_image(png_bytes, name_prefix="form-fill", mime_type="image/png",
-                                         grant_to_address=sender, logger=ctx.logger)
+    uploaded = chat_assets.upload_image(
+        png_bytes,
+        name_prefix="form-fill",
+        mime_type="image/png",
+        grant_to_address=sender,
+        logger=ctx.logger,
+    )
     if uploaded:
         asset_id, asset_uri = uploaded
         if caption:
@@ -1384,7 +1595,9 @@ async def _send_screenshot(ctx: Context, sender: str, png_bytes: bytes, caption:
 
 async def _handle_fill_event(ctx: Context, sender: str, event: FillEvent) -> bool:
     if event.kind in {"started", "field_filled", "field_skipped"}:
-        ctx.logger.info(f"live-fill: {event.kind} {event.field_name or ''} {event.message or ''}")
+        ctx.logger.info(
+            f"live-fill: {event.kind} {event.field_name or ''} {event.message or ''}"
+        )
         return False
     if event.kind in {"screenshot", "done"}:
         if not event.screenshot_png:
@@ -1396,49 +1609,85 @@ async def _handle_fill_event(ctx: Context, sender: str, event: FillEvent) -> boo
     return False
 
 
-async def _run_live_fill(ctx: Context, sender: str, sess: FormSession, application_url: str, *,
-                         profile_snapshot: dict | None = None) -> bool:
+async def _run_live_fill(
+    ctx: Context,
+    sender: str,
+    sess: FormSession,
+    application_url: str,
+    *,
+    profile_snapshot: dict | None = None,
+) -> bool:
     headed = LIVE_FILL_MODE == "headed"
     mode_note = (
         "I'll pop a Chrome window on your machine so you can watch / edit the form directly, "
-        "and stream screenshots into chat too." if headed
+        "and stream screenshots into chat too."
+        if headed
         else "I'll stream screenshots of the real Greenhouse page into the chat."
     )
     await _say(ctx, sender, f"🎬 Opening the real Greenhouse form. {mode_note}")
     await _close_browser_session(sender)
     orch = session_mod.load(ctx.storage, sender)
     _active_ver = next(
-        (v for v in orch.resume_versions if v.get("name") == orch.active_resume_version),
+        (
+            v
+            for v in orch.resume_versions
+            if v.get("name") == orch.active_resume_version
+        ),
         None,
     )
     _resume_filename = (_active_ver or {}).get("source_filename") or None
-    bs = BrowserSession(application_url, headless=not headed, resume_path=sess.resume_path,
-                        resume_filename=_resume_filename)
+    bs = BrowserSession(
+        application_url,
+        headless=not headed,
+        resume_path=sess.resume_path,
+        resume_filename=_resume_filename,
+    )
     try:
         await bs.open()
     except Exception as exc:  # noqa: BLE001
-        await _say(ctx, sender, f"⚠️ Couldn't open the live form ({exc}). Showing text instead.")
+        await _say(
+            ctx, sender, f"⚠️ Couldn't open the live form ({exc}). Showing text instead."
+        )
         return False
     _live_browser_sessions[sender] = bs
 
     if profile_snapshot:
         discovered = await bs.discover_profile_fillables(
             profile_snapshot,
-            known_names={fld.get("name") for q in sess.questions for fld in (q.get("fields") or []) if fld.get("name")},
+            known_names={
+                fld.get("name")
+                for q in sess.questions
+                for fld in (q.get("fields") or [])
+                if fld.get("name")
+            },
         )
         if discovered:
             for item in discovered:
                 name = item["name"]
                 if not sess.field_meta(name):
-                    sess.questions.append({
-                        "label": item["label"], "required": item["required"],
-                        "description": "Detected from the live Greenhouse form.",
-                        "fields": [{"name": name, "type": item["ftype"], "required": item["required"],
-                                    "label": None, "values": item.get("options") or []}],
-                    })
+                    sess.questions.append(
+                        {
+                            "label": item["label"],
+                            "required": item["required"],
+                            "description": "Detected from the live Greenhouse form.",
+                            "fields": [
+                                {
+                                    "name": name,
+                                    "type": item["ftype"],
+                                    "required": item["required"],
+                                    "label": None,
+                                    "values": item.get("options") or [],
+                                }
+                            ],
+                        }
+                    )
                 if item.get("value") not in (None, "", []):
-                    sess.set_field(name, item["value"], source=item.get("source") or "profile",
-                                   confidence=float(item.get("confidence") or 0.0))
+                    sess.set_field(
+                        name,
+                        item["value"],
+                        source=item.get("source") or "profile",
+                        confidence=float(item.get("confidence") or 0.0),
+                    )
                 elif item.get("required") and name not in sess.missing_required:
                     sess.missing_required.append(name)
 
@@ -1456,7 +1705,9 @@ async def _run_live_fill(ctx: Context, sender: str, sess: FormSession, applicati
 
     streamed_any = False
     try:
-        async for event in bs.initial_fill(fillables, screenshot_every_n_fields=LIVE_FILL_SCREENSHOT_EVERY):
+        async for event in bs.initial_fill(
+            fillables, screenshot_every_n_fields=LIVE_FILL_SCREENSHOT_EVERY
+        ):
             if await _handle_fill_event(ctx, sender, event):
                 streamed_any = True
     except Exception as exc:  # noqa: BLE001
@@ -1475,13 +1726,23 @@ async def _run_live_fill(ctx: Context, sender: str, sess: FormSession, applicati
             ctx.logger.warning(f"eeo-fill failed: {exc}")
 
     if headed:
-        await _say(ctx, sender, "_Chrome stays open — scroll, edit, or double-check anything. Say `submit` when ready._")
+        await _say(
+            ctx,
+            sender,
+            "_Chrome stays open — scroll, edit, or double-check anything. Say `submit` when ready._",
+        )
     return streamed_any
 
 
-async def _apply_field_edit(ctx: Context, sender: str, sess: FormSession, name: str, value: str, kind: str) -> None:
+async def _apply_field_edit(
+    ctx: Context, sender: str, sess: FormSession, name: str, value: str, kind: str
+) -> None:
     if not sess.field_meta(name):
-        await _say(ctx, sender, f"Hmm, no field called `{name}` on this form. Try `show all` to see names.")
+        await _say(
+            ctx,
+            sender,
+            f"Hmm, no field called `{name}` on this form. Try `show all` to see names.",
+        )
         return
     meta = sess.field_meta(name) or {}
     opts = meta.get("values") or meta.get("options") or []
@@ -1495,40 +1756,68 @@ async def _apply_field_edit(ctx: Context, sender: str, sess: FormSession, name: 
     q = sess.question_for(name)
     label = (q or {}).get("label") or ""
     sess.set_field(name, resolved, source="user", confidence=1.0)
-    sess.user_edits.append({"name": name, "label": label, "value": resolved, "kind": kind})
+    sess.user_edits.append(
+        {"name": name, "label": label, "value": resolved, "kind": kind}
+    )
     form_session.save(ctx.storage, sess)
     orch_sess = session_mod.load(ctx.storage, sender)
-    _save_edit_to_profile(ctx, orch_sess.user_key or DEFAULT_USER_KEY,
-                          label=label, field_name=name, value=resolved)
+    _save_edit_to_profile(
+        ctx,
+        orch_sess.user_key or DEFAULT_USER_KEY,
+        label=label,
+        field_name=name,
+        value=resolved,
+    )
     bs = _live_browser_sessions.get(sender)
     if bs is not None and bs.is_open:
         try:
-            ok, png, detail = await bs.apply_edit(name, resolved, ftype=meta.get("type") or "",
-                                                    options=opts)
+            ok, png, detail = await bs.apply_edit(
+                name, resolved, ftype=meta.get("type") or "", options=opts
+            )
             if ok and png is not None:
-                await _send_screenshot(ctx, sender, png, caption=f"📸 Updated `{name}` → `{resolved}`")
+                await _send_screenshot(
+                    ctx, sender, png, caption=f"📸 Updated `{name}` → `{resolved}`"
+                )
         except Exception as exc:  # noqa: BLE001
             ctx.logger.warning(f"live-fill apply_edit failed: {exc}")
-    tail = ("All required fields filled — say `submit` when ready."
-            if not sess.missing_required
-            else f"Still missing: {', '.join(sess.missing_required)}.")
+    tail = (
+        "All required fields filled — say `submit` when ready."
+        if not sess.missing_required
+        else f"Still missing: {', '.join(sess.missing_required)}."
+    )
     await _say(ctx, sender, f"Got it — set `{name}` to `{resolved}`. {tail}")
 
 
-def _run_submission_sync(job_json: str, filled_json: str, resume_path: str, dry_run: bool, resume_filename: str = "") -> dict:
+def _run_submission_sync(
+    job_json: str,
+    filled_json: str,
+    resume_path: str,
+    dry_run: bool,
+    resume_filename: str = "",
+) -> dict:
     """Synchronous core of the submission — run via asyncio.to_thread."""
     try:
         job = json.loads(job_json)
         filled = json.loads(filled_json)
     except Exception as exc:  # noqa: BLE001
-        return {"success": False, "error": str(exc), "dry_run": dry_run,
-                "missing_required": [], "fields_submitted": []}
+        return {
+            "success": False,
+            "error": str(exc),
+            "dry_run": dry_run,
+            "missing_required": [],
+            "fields_submitted": [],
+        }
 
     board_token = job.get("board_token")
     job_id = job.get("job_id")
     if not board_token or not job_id:
-        return {"success": False, "error": "job_json missing board_token / job_id",
-                "dry_run": dry_run, "missing_required": [], "fields_submitted": []}
+        return {
+            "success": False,
+            "error": "job_json missing board_token / job_id",
+            "dry_run": dry_run,
+            "missing_required": [],
+            "fields_submitted": [],
+        }
 
     questions = job.get("questions") or []
     filled_fields = filled.get("filled") or []
@@ -1536,73 +1825,140 @@ def _run_submission_sync(job_json: str, filled_json: str, resume_path: str, dry_
 
     missing = check_required(questions, filled_fields, have_resume=have_resume)
     if missing:
-        return {"success": False, "error": f"Missing required field(s): {', '.join(missing)}",
-                "missing_required": missing, "fields_submitted": [], "dry_run": dry_run}
+        return {
+            "success": False,
+            "error": f"Missing required field(s): {', '.join(missing)}",
+            "missing_required": missing,
+            "fields_submitted": [],
+            "dry_run": dry_run,
+        }
 
     text_fields, file_field_names = build_payload(filled_fields, questions=questions)
     resume_field = file_field_names[0] if file_field_names else "resume"
     submitted_names = sorted({name for name, _ in text_fields})
 
     if dry_run or DEFAULT_DRY_RUN:
-        return {"success": True, "dry_run": True, "fields_submitted": submitted_names,
-                "missing_required": [], "response_body": json.dumps({
+        return {
+            "success": True,
+            "dry_run": True,
+            "fields_submitted": submitted_names,
+            "missing_required": [],
+            "response_body": json.dumps(
+                {
                     "url": f"https://boards-api.greenhouse.io/v1/boards/{board_token}/jobs/{job_id}",
-                    "text_fields": text_fields, "resume_field": resume_field,
-                    "resume_path": resume_path}, indent=2)}
+                    "text_fields": text_fields,
+                    "resume_field": resume_field,
+                    "resume_path": resume_path,
+                },
+                indent=2,
+            ),
+        }
 
     if not have_resume:
-        return {"success": False, "error": f"Resume file not found at {resume_path!r}",
-                "dry_run": False, "missing_required": [], "fields_submitted": []}
+        return {
+            "success": False,
+            "error": f"Resume file not found at {resume_path!r}",
+            "dry_run": False,
+            "missing_required": [],
+            "fields_submitted": [],
+        }
 
     try:
-        resp = post_application(board_token, str(job_id), text_fields,
-                                resume_path=resume_path, resume_field_name=resume_field,
-                                resume_filename=resume_filename or None)
+        resp = post_application(
+            board_token,
+            str(job_id),
+            text_fields,
+            resume_path=resume_path,
+            resume_field_name=resume_field,
+            resume_filename=resume_filename or None,
+        )
     except SubmitError as exc:
-        return {"success": False, "error": str(exc), "dry_run": False,
-                "missing_required": [], "fields_submitted": []}
+        return {
+            "success": False,
+            "error": str(exc),
+            "dry_run": False,
+            "missing_required": [],
+            "fields_submitted": [],
+        }
     except Exception as exc:  # noqa: BLE001
-        return {"success": False, "error": f"HTTP error: {exc}", "dry_run": False,
-                "missing_required": [], "fields_submitted": []}
+        return {
+            "success": False,
+            "error": f"HTTP error: {exc}",
+            "dry_run": False,
+            "missing_required": [],
+            "fields_submitted": [],
+        }
 
     application_id, body_text = parse_response(resp)
     ok = 200 <= resp.status_code < 300
-    return {"success": ok, "dry_run": False,
-            "application_id": application_id if ok else None,
-            "response_status": resp.status_code,
-            "response_body": body_text[:2000],
-            "fields_submitted": submitted_names if ok else [],
-            "missing_required": [],
-            "error": None if ok else f"Greenhouse returned HTTP {resp.status_code}"}
+    return {
+        "success": ok,
+        "dry_run": False,
+        "application_id": application_id if ok else None,
+        "response_status": resp.status_code,
+        "response_body": body_text[:2000],
+        "fields_submitted": submitted_names if ok else [],
+        "missing_required": [],
+        "error": None if ok else f"Greenhouse returned HTTP {resp.status_code}",
+    }
 
 
-async def _do_submit(ctx: Context, sender: str, sess: FormSession, *, dry_run: bool) -> None:
+async def _do_submit(
+    ctx: Context, sender: str, sess: FormSession, *, dry_run: bool
+) -> None:
     if sess.missing_required:
-        await _say(ctx, sender, f"⚠️ Still need: {', '.join(sess.missing_required)}. Use `answer <name> <value>`.")
+        await _say(
+            ctx,
+            sender,
+            f"⚠️ Still need: {', '.join(sess.missing_required)}. Use `answer <name> <value>`.",
+        )
         return
     if not sess.job_json:
-        await _say(ctx, sender, "No active application — paste a Greenhouse URL to start.")
+        await _say(
+            ctx, sender, "No active application — paste a Greenhouse URL to start."
+        )
         return
     sess.state = FormState.SUBMITTING
     form_session.save(ctx.storage, sess)
-    await _say(ctx, sender, f"📤 Submitting ({'dry-run' if dry_run else 'live'}) to Greenhouse...")
+    await _say(
+        ctx,
+        sender,
+        f"📤 Submitting ({'dry-run' if dry_run else 'live'}) to Greenhouse...",
+    )
     filled_payload = {
-        "filled": [{"name": f.get("name"), "label": f.get("label", ""), "value": f.get("value"),
-                    "source": f.get("source", "user"), "confidence": f.get("confidence", 1.0)}
-                   for f in sess.filled if (f.get("ftype") or "").lower() not in {"input_file", "file", "attachment"}],
+        "filled": [
+            {
+                "name": f.get("name"),
+                "label": f.get("label", ""),
+                "value": f.get("value"),
+                "source": f.get("source", "user"),
+                "confidence": f.get("confidence", 1.0),
+            }
+            for f in sess.filled
+            if (f.get("ftype") or "").lower()
+            not in {"input_file", "file", "attachment"}
+        ],
         "missing_required": sess.missing_required,
     }
     try:
         # Use the original source filename so Greenhouse shows a clean name.
         orch_sess = session_mod.load(ctx.storage, sender)
         active_ver = next(
-            (v for v in orch_sess.resume_versions if v.get("name") == orch_sess.active_resume_version),
+            (
+                v
+                for v in orch_sess.resume_versions
+                if v.get("name") == orch_sess.active_resume_version
+            ),
             None,
         )
         resume_filename = (active_ver or {}).get("source_filename") or ""
         resp = await asyncio.to_thread(
-            _run_submission_sync, sess.job_json, json.dumps(filled_payload),
-            sess.resume_path or "", dry_run, resume_filename,
+            _run_submission_sync,
+            sess.job_json,
+            json.dumps(filled_payload),
+            sess.resume_path or "",
+            dry_run,
+            resume_filename,
         )
     except Exception as exc:  # noqa: BLE001
         sess.state = FormState.REVIEWING
@@ -1622,17 +1978,25 @@ async def _do_submit(ctx: Context, sender: str, sess: FormSession, *, dry_run: b
     else:
         sess.state = FormState.REVIEWING
     form_session.save(ctx.storage, sess)
-    await _say(ctx, sender,
-               form_rendering.format_submission_result(
-                   dry_run=is_dry, success=success, error=resp.get("error"),
-                   application_id=resp.get("application_id"),
-                   status_code=resp.get("response_status"),
-                   fields_submitted=resp.get("fields_submitted", []),
-                   missing_required=resp.get("missing_required", [])),
-               end_session=(success and not is_dry))
+    await _say(
+        ctx,
+        sender,
+        form_rendering.format_submission_result(
+            dry_run=is_dry,
+            success=success,
+            error=resp.get("error"),
+            application_id=resp.get("application_id"),
+            status_code=resp.get("response_status"),
+            fields_submitted=resp.get("fields_submitted", []),
+            missing_required=resp.get("missing_required", []),
+        ),
+        end_session=(success and not is_dry),
+    )
 
 
-async def _ff_llm_handle(ctx: Context, sender: str, sess: FormSession, user_text: str) -> None:
+async def _ff_llm_handle(
+    ctx: Context, sender: str, sess: FormSession, user_text: str
+) -> None:
     interp = chat_llm.interpret(user_text, chat_llm.build_session_context(sess))
     ctx.logger.info(f"FF-LLM intent={interp.intent!r} field={interp.field!r}")
     if interp.reply:
@@ -1648,7 +2012,9 @@ async def _ff_llm_handle(ctx: Context, sender: str, sess: FormSession, user_text
         return
     if intent == "show":
         if interp.field:
-            await _say(ctx, sender, form_rendering.format_field_detail(sess, interp.field))
+            await _say(
+                ctx, sender, form_rendering.format_field_detail(sess, interp.field)
+            )
         return
     if intent == "show_payload":
         body = (sess.last_submission or {}).get("response_body")
@@ -1667,7 +2033,9 @@ async def _ff_llm_handle(ctx: Context, sender: str, sess: FormSession, user_text
                 target = interp.field if sess.field_meta(interp.field) else None
                 await _ff_compose_draft(ctx, sender, sess, target)
             else:
-                await _apply_field_edit(ctx, sender, sess, interp.field, interp.value, intent)
+                await _apply_field_edit(
+                    ctx, sender, sess, interp.field, interp.value, intent
+                )
         return
     if intent == "unfill":
         if interp.field:
@@ -1708,11 +2076,15 @@ def _build_profile_context(profile_obj) -> str:
     if profile_obj.education:
         parts.append("\nEducation:")
         for edu in profile_obj.education[:3]:
-            parts.append(f"- {edu.degree or ''} {edu.major or ''} — {edu.university_name or ''} ({edu.graduation_date or ''})")
+            parts.append(
+                f"- {edu.degree or ''} {edu.major or ''} — {edu.university_name or ''} ({edu.graduation_date or ''})"
+            )
     return "\n".join(parts)
 
 
-async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, requested_field: Optional[str]) -> None:
+async def _ff_compose_draft(
+    ctx: Context, sender: str, sess: FormSession, requested_field: Optional[str]
+) -> None:
     name = requested_field
     if not name:
         for fname in sess.missing_required or []:
@@ -1723,14 +2095,18 @@ async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, reques
         if not name and sess.missing_required:
             name = sess.missing_required[0]
     if not name or not sess.field_meta(name):
-        await _say(ctx, sender, "Tell me which question to draft — `show all` lists field names.")
+        await _say(
+            ctx,
+            sender,
+            "Tell me which question to draft — `show all` lists field names.",
+        )
         return
     meta = sess.field_meta(name) or {}
 
     # Find the full question object so we have the label + description.
     question: Optional[dict] = None
-    for q in (sess.questions or []):
-        for f in (q.get("fields") or []):
+    for q in sess.questions or []:
+        for f in q.get("fields") or []:
             if f.get("name") == name:
                 question = dict(q)
                 question["fields"] = [f]
@@ -1738,8 +2114,12 @@ async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, reques
         if question:
             break
     if not question:
-        question = {"label": meta.get("label", name), "description": meta.get("description"),
-                    "required": True, "fields": [meta]}
+        question = {
+            "label": meta.get("label", name),
+            "description": meta.get("description"),
+            "required": True,
+            "fields": [meta],
+        }
 
     orch_sess = session_mod.load(ctx.storage, sender)
     user_key = orch_sess.user_key or DEFAULT_USER_KEY
@@ -1749,7 +2129,9 @@ async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, reques
         return
 
     if not _mapper.asi_api_key:
-        await _say(ctx, sender, "❌ No ASI:One API key configured — cannot draft answers.")
+        await _say(
+            ctx, sender, "❌ No ASI:One API key configured — cannot draft answers."
+        )
         return
 
     # Build the richest context available: resume text + structured profile.
@@ -1762,8 +2144,11 @@ async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, reques
         context_parts.append(profile_ctx)
     context_text = "\n\n".join(context_parts)
     if not context_text:
-        await _say(ctx, sender,
-                   "❌ No resume or profile data to draft from. Upload your resume first.")
+        await _say(
+            ctx,
+            sender,
+            "❌ No resume or profile data to draft from. Upload your resume first.",
+        )
         return
 
     # Inject job role / company into the question label so the LLM can tailor
@@ -1789,13 +2174,22 @@ async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, reques
         await _say(ctx, sender, f"❌ Draft failed: {exc}")
         return
     if not draft:
-        await _say(ctx, sender,
-                   f"Couldn't generate a draft — try `answer {name} <your text>` to set it manually.")
+        await _say(
+            ctx,
+            sender,
+            f"Couldn't generate a draft — try `answer {name} <your text>` to set it manually.",
+        )
         return
-    await _say(ctx, sender, f"**Draft for `{name}`:**\n\n{draft}\n\nReply `answer {name} <edits>` to save.")
+    await _say(
+        ctx,
+        sender,
+        f"**Draft for `{name}`:**\n\n{draft}\n\nReply `answer {name} <edits>` to save.",
+    )
 
 
-async def _handle_review_command(ctx: Context, sender: str, sess: FormSession, cmd: Command) -> None:
+async def _handle_review_command(
+    ctx: Context, sender: str, sess: FormSession, cmd: Command
+) -> None:
     if cmd.kind == "greet":
         await _ff_llm_handle(ctx, sender, sess, cmd.raw)
         return
@@ -1803,7 +2197,9 @@ async def _handle_review_command(ctx: Context, sender: str, sess: FormSession, c
         await _say(ctx, sender, form_rendering.format_form_panel(sess))
         return
     if cmd.kind == "show":
-        await _say(ctx, sender, form_rendering.format_field_detail(sess, cmd.field_name or ""))
+        await _say(
+            ctx, sender, form_rendering.format_field_detail(sess, cmd.field_name or "")
+        )
         return
     if cmd.kind == "show_payload":
         body = (sess.last_submission or {}).get("response_body")
@@ -1891,7 +2287,9 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         await _say(ctx, sender, f"❌ No profile found.{hint}")
         return
     try:
-        map_result = await asyncio.to_thread(_mapper.map_questions, profile_obj, sess.questions, user_key=user_key)
+        map_result = await asyncio.to_thread(
+            _mapper.map_questions, profile_obj, sess.questions, user_key=user_key
+        )
         result = json.loads(map_result.model_dump_json())
     except Exception as exc:  # noqa: BLE001
         sess.state = FormState.IDLE
@@ -1900,22 +2298,36 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         return
 
     sess.filled = []
-    for f in (result.get("filled") or []):
+    for f in result.get("filled") or []:
         name = f.get("name")
         value = f.get("value")
         meta_for = sess.field_meta(name) if name else None
         opts = (meta_for or {}).get("values") or (meta_for or {}).get("options") or []
-        if isinstance(opts, list) and opts and value not in (None, "") and not isinstance(value, list):
+        if (
+            isinstance(opts, list)
+            and opts
+            and value not in (None, "")
+            and not isinstance(value, list)
+        ):
             m = match_option(value, opts)
             if m:
                 snapped = m["value"] or m["label"]
                 if snapped != value:
-                    ctx.logger.info(f"option-snap (initial): {name!r} {value!r} → {snapped!r}")
+                    ctx.logger.info(
+                        f"option-snap (initial): {name!r} {value!r} → {snapped!r}"
+                    )
                     value = snapped
-        sess.set_field(name, value, source=f.get("source") or "?", confidence=float(f.get("confidence") or 0.0))
+        sess.set_field(
+            name,
+            value,
+            source=f.get("source") or "?",
+            confidence=float(f.get("confidence") or 0.0),
+        )
 
     flagged = list(result.get("missing_required") or [])
-    filled_names = {f.get("name") for f in sess.filled if f.get("value") not in (None, "", [])}
+    filled_names = {
+        f.get("name") for f in sess.filled if f.get("value") not in (None, "", [])
+    }
     derived: list[str] = []
     for q in sess.questions:
         if not q.get("required"):
@@ -1936,13 +2348,19 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         file_field_name = None
         for q in sess.questions:
             for f in q.get("fields") or []:
-                if (f.get("type") or "").lower() in {"input_file", "file", "attachment"}:
+                if (f.get("type") or "").lower() in {
+                    "input_file",
+                    "file",
+                    "attachment",
+                }:
                     file_field_name = f.get("name")
                     break
             if file_field_name:
                 break
         if file_field_name:
-            sess.set_field(file_field_name, sess.resume_path, source="file", confidence=1.0)
+            sess.set_field(
+                file_field_name, sess.resume_path, source="file", confidence=1.0
+            )
 
     sess.state = FormState.REVIEWING
     form_session.save(ctx.storage, sess)
@@ -1955,14 +2373,18 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
             app_url = job_obj.get("application_url") or url
         except Exception:  # noqa: BLE001
             app_url = url
-        await _run_live_fill(ctx, sender, sess, app_url, profile_snapshot=profile_snapshot)
+        await _run_live_fill(
+            ctx, sender, sess, app_url, profile_snapshot=profile_snapshot
+        )
         # Save after live fill — it discovers EEO/extra fields and updates
         # missing_required in-memory, but the session was saved before this
         # call so those changes would otherwise be lost on the next message.
         form_session.save(ctx.storage, sess)
 
 
-async def _handle_form_turn(ctx: Context, sender: str, msg: ChatMessage, user_text: str) -> None:
+async def _handle_form_turn(
+    ctx: Context, sender: str, msg: ChatMessage, user_text: str
+) -> None:
     """Dispatch a user turn that arrived while apply_state == APPLYING."""
     cmd = parse_command(user_text)
     if cmd.kind == "help":
@@ -1970,7 +2392,11 @@ async def _handle_form_turn(ctx: Context, sender: str, msg: ChatMessage, user_te
         return
     sess = form_session.load(ctx.storage, sender)
     if sess.state in (FormState.EXTRACTING, FormState.MAPPING, FormState.SUBMITTING):
-        await _say(ctx, sender, f"⏳ Still working on the {sess.state.value} step — hang tight.")
+        await _say(
+            ctx,
+            sender,
+            f"⏳ Still working on the {sess.state.value} step — hang tight.",
+        )
         return
     if sess.state in (FormState.IDLE, FormState.DONE):
         await _ff_llm_handle(ctx, sender, sess, user_text)
@@ -1991,21 +2417,18 @@ async def _start_apply(
     await _start_application(ctx, sender, job_url)
 
 
-async def _handle_stub(
-    ctx: Context, sender: str, intent: str, note: str
-) -> None:
+async def _handle_stub(ctx: Context, sender: str, intent: str, note: str) -> None:
     """Placeholder for intents we have planned but not implemented yet."""
     await _say(
-        ctx, sender,
+        ctx,
+        sender,
         f"🚧 `{intent}` isn't wired up yet — {note}\n\n"
         f"For now, you can say `show my profile`, `help`, or paste a "
         f"Greenhouse URL.",
     )
 
 
-async def _handle_cancel(
-    ctx: Context, sender: str, sess: OrchestratorSession
-) -> None:
+async def _handle_cancel(ctx: Context, sender: str, sess: OrchestratorSession) -> None:
     if sess.apply_state == ApplyState.APPLYING:
         form_session.clear(ctx.storage, sender)
         await _close_browser_session(sender)
@@ -2016,12 +2439,14 @@ async def _handle_cancel(
     session_mod.save(ctx.storage, sess)
     if was_payment_pending:
         await _say(
-            ctx, sender,
+            ctx,
+            sender,
             "✓ Cancelled the pending application — no charge.",
         )
     else:
         await _say(
-            ctx, sender,
+            ctx,
+            sender,
             "✓ Cleared. What would you like to do next?",
         )
 
@@ -2038,7 +2463,8 @@ async def _on_payment_complete(ctx: Context, user_address: str) -> None:
     parked_url = sess.apply_job_url
     if not parked_url:
         await _say(
-            ctx, user_address,
+            ctx,
+            user_address,
             "✓ Payment received. I lost track of the job URL — please "
             "paste it again to start the application.",
         )
@@ -2047,7 +2473,8 @@ async def _on_payment_complete(ctx: Context, user_address: str) -> None:
         return
 
     await _say(
-        ctx, user_address,
+        ctx,
+        user_address,
         "✓ Payment confirmed. Starting your application now…",
     )
     # _start_apply resets apply_state to APPLYING + apply_job_url.
@@ -2057,9 +2484,7 @@ async def _on_payment_complete(ctx: Context, user_address: str) -> None:
     await _start_apply(ctx, user_address, sess, parked_url)
 
 
-async def _on_payment_failed(
-    ctx: Context, user_address: str, reason: str
-) -> None:
+async def _on_payment_failed(ctx: Context, user_address: str, reason: str) -> None:
     """Clear the parked URL and tell the user what happened."""
     sess = session_mod.load(ctx.storage, user_address)
     sess.apply_state = ApplyState.IDLE
@@ -2070,8 +2495,7 @@ async def _on_payment_failed(
         msg = "Payment cancelled — no charge, no application started."
     elif reason.startswith("buyer_rejected"):
         msg = (
-            "You rejected the payment. Paste the URL again whenever you "
-            "want to retry."
+            "You rejected the payment. Paste the URL again whenever you want to retry."
         )
     else:
         msg = (
@@ -2099,7 +2523,8 @@ async def _request_payment_for_apply(
         sess.apply_job_url = None
         session_mod.save(ctx.storage, sess)
         await _say(
-            ctx, sender,
+            ctx,
+            sender,
             rendering.format_error(
                 "Couldn't initiate payment — try again in a moment."
             ),
@@ -2118,10 +2543,7 @@ async def _handle_chat_impl(ctx: Context, sender: str, msg: ChatMessage) -> None
     user_text = _extract_text(msg)
     hot_apply_url = intents.find_greenhouse_url(user_text)
 
-    if (
-        hot_apply_url
-        and payment_mod.gate_active()
-    ):
+    if hot_apply_url and payment_mod.gate_active():
         await ctx.send(
             sender,
             ChatAcknowledgement(
@@ -2141,15 +2563,15 @@ async def _handle_chat_impl(ctx: Context, sender: str, msg: ChatMessage) -> None
             sess.apply_job_url = None
             session_mod.save(ctx.storage, sess)
             await _say(
-                ctx, sender,
+                ctx,
+                sender,
                 rendering.format_error(
                     "Couldn't initiate payment — try again in a moment."
                 ),
             )
             return
         ctx.logger.info(
-            f"Payment-first Greenhouse apply queued for {sender}: "
-            f"{hot_apply_url}"
+            f"Payment-first Greenhouse apply queued for {sender}: {hot_apply_url}"
         )
         return
 
@@ -2169,19 +2591,24 @@ async def _handle_chat_impl(ctx: Context, sender: str, msg: ChatMessage) -> None
     # regular intent classifier.
     card_selection = _extract_card_selection(msg)
     if card_selection is not None and card_selection.get("action") in (
-        "add_another_education", "save_education",
-        "edit_education_entry", "delete_education_entry",
+        "add_another_education",
+        "save_education",
+        "edit_education_entry",
+        "delete_education_entry",
     ):
         await _handle_education_action(ctx, sender, sess, card_selection)
         return
     if card_selection is not None and card_selection.get("action") in (
-        "add_another_experience", "save_experience",
-        "edit_experience_entry", "delete_experience_entry",
+        "add_another_experience",
+        "save_experience",
+        "edit_experience_entry",
+        "delete_experience_entry",
     ):
         await _handle_experience_action(ctx, sender, sess, card_selection)
         return
-    if card_selection is not None and ("section" in card_selection or
-                                        card_selection.get("action") == "edit_profile"):
+    if card_selection is not None and (
+        "section" in card_selection or card_selection.get("action") == "edit_profile"
+    ):
         await _handle_profile_card_selection(ctx, sender, sess, card_selection)
         return
 
@@ -2195,9 +2622,7 @@ async def _handle_chat_impl(ctx: Context, sender: str, msg: ChatMessage) -> None
 
     # Debug: log the content-type mix on every inbound so we can see what
     # the chat client actually sent (TextContent / ResourceContent / etc).
-    ctx.logger.info(
-        f"Inbound content types: {[type(c).__name__ for c in msg.content]}"
-    )
+    ctx.logger.info(f"Inbound content types: {[type(c).__name__ for c in msg.content]}")
 
     ctx.logger.info(
         f"Chat from {sender}: text={user_text!r} attachment={has_attachment} "
@@ -2216,8 +2641,12 @@ async def _handle_chat_impl(ctx: Context, sender: str, msg: ChatMessage) -> None
     # cancel/show profile/start a new apply mid-flow). Everything else
     # is forwarded to form-filler verbatim while we're applying.
     APPLY_META_VERBS = {
-        "cancel", "show_profile", "apply", "list_resumes",
-        "switch_resume", "upload_resume",
+        "cancel",
+        "show_profile",
+        "apply",
+        "list_resumes",
+        "switch_resume",
+        "upload_resume",
     }
     if (
         sess.apply_state == ApplyState.APPLYING
@@ -2266,23 +2695,27 @@ async def _handle_chat_impl(ctx: Context, sender: str, msg: ChatMessage) -> None
     if interp.intent == "edit_profile":
         if not interp.field or interp.value in (None, ""):
             await _say(
-                ctx, sender,
+                ctx,
+                sender,
                 "Tell me which field and value to set, e.g. "
-                "*\"my phone is +1-555-1234\"* or *\"set work auth to US Citizen\"*.",
+                '*"my phone is +1-555-1234"* or *"set work auth to US Citizen"*.',
             )
             return
         await _handle_edit_profile(ctx, sender, sess, interp.field, interp.value)
         return
 
     if interp.intent == "upload_resume":
-        await _handle_upload_resume(ctx, sender, msg, sess, has_attachment=has_attachment)
+        await _handle_upload_resume(
+            ctx, sender, msg, sess, has_attachment=has_attachment
+        )
         return
 
     if interp.intent == "switch_resume":
         if not interp.value:
             await _say(
-                ctx, sender,
-                "Tell me which version, e.g. *\"switch resume base\"*. "
+                ctx,
+                sender,
+                'Tell me which version, e.g. *"switch resume base"*. '
                 "Say `list resumes` to see what's stored.",
             )
             return
@@ -2296,9 +2729,9 @@ async def _handle_chat_impl(ctx: Context, sender: str, msg: ChatMessage) -> None
     if interp.intent == "apply":
         if not interp.value:
             await _say(
-                ctx, sender,
-                "Paste the Greenhouse application URL and I'll start filling "
-                "the form.",
+                ctx,
+                sender,
+                "Paste the Greenhouse application URL and I'll start filling the form.",
             )
             return
         url = str(interp.value)
@@ -2309,9 +2742,9 @@ async def _handle_chat_impl(ctx: Context, sender: str, msg: ChatMessage) -> None
             form_session.clear(ctx.storage, sender)
             await _close_browser_session(sender)
             await _say(
-                ctx, sender,
-                "_Cancelling the current application and starting the new "
-                "one…_",
+                ctx,
+                sender,
+                "_Cancelling the current application and starting the new one…_",
             )
             sess.apply_state = ApplyState.IDLE
             sess.apply_job_url = None
@@ -2323,7 +2756,8 @@ async def _handle_chat_impl(ctx: Context, sender: str, msg: ChatMessage) -> None
             sess.apply_job_url = url
             session_mod.save(ctx.storage, sess)
             await _say(
-                ctx, sender,
+                ctx,
+                sender,
                 "You still have a pending payment request. Use the payment "
                 "card above, or say `cancel` to abort.",
             )
@@ -2348,17 +2782,20 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     try:
         await _handle_chat_impl(ctx, sender, msg)
     finally:
-        await ctx.send(sender, ChatMessage(
-            timestamp=datetime.now(UTC),
-            msg_id=uuid4(),
-            content=[MetadataContent(type="metadata", metadata={"attachments": "true"})],
-        ))
+        await ctx.send(
+            sender,
+            ChatMessage(
+                timestamp=datetime.now(UTC),
+                msg_id=uuid4(),
+                content=[
+                    MetadataContent(type="metadata", metadata={"attachments": "true"})
+                ],
+            ),
+        )
 
 
 @chat_proto.on_message(ChatAcknowledgement)
-async def handle_ack(
-    ctx: Context, sender: str, msg: ChatAcknowledgement
-) -> None:
+async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> None:
     # Nothing to do; logging only.
     ctx.logger.debug(f"ack from {sender} for {msg.acknowledged_msg_id}")
 
@@ -2391,9 +2828,7 @@ payment_mod.set_agent_wallet(agent.wallet)
 
 @agent.on_event("startup")
 async def on_startup(ctx: Context):
-    ctx.logger.info(
-        f"Agent starting: {ctx.agent.name} at {ctx.agent.address}"
-    )
+    ctx.logger.info(f"Agent starting: {ctx.agent.name} at {ctx.agent.address}")
     ctx.logger.info(f"default_dry_run={DEFAULT_DRY_RUN}")
     if payment_mod.gate_active():
         ctx.logger.info(

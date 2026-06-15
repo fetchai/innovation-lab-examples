@@ -167,7 +167,9 @@ def _summarise_session(session_ctx: dict[str, Any]) -> str:
                         v = v[:60] + "…"
                     value_preview = f"= {v!r}"
                     break
-            lines.append(f"  - name={name!r} label={label!r} {value_preview} {status_str}".rstrip())
+            lines.append(
+                f"  - name={name!r} label={label!r} {value_preview} {status_str}".rstrip()
+            )
     return "\n".join(lines).strip()
 
 
@@ -184,7 +186,8 @@ def _heuristic_fallback(user_text: str, session_ctx: dict[str, Any]) -> Interpre
     if text in {"hi", "hello", "hey", "yo", "hii", "sup"}:
         if session_ctx.get("state") == "reviewing":
             tail = (
-                f"We're on **{job}**" + (f" at {company}" if company else "")
+                f"We're on **{job}**"
+                + (f" at {company}" if company else "")
                 + f" — {filled_n} filled, {missing_n} to go."
             )
             return Interpretation(

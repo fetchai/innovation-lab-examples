@@ -65,10 +65,14 @@ class _State(TypedDict):
 
 def _call(state: _State, system: str, user: str, max_tokens: int = 600) -> str:
     from openai import OpenAI
+
     client = OpenAI(base_url="https://api.asi1.ai/v1", api_key=state["asi_api_key"])
     resp = client.chat.completions.create(
         model=state["asi_model"],
-        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
         max_tokens=max_tokens,
         temperature=0.2,
     )

@@ -9,6 +9,7 @@ import time
 
 def _stripe():
     import stripe  # type: ignore
+
     stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
     return stripe
 
@@ -25,8 +26,12 @@ def create_checkout_session(*, user_address: str, chat_session_id: str) -> dict:
     stripe = _stripe()
     amount_cents = int(os.getenv("STRIPE_AMOUNT_CENTS", "100"))
     currency = (os.getenv("STRIPE_CURRENCY", "usd") or "usd").strip().lower()
-    product_name = (os.getenv("STRIPE_PRODUCT_NAME", "Job Application Service") or "").strip()
-    success_url = (os.getenv("STRIPE_SUCCESS_URL", "https://agentverse.ai/payment-success") or "").strip()
+    product_name = (
+        os.getenv("STRIPE_PRODUCT_NAME", "Job Application Service") or ""
+    ).strip()
+    success_url = (
+        os.getenv("STRIPE_SUCCESS_URL", "https://agentverse.ai/payment-success") or ""
+    ).strip()
 
     return_url = (
         f"{success_url}"
@@ -42,17 +47,19 @@ def create_checkout_session(*, user_address: str, chat_session_id: str) -> dict:
         mode="payment",
         return_url=return_url,
         expires_at=_expires_at(),
-        line_items=[{
-            "price_data": {
-                "currency": currency,
-                "product_data": {
-                    "name": product_name,
-                    "description": "Automated Greenhouse job application",
+        line_items=[
+            {
+                "price_data": {
+                    "currency": currency,
+                    "product_data": {
+                        "name": product_name,
+                        "description": "Automated Greenhouse job application",
+                    },
+                    "unit_amount": amount_cents,
                 },
-                "unit_amount": amount_cents,
-            },
-            "quantity": 1,
-        }],
+                "quantity": 1,
+            }
+        ],
         metadata={
             "user_address": user_address,
             "session_id": chat_session_id,

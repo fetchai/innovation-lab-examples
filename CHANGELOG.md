@@ -5,6 +5,7 @@ All notable changes to this repository are documented in this file.
 ## [Unreleased]
 
 ### Added
+- `Browser-based-agents/playwright/job-application-agent/`: Conversational job-application agent — paste a Greenhouse URL and the orchestrator fills the application via Playwright, manages a persistent user profile (resume upload, structured fields, EEO), drafts free-text answers with a LangGraph compose→critique→revise loop, and gates submissions behind an optional Stripe payment. Single-agent architecture powered by ASI:One and registered on Agentverse.
 - `news-card-agent/`: ASI:One interactive-cards example. Live news rendered as a `card_kind: "custom"` element-tree (section → list of items with image, heading, text, badge, and a "Read Full Article" button). Tapping a button opens a fresh detail card. Multi-backend news cascade (Tavily → NewsAPI.org → Hacker News), ASI1 LLM-polished card copy, and no payment protocol.
 - Auto badge workflow [award-contributor-badge.yml](.github/workflows/award-contributor-badge.yml) for merged external contributor PRs; [BADGE_REGISTRY.json](contributors/BADGE_REGISTRY.json) and [profile-badge-sync](contributors/profile-badge-sync/) for GitHub Profile README
 - Maintainer bypass for `review-required` and `stargazer-gate` (Fetch.ai org, repo write access, [.github/MAINTAINERS](.github/MAINTAINERS))

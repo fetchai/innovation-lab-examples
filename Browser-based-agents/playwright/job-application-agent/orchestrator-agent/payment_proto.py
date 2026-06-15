@@ -53,6 +53,7 @@ from stripe_payments import create_checkout_session, verify_paid
 # Configuration
 # ---------------------------------------------------------------------------
 
+
 def gate_active() -> bool:
     enabled = os.getenv("PAYMENT_ENABLED", "false").lower() in {"1", "true", "yes"}
     return enabled and bool(os.getenv("STRIPE_SECRET_KEY"))
@@ -92,6 +93,7 @@ def set_agent_wallet(wallet) -> None:
 # Payment request helper
 # ---------------------------------------------------------------------------
 
+
 async def send_payment_request(ctx: Context, sender: str) -> None:
     """Create a Stripe checkout session and send RequestPayment to the buyer."""
     checkout = await asyncio.to_thread(
@@ -103,11 +105,13 @@ async def send_payment_request(ctx: Context, sender: str) -> None:
     currency = (os.getenv("STRIPE_CURRENCY", "usd") or "usd").strip().upper()
     amount_str = f"{cents / 100:.2f}"
     req = RequestPayment(
-        accepted_funds=[Funds(
-            currency=currency,
-            amount=amount_str,
-            payment_method="stripe",
-        )],
+        accepted_funds=[
+            Funds(
+                currency=currency,
+                amount=amount_str,
+                payment_method="stripe",
+            )
+        ],
         recipient=str(ctx.agent.address),
         deadline_seconds=1800,
         reference=str(ctx.session),
@@ -131,18 +135,22 @@ async def _on_commit(ctx: Context, sender: str, msg: CommitPayment):
         f"method={msg.funds.payment_method} tx={msg.transaction_id}"
     )
     if msg.funds.payment_method != "stripe" or not msg.transaction_id:
-        await ctx.send(sender, RejectPayment(
-            reason="Unsupported payment method (expected stripe)."
-        ))
+        await ctx.send(
+            sender,
+            RejectPayment(reason="Unsupported payment method (expected stripe)."),
+        )
         if _on_failed_cb:
             await _on_failed_cb(ctx, sender, "unsupported_payment_method")
         return
 
     paid = await asyncio.to_thread(verify_paid, msg.transaction_id)
     if not paid:
-        await ctx.send(sender, RejectPayment(
-            reason="Stripe payment not completed yet. Please finish checkout."
-        ))
+        await ctx.send(
+            sender,
+            RejectPayment(
+                reason="Stripe payment not completed yet. Please finish checkout."
+            ),
+        )
         if _on_failed_cb:
             await _on_failed_cb(ctx, sender, "stripe_not_paid")
         return
