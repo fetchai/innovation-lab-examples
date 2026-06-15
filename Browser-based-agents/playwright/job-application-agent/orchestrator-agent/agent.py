@@ -2878,9 +2878,10 @@ async def on_startup(ctx: Context):
                     ctx.storage.set("_agentverse_readme_hash", readme_hash)
                     ctx.logger.info("Agentverse profile (readme/description) updated.")
                 else:
-                    ctx.logger.warning(f"Agentverse profile update failed: {result.detail}")
+                    # Token may be expired (1h TTL) — not a hard failure.
+                    ctx.logger.debug(f"Agentverse profile update skipped: {result.detail}")
         except Exception as exc:
-            ctx.logger.warning(f"Agentverse profile update skipped: {exc}")
+            ctx.logger.debug(f"Agentverse profile update skipped: {exc}")
 
 
 agent.include(chat_proto, publish_manifest=True)
