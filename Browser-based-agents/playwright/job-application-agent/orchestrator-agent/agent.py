@@ -2864,7 +2864,7 @@ async def on_startup(ctx: Context):
             )
             result = await register_in_agentverse(
                 request=connect_req,
-                identity=agent.identity,
+                identity=agent._identity,
                 prefix=agent._prefix,
                 agentverse=agent.agentverse,
                 agent_details=reg_request,
