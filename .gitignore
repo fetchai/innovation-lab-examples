@@ -3,25 +3,6 @@
 .env.local
 .env.*.local
 
-# Cursor MCP config (contains Agentverse API token) - keep example template only
-.cursor/mcp.json
-
-# Claude Code MCP config (contains Agentverse API token)
-.mcp.json
-
-# Codex MCP config (contains Agentverse API token)
-.codex/
-
-# Internal/private docs (never push)
-Fetch Internship - summer Cohort Tasks.md
-
-# Job-application-agent local runtime data (resumes, vector index, agent storage)
-job-application-agent/**/data/
-
-# Job-application-agent private working notes (not for commit)
-job-application-agent/PLAN.md
-job-application-agent/wiki/
-
 # Python
 __pycache__/
 **/__pycache__/
