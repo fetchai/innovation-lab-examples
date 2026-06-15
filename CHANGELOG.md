@@ -5,6 +5,7 @@ All notable changes to this repository are documented in this file.
 ## [Unreleased]
 
 ### Added
+- GSSoC '26 label system: [.github/labels/gssoc-labels.json](.github/labels/gssoc-labels.json) definitions, [.github/scripts/create-gssoc-labels.sh](.github/scripts/create-gssoc-labels.sh) bootstrap script, `gssoc-label-bootstrap` workflow (auto-create/update labels), `gssoc-label-sync` workflow (copy `gssoc26`/`level1-3` labels from linked issues to PRs for dashboard tracking), and [docs/GSSOC.md](docs/GSSOC.md) guide
 - `langchain-agents/deep-agents/hackflow-agent/`: LangChain Deep Agents hackathon intelligence agent for ASI:One. Three-subagent research pipeline (event_finder, sponsor_researcher, winner_researcher), Stripe-gated full analysis, ASI:One primary LLM with fallbacks, Tavily web search, and persisted cross-turn follow-up memory.
 - `news-card-agent/`: ASI:One interactive-cards example. Live news rendered as a `card_kind: "custom"` element-tree (section → list of items with image, heading, text, badge, and a "Read Full Article" button). Tapping a button opens a fresh detail card. Multi-backend news cascade (Tavily → NewsAPI.org → Hacker News), ASI1 LLM-polished card copy, and no payment protocol.
 - Auto badge workflow [award-contributor-badge.yml](.github/workflows/award-contributor-badge.yml) for merged external contributor PRs; [BADGE_REGISTRY.json](contributors/BADGE_REGISTRY.json) and [profile-badge-sync](contributors/profile-badge-sync/) for GitHub Profile README
