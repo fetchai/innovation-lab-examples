@@ -141,7 +141,7 @@ def _patch_stream_handlers():
                     _h.stream = _tee_err
 
 
-AGENT_NAME = "job_application_orchestrator"
+AGENT_NAME = "Job Application"
 SEED_PHRASE = os.getenv(
     "ORCHESTRATOR_AGENT_SEED", "orchestrator-agent-user-facing-seed-v1"
 )
