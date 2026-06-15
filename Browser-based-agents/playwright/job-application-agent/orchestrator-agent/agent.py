@@ -505,6 +505,7 @@ async def handle_ingest_resume_msg(ctx: Context, sender: str, msg: IngestResumeR
     if not ok:
         await ctx.send(sender, IngestResumeResponse(success=False, error=err))
         return
+    assert info is not None
     await ctx.send(sender, IngestResumeResponse(success=True, **info))
 
 
@@ -812,6 +813,8 @@ def _download_resource(ctx: Context, item) -> Optional[tuple[bytes, str, str]]:
         if source_filename and not source_filename.startswith("resource_"):
             break
 
+    if content_bytes is None:
+        return None
     return content_bytes, mime_type, source_filename
 
 
@@ -1317,7 +1320,7 @@ async def _handle_upload_resume(
             try:
                 resp = _httpx.get(item["_url"], timeout=60, follow_redirects=True)
                 resp.raise_for_status()
-                downloaded: tuple = (
+                downloaded: Optional[tuple[bytes, str, str]] = (
                     resp.content,
                     resp.headers.get("content-type", "application/octet-stream"),
                     item["_filename"],
@@ -1692,11 +1695,12 @@ async def _run_live_fill(
                 elif item.get("required") and name not in sess.missing_required:
                     sess.missing_required.append(name)
 
-    fillables = []
+    fillables: list[dict[str, Any]] = []
     for f in sess.filled:
         ftype = (f.get("ftype") or "").lower()
         enriched = dict(f)
-        meta = sess.field_meta(f.get("name")) or {}
+        _fname = f.get("name")
+        meta: dict[str, Any] = (sess.field_meta(_fname) if _fname else None) or {}
         enriched["options"] = meta.get("values") or meta.get("options") or []
         enriched["ftype"] = ftype or meta.get("type") or ""
         if ftype in {"input_file", "file", "attachment"}:
@@ -2059,7 +2063,9 @@ def _build_profile_context(profile_obj) -> str:
     """Build a text summary from structured profile fields for use when
     resume_text is absent or to supplement it with job-specific context."""
     parts: list[str] = []
-    name_parts = filter(None, [profile_obj.first_name, profile_obj.last_name])
+    name_parts: list[str] = [
+        n for n in [profile_obj.first_name, profile_obj.last_name] if n
+    ]
     full_name = " ".join(name_parts)
     if full_name:
         parts.append(f"Candidate: {full_name}")
@@ -2702,7 +2708,9 @@ async def _handle_chat_impl(ctx: Context, sender: str, msg: ChatMessage) -> None
                 '*"my phone is +1-555-1234"* or *"set work auth to US Citizen"*.',
             )
             return
-        await _handle_edit_profile(ctx, sender, sess, interp.field, interp.value)
+        await _handle_edit_profile(
+            ctx, sender, sess, interp.field or "", interp.value or ""
+        )
         return
 
     if interp.intent == "upload_resume":
@@ -2879,7 +2887,9 @@ async def on_startup(ctx: Context):
                     ctx.logger.info("Agentverse profile (readme/description) updated.")
                 else:
                     # Token may be expired (1h TTL) — not a hard failure.
-                    ctx.logger.debug(f"Agentverse profile update skipped: {result.detail}")
+                    ctx.logger.debug(
+                        f"Agentverse profile update skipped: {result.detail}"
+                    )
         except Exception as exc:
             ctx.logger.debug(f"Agentverse profile update skipped: {exc}")
 

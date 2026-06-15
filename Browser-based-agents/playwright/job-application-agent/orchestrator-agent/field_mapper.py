@@ -33,7 +33,7 @@ from answer_composer import compose_answer
 from models import FilledField, MapFieldsResult, UserProfile
 
 # Greenhouse field-name conventions we recognize.
-PROFILE_FIELD_ALIASES: dict[str, str] = {
+PROFILE_FIELD_ALIASES: dict[str, Optional[str]] = {
     "first_name": "first_name",
     "middle_name": "middle_name",
     "last_name": "last_name",

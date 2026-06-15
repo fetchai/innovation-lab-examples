@@ -209,10 +209,12 @@ def extract(url: str) -> ExtractionResult:
     board_token, job_id, err = _parse_url(url)
     if err:
         return ExtractionResult(success=False, error=err)
+    assert board_token is not None and job_id is not None
 
     raw, err = _fetch_job(board_token, job_id)
     if err:
         return ExtractionResult(success=False, error=err)
+    assert raw is not None
 
     return ExtractionResult(success=True, job=_assemble(board_token, job_id, raw))
 

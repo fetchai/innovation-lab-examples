@@ -23,6 +23,7 @@ import re
 from typing import Any, AsyncIterator, Optional
 
 from playwright.async_api import (
+    AsyncPlaywright,
     Browser,
     BrowserContext,
     Locator,
@@ -426,7 +427,7 @@ class BrowserSession:
         self.resume_filename = resume_filename  # override filename shown to Greenhouse
         self.nav_timeout_ms = nav_timeout_ms
 
-        self._pw = None
+        self._pw: Optional[AsyncPlaywright] = None
         self._browser: Optional[Browser] = None
         self._context: Optional[BrowserContext] = None
         self._page: Optional[Page] = None
@@ -441,8 +442,9 @@ class BrowserSession:
         """Boot Chromium and navigate to the application page. Idempotent."""
         if self.is_open:
             return
-        self._pw = await async_playwright().start()
-        self._browser = await self._pw.chromium.launch(
+        pw = await async_playwright().start()
+        self._pw = pw
+        self._browser = await pw.chromium.launch(
             headless=self.headless,
             args=["--disable-blink-features=AutomationControlled"],
         )

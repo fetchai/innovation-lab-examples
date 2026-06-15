@@ -668,12 +668,12 @@ def build_education_overview_card(
         for i, e in enumerate(education):
             title = e.get("university_name") or f"Education {i + 1}"
             bits = [e.get("degree"), e.get("major"), e.get("graduation_date")]
-            subtitle = "  ·  ".join(b for b in bits if b) or "No details"
+            entry_subtitle = "  ·  ".join(b for b in bits if b) or "No details"
             entry_items.append(
                 ListItem(
                     children=[
                         HeadingNode(type="heading", value=title, level=3),
-                        TextNode(type="text", value=subtitle, style="muted"),
+                        TextNode(type="text", value=entry_subtitle, style="muted"),
                     ],
                     action=ButtonAction(
                         selection={"action": "edit_education_entry", "index": i}
@@ -691,7 +691,7 @@ def build_education_overview_card(
         )
     )
 
-    subtitle = (
+    subtitle: Optional[str] = (
         None if education else "No education added yet — click to add your first entry."
     )
     return CustomCardPayload(
@@ -858,12 +858,14 @@ def build_experience_overview_card(
             dates = "  ·  ".join(
                 d for d in (e.get("start_date"), e.get("end_date") or "Present") if d
             )
-            subtitle = "  ·  ".join(s for s in [company, dates] if s) or "No details"
+            entry_subtitle = (
+                "  ·  ".join(s for s in [company, dates] if s) or "No details"
+            )
             entry_items.append(
                 ListItem(
                     children=[
                         HeadingNode(type="heading", value=title, level=3),
-                        TextNode(type="text", value=subtitle, style="muted"),
+                        TextNode(type="text", value=entry_subtitle, style="muted"),
                     ],
                     action=ButtonAction(
                         selection={"action": "edit_experience_entry", "index": i}
@@ -881,7 +883,7 @@ def build_experience_overview_card(
         )
     )
 
-    subtitle = (
+    subtitle: Optional[str] = (
         None
         if experience
         else "No experience added yet — click to add your first entry."
