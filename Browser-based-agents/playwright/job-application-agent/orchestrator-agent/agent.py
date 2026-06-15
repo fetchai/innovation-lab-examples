@@ -2830,10 +2830,51 @@ async def on_startup(ctx: Context):
     else:
         ctx.logger.info("Payment gate disabled (PAYMENT_ENABLED=false)")
 
-    # Agentverse publication is handled by the Agent constructor. That
-    # keeps the published profile in sync with both chat and seller
-    # payment manifests; publishing this agent as chat-only makes ASI:One
-    # render RequestPayment messages as plain text instead of inline cards.
+    # Push updated readme/description to Agentverse on every startup.
+    # _handle_connect (the REST endpoint that normally does this) is only
+    # triggered by the local agent inspector, not by mailbox polling, so
+    # we call register_in_agentverse directly here instead.
+    if AGENTVERSE_API_KEY:
+        try:
+            from uagents.mailbox import AgentverseConnectRequest, register_in_agentverse
+            from uagents_core.registration import AgentEndpoint, AgentProfile, RegistrationRequest
+
+            readme = (
+                Path(__file__).resolve().parent / "agentverse_readme.md"
+            ).read_text()
+
+            connect_req = AgentverseConnectRequest(
+                user_token=AGENTVERSE_API_KEY,
+                agent_type="mailbox",
+                endpoint=f"http://localhost:{PORT}",
+            )
+            reg_request = RegistrationRequest(
+                address=agent.address,
+                name=AGENT_NAME,
+                profile=AgentProfile(
+                    description=(
+                        "User-facing job-application agent. Manage your resume + profile, "
+                        "then paste a Greenhouse URL to apply. "
+                        "A one-time payment is required per application."
+                    ),
+                    readme=readme,
+                ),
+                endpoints=[AgentEndpoint(url=f"http://localhost:{PORT}", weight=1)],
+                protocols=list(agent.protocols.keys()),
+            )
+            result = await register_in_agentverse(
+                request=connect_req,
+                identity=agent.identity,
+                prefix=agent._prefix,
+                agentverse=agent.agentverse,
+                agent_details=reg_request,
+            )
+            if result.success:
+                ctx.logger.info("Agentverse profile (readme/description) updated.")
+            else:
+                ctx.logger.warning(f"Agentverse profile update failed: {result.detail}")
+        except Exception as exc:
+            ctx.logger.warning(f"Agentverse profile update skipped: {exc}")
 
 
 agent.include(chat_proto, publish_manifest=True)
