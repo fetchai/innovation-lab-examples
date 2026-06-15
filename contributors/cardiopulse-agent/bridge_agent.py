@@ -117,8 +117,10 @@ bridge = Agent(
 # BLE callback stay fast (non-blocking) while the agent does the network I/O.
 _send_queue: asyncio.Queue[dict] = asyncio.Queue(maxsize=200)
 
-# Stats for the periodic "[POST status]" line.
-_stats = {"sent": 0, "ack": 0, "fail": 0, "last_err": ""}
+# Stats for the periodic stream status line. Counters and the last-error
+# string are kept in separate containers so each value has a single type.
+_stats: dict[str, int] = {"sent": 0, "ack": 0, "fail": 0}
+_last_err: dict[str, str] = {"msg": ""}
 
 
 @bridge.on_event("startup")
@@ -182,10 +184,10 @@ async def _sender_loop(ctx: Context) -> None:
                     _stats["ack"] += 1
                 else:
                     _stats["fail"] += 1
-                    _stats["last_err"] = f"HTTP {resp.status_code}: {resp.text[:120]}"
+                    _last_err["msg"] = f"HTTP {resp.status_code}: {resp.text[:120]}"
             except Exception as e:
                 _stats["fail"] += 1
-                _stats["last_err"] = f"{type(e).__name__}: {e}"
+                _last_err["msg"] = f"{type(e).__name__}: {e}"
 
 
 async def _status_loop(ctx: Context) -> None:
@@ -201,7 +203,7 @@ async def _status_loop(ctx: Context) -> None:
                 sent,
                 ack,
                 fail,
-                _stats["last_err"],
+                _last_err["msg"],
             )
         else:
             ctx.logger.info("stream: %d sent / %d ack / 0 failed", sent, ack)
