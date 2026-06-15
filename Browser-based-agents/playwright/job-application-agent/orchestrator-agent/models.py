@@ -72,6 +72,8 @@ class UserProfile(BaseModel):
 
     # EEO / voluntary disclosures (all optional)
     gender: Optional[str] = None
+    transgender_experience: Optional[str] = None
+    sexual_orientation: Optional[str] = None
     race_ethnicity: Optional[str] = None
     veteran_status: Optional[str] = None
     disability_status: Optional[str] = None

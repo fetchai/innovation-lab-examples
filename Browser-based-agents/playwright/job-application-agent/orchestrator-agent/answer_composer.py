@@ -26,9 +26,13 @@ UNKNOWN_MARKER = "<NEEDS_USER_INPUT>"
 _COMPOSE_SYSTEM = (
     "You help a candidate answer a job application question. "
     "Write a concise, first-person answer (1–3 short paragraphs, max ~150 words). "
-    "Ground every claim in the provided resume. "
-    "Do NOT invent companies, dates, projects, or technologies not in the resume. "
-    f"If the resume doesn't support a confident answer, reply exactly: {UNKNOWN_MARKER}"
+    "Use the provided resume / profile context as the factual basis. "
+    "For factual claims (companies, dates, technologies) stay grounded in the profile. "
+    "For motivational or opinion questions ('Why this company?', 'What excites you?') "
+    "you may draw reasonable inferences from the candidate's background and the role. "
+    "Do NOT invent companies, degrees, or dates not in the profile. "
+    f"Only reply exactly '{UNKNOWN_MARKER}' if the question is so specific that "
+    "no reasonable answer can be inferred at all (e.g. salary expectation)."
 )
 
 _CRITIQUE_SYSTEM = (
@@ -41,8 +45,9 @@ _CRITIQUE_SYSTEM = (
 _REVISE_SYSTEM = (
     "You help a candidate improve a job application answer. "
     "Revise the draft based on the feedback provided. "
-    "Keep it concise (1–3 paragraphs, max ~150 words) and grounded in the resume. "
-    f"If the resume truly doesn't support a confident answer, reply exactly: {UNKNOWN_MARKER}"
+    "Keep it concise (1–3 paragraphs, max ~150 words) and grounded in the profile context. "
+    "For motivational questions you may draw reasonable inferences from the candidate's background. "
+    f"Only reply exactly '{UNKNOWN_MARKER}' if no reasonable answer can be inferred at all."
 )
 
 

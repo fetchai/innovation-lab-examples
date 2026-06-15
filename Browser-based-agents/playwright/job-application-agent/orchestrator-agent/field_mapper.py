@@ -49,6 +49,7 @@ PROFILE_FIELD_ALIASES: dict[str, str] = {
     "address_line_2": "address_line_2",
     "address2": "address_line_2",
     "city": "city",
+    "location": "city",
     "state": "state",
     "country": "country",
     "current_city": "city",
@@ -73,7 +74,12 @@ SELECT_LABEL_MATCHERS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"work\s*auth|authorized?\s*to\s*work|right\s*to\s*work", re.I), "work_authorization"),
     (re.compile(r"sponsor", re.I), "needs_sponsorship"),
     (re.compile(r"visa", re.I), "requires_visa"),
+    # transgender must come before gender so the longer pattern wins
+    (re.compile(r"transgender", re.I), "transgender_experience"),
     (re.compile(r"gender", re.I), "gender"),
+    (re.compile(r"sexual\s+orientation", re.I), "sexual_orientation"),
+    # hispanic/latino is a yes/no question; keep it before the generic race/ethnicity
+    (re.compile(r"hispanic|latino", re.I), "race_ethnicity"),
     (re.compile(r"(race|ethnicity)", re.I), "race_ethnicity"),
     (re.compile(r"veteran", re.I), "veteran_status"),
     (re.compile(r"disab(le|ility)", re.I), "disability_status"),
@@ -308,6 +314,17 @@ class FieldMapper:
                 desired = getattr(profile, attr_name, None)
                 if desired is None:
                     continue
+
+                # Hispanic/Latino is a yes/no question even though we store
+                # it under race_ethnicity.  Derive Yes/No from the stored value
+                # so the fuzzy match can use the yes/no prefix heuristics.
+                if re.search(r"hispanic|latino", label or "", re.I) and isinstance(desired, str):
+                    re_normed = _norm(desired)
+                    if "hispanic" in re_normed or "latino" in re_normed or "latina" in re_normed:
+                        desired = True   # Yes
+                    else:
+                        desired = False  # No
+
                 # bools may need yes/no normalization
                 if isinstance(desired, str):
                     bool_guess = _yes_no_to_bool(desired)

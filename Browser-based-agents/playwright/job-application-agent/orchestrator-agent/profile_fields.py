@@ -37,6 +37,8 @@ KNOWN_STR_FIELDS: set[str] = {
     "twitter",
     "work_authorization",
     "gender",
+    "transgender_experience",
+    "sexual_orientation",
     "race_ethnicity",
     "veteran_status",
     "disability_status",
@@ -89,6 +91,11 @@ _ALIASES: dict[str, str] = {
     "race": "race_ethnicity",
     "veteran": "veteran_status",
     "disability": "disability_status",
+    "transgender": "transgender_experience",
+    "trans": "transgender_experience",
+    "orientation": "sexual_orientation",
+    "lgbtq": "sexual_orientation",
+    "sexuality": "sexual_orientation",
 }
 
 

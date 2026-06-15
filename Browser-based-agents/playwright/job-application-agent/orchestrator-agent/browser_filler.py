@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from pathlib import Path
 import re
 from typing import Any, AsyncIterator, Optional
 
@@ -100,6 +101,21 @@ DEMOGRAPHIC_OPTIONS: dict[str, list[dict[str, str]]] = {
     "disability_status": [
         _option("Yes, I have a disability"),
         _option("No, I don't have a disability"),
+        _option("I don't wish to answer"),
+    ],
+    "transgender_experience": [
+        _option("Yes"),
+        _option("No"),
+        _option("I don't wish to answer"),
+    ],
+    "sexual_orientation": [
+        _option("Heterosexual / Straight"),
+        _option("Gay or Lesbian"),
+        _option("Bisexual"),
+        _option("Pansexual"),
+        _option("Asexual"),
+        _option("Queer"),
+        _option("I use a different term"),
         _option("I don't wish to answer"),
     ],
     "lgbtq": [
@@ -202,6 +218,11 @@ def _map_military_status(value: Any) -> Optional[str]:
         return "I identify as a non-protected veteran"
     if "protected veteran" in normed and "not" not in normed:
         return "I identify as a protected veteran"
+    # "I am not a protected veteran" — the "not" guard above rejects it, so
+    # return the phrase verbatim; option-snapping in discover_profile_fillables
+    # will match it against whatever the live form actually uses.
+    if "not" in normed and "veteran" in normed:
+        return value if isinstance(value, str) else str(value)
     return None
 
 
@@ -250,14 +271,40 @@ def _profile_value_for_live_label(
         if city:
             return "city", city, []
 
-    if "gender identity" in normed:
-        return "gender", _map_gender_identity(profile.get("gender")), DEMOGRAPHIC_OPTIONS["gender_identity"]
-    if "race or ethnicity" in normed or "race/ethnicity" in normed:
-        return "race_ethnicity", _map_race_ethnicity(profile.get("race_ethnicity")), DEMOGRAPHIC_OPTIONS["race_ethnicity"]
+    # EEO / demographic fields
+    # -------------------------------------------------------------------
+    # Greenhouse uses React comboboxes for these — the JS in
+    # discover_profile_fillables can't extract their options at rest, so
+    # control.get("options") is always [].  The actual fill goes through
+    # _select_styled_dropdown which opens the live dropdown and does
+    # substring matching against the real [role="option"] text.
+    # We therefore pass the RAW profile value (e.g. "Male", "No",
+    # "I am not a protected veteran") so the substring match finds the
+    # right live option instead of a hardcoded label that may not exist.
+    if "gender" in normed and "transgender" not in normed:
+        return "gender", profile.get("gender"), []
+    if "transgender" in normed:
+        return "transgender_experience", profile.get("transgender_experience"), []
+    if "sexual orientation" in normed:
+        return "sexual_orientation", profile.get("sexual_orientation"), []
+    # "Are you Hispanic or Latino?" — derive Yes/No from stored race_ethnicity.
+    if "hispanic" in normed or "latino" in normed:
+        re_val = _norm(profile.get("race_ethnicity") or "")
+        if "hispanic" in re_val or "latino" in re_val or "latina" in re_val:
+            derived: Optional[str] = "Yes"
+        elif re_val:
+            derived = "No"
+        else:
+            derived = None
+        return "race_ethnicity", derived, []
+    if "race or ethnicity" in normed or "race/ethnicity" in normed or (
+        "ethnicity" in normed and "hispanic" not in normed and "latino" not in normed
+    ):
+        return "race_ethnicity", profile.get("race_ethnicity"), []
     if "military status" in normed or "veteran" in normed:
-        return "veteran_status", _map_military_status(profile.get("veteran_status")), DEMOGRAPHIC_OPTIONS["military_status"]
+        return "veteran_status", profile.get("veteran_status"), []
     if "disability status" in normed:
-        return "disability_status", _map_disability_status(profile.get("disability_status")), DEMOGRAPHIC_OPTIONS["disability_status"]
+        return "disability_status", profile.get("disability_status"), []
     if "lgbtq" in normed:
         extras = profile.get("extras") or {}
         value = extras.get("lgbtq") or profile.get("lgbtq")
@@ -531,6 +578,26 @@ class BrowserSession:
             if not attr:
                 continue
 
+            # Snap the mapped value to the actual live options on the page.
+            # This bridges gaps between our hardcoded labels and what Greenhouse
+            # actually renders (e.g. "No, I don't have a disability" vs the
+            # longer "No, I do not have a disability and have not had one in
+            # the past").  We try three things in order:
+            #   1. match_option on the already-mapped value
+            #   2. match_option on the raw profile value (e.g. "No" / "Male" /
+            #      "I am not a protected veteran") — usually shorter and more
+            #      likely to hit an exact or yes/no-prefix match
+            actual_opts = control.get("options") or []
+            if actual_opts:
+                snapped = match_option(value, actual_opts) if value else None
+                if not snapped:
+                    raw = profile.get(attr)
+                    if raw is not None:
+                        snapped = match_option(str(raw), actual_opts)
+                if snapped:
+                    value = snapped.get("value") or snapped.get("label") or value
+
+            options = actual_opts or options
             required = bool(control.get("required"))
             discovered.append(
                 {
@@ -547,6 +614,141 @@ class BrowserSession:
             )
             known_names.add(name)
         return discovered
+
+    async def fill_eeo_fields(self, profile: dict[str, Any]) -> list[tuple[str, bool, str]]:
+        """Directly fill EEO demographic dropdowns by matching their visible
+        label text on the page.
+
+        These fields are not returned by the Greenhouse boards API and are
+        sometimes missed by discover_profile_fillables when their select
+        elements have opaque / duplicate name attributes.  This method walks
+        every visible <select> and [role=combobox] element on the page, calls
+        _profile_value_for_live_label on its label, and selects the right
+        option if a profile value is available.
+
+        Returns a list of (label, success, detail) tuples.
+        """
+        if self._page is None or not profile:
+            return []
+
+        # EEO label keywords — only process elements whose label matches one
+        # of these to avoid touching unrelated dropdowns.
+        EEO_KEYWORDS = {
+            "gender", "hispanic", "latino", "veteran", "disab",
+            "ethnicity", "race", "sexual orientation", "transgender",
+        }
+
+        results: list[tuple[str, bool, str]] = []
+        try:
+            controls = await self._page.evaluate(
+                """() => {
+                  function labelFor(el) {
+                    const id = el.id;
+                    if (id) {
+                      const lab = document.querySelector('label[for="' + CSS.escape(id) + '"]');
+                      if (lab) return lab.innerText.trim();
+                    }
+                    const wrap = el.closest('label');
+                    if (wrap) return wrap.innerText.trim();
+                    const group = el.closest('[class*="field"],[class*="question"],fieldset,.form-field');
+                    if (group) return group.innerText.trim().slice(0, 300);
+                    return '';
+                  }
+                  function visible(el) {
+                    const r = el.getBoundingClientRect();
+                    const s = getComputedStyle(el);
+                    return !!(r.width || r.height) && s.visibility !== 'hidden' && s.display !== 'none';
+                  }
+                  return Array.from(document.querySelectorAll('select, [role="combobox"]')).map(el => ({
+                    tag: el.tagName.toLowerCase(),
+                    role: el.getAttribute('role') || '',
+                    id: el.id || '',
+                    name: el.getAttribute('name') || '',
+                    label: labelFor(el),
+                    visible: visible(el),
+                    options: el.tagName.toLowerCase() === 'select'
+                      ? Array.from(el.options).map(o => ({label: o.textContent.trim(), value: o.value || o.textContent.trim()}))
+                      : [],
+                  }));
+                }"""
+            )
+        except Exception:  # noqa: BLE001
+            return []
+
+        for ctrl in controls:
+            if not ctrl.get("visible"):
+                continue
+            raw_label = _clean_label(ctrl.get("label") or "")
+            label_lc = raw_label.lower()
+            if not any(kw in label_lc for kw in EEO_KEYWORDS):
+                continue
+
+            ftype = "multi_value_single_select" if ctrl.get("tag") == "select" or ctrl.get("role") == "combobox" else "input_text"
+            attr, value, _ = _profile_value_for_live_label(profile, raw_label, ftype=ftype)
+            if not attr or value is None:
+                continue
+
+            # Locate the element on the page using id > name > label-text.
+            el_id = ctrl.get("id") or ""
+            el_name = ctrl.get("name") or ""
+            loc = None
+            for sel in [
+                f'[id="{_css_escape(el_id)}"]' if el_id else None,
+                f'[name="{_css_escape(el_name)}"]' if el_name else None,
+            ]:
+                if not sel:
+                    continue
+                try:
+                    candidate = self._page.locator(sel).first
+                    if await candidate.count() > 0 and await candidate.is_visible(timeout=300):
+                        loc = candidate
+                        break
+                except Exception:  # noqa: BLE001
+                    continue
+
+            if loc is None:
+                results.append((raw_label, False, "element not found on page"))
+                continue
+
+            tag = ctrl.get("tag", "input")
+            target_label = str(value)
+            target_value = str(value)
+
+            # For native <select> with known options, snap the value first.
+            actual_opts = ctrl.get("options") or []
+            if actual_opts:
+                snapped = match_option(str(value), actual_opts)
+                if not snapped:
+                    raw_prof = profile.get(attr)
+                    if raw_prof is not None:
+                        snapped = match_option(str(raw_prof), actual_opts)
+                if snapped:
+                    target_label = snapped.get("label") or target_label
+                    target_value = snapped.get("value") or target_value
+
+            try:
+                if tag == "select":
+                    for attempt_fn in (
+                        lambda: loc.select_option(value=target_value),
+                        lambda: loc.select_option(label=target_label),
+                        lambda: loc.select_option(value=str(value)),
+                        lambda: loc.select_option(label=str(value)),
+                    ):
+                        try:
+                            await attempt_fn()
+                            results.append((raw_label, True, f"selected `{target_label}`"))
+                            break
+                        except Exception:  # noqa: BLE001
+                            continue
+                    else:
+                        results.append((raw_label, False, "select_option exhausted"))
+                else:
+                    ok, detail = await self._select_styled_dropdown(loc, el_id or el_name, target_label, target_value)
+                    results.append((raw_label, ok, detail))
+            except Exception as exc:  # noqa: BLE001
+                results.append((raw_label, False, str(exc)))
+
+        return results
 
     # ------------------------------------------------------------------
     # Internals
@@ -609,31 +811,83 @@ class BrowserSession:
         ftype = (ftype or "").lower()
         options = options or []
 
-        if ftype in {"input_file", "file"}:
+        if ftype in {"input_file", "file", "attachment"}:
             if not self.resume_path:
                 return False, "no resume file on disk"
+            import shutil, tempfile
+            attach_path = self.resume_path
+            tmp_dir = None
             try:
-                import shutil, tempfile
-                attach_path = self.resume_path
-                tmp_dir = None
                 if self.resume_filename:
                     tmp_dir = tempfile.mkdtemp()
                     attach_path = str(Path(tmp_dir) / self.resume_filename)
                     shutil.copy2(self.resume_path, attach_path)
+
+                # Greenhouse wraps file inputs in custom React/Dropzone widgets.
+                # set_input_files() on the hidden <input> bypasses React handlers
+                # and nothing gets registered.  The only reliable approach is to
+                # intercept the native file-chooser dialog that React opens when
+                # the visible upload button/link is clicked.
+                #
+                # Strategy (tried in order):
+                #   1. Expect a file-chooser, then click any visible upload trigger
+                #      near a file input on the page.
+                #   2. If that fails, use set_input_files on the raw <input> and
+                #      fire a synthetic 'change' event so React picks it up.
+
+                # Broad selector covering Greenhouse "Attach" links, "Upload file"
+                # buttons, Dropzone click zones, and generic file-chooser triggers.
+                _UPLOAD_BTN_SEL = (
+                    'a:has-text("Attach"), button:has-text("Attach"), '
+                    'a:has-text("Upload"), button:has-text("Upload"), '
+                    'a:has-text("Browse"), button:has-text("Browse"), '
+                    'a:has-text("Choose"), button:has-text("Choose"), '
+                    '[class*="dz-clickable"] button, [class*="dz-clickable"] a, '
+                    '[class*="dropzone"] button, [class*="dropzone"] a, '
+                    'label[class*="upload"], label[for*="resume"], '
+                    'label[for*="file"]'
+                )
+                trigger = self._page.locator(_UPLOAD_BTN_SEL).first
+
+                used_chooser = False
                 try:
-                    loc = self._page.locator(
-                        f'input[type="file"][name="{_css_escape(name)}"]'
+                    if await trigger.count() > 0:
+                        async with self._page.expect_file_chooser(timeout=8000) as fc_info:
+                            try:
+                                await trigger.click(timeout=3000)
+                            except Exception:  # noqa: BLE001
+                                # Container might intercept the click; try JS click
+                                await trigger.evaluate("el => el.click()")
+                        fc = await fc_info.value
+                        await fc.set_files(attach_path)
+                        used_chooser = True
+                except Exception:  # noqa: BLE001
+                    pass
+
+                if not used_chooser:
+                    # Last resort: set files directly on the hidden <input> and
+                    # fire a synthetic change event so React/Dropzone registers it.
+                    file_input = self._page.locator(
+                        f'input[type="file"][name="{_css_escape(name)}"], '
+                        f'input[type="file"][name="job_application[{_css_escape(name)}]"], '
+                        f'input[type="file"][name*="{_css_escape(name)}"]'
                     ).first
-                    if await loc.count() == 0:
-                        loc = self._page.locator('input[type="file"]').first
-                    await loc.set_input_files(attach_path)
-                finally:
-                    if tmp_dir:
-                        shutil.rmtree(tmp_dir, ignore_errors=True)
-                display_name = self.resume_filename or attach_path.split("/")[-1]
+                    if await file_input.count() == 0:
+                        file_input = self._page.locator('input[type="file"]').first
+                    await file_input.set_input_files(attach_path)
+                    # Fire change + input events so React/Dropzone re-renders.
+                    await file_input.evaluate(
+                        "el => { el.dispatchEvent(new Event('change', {bubbles:true})); "
+                        "el.dispatchEvent(new Event('input', {bubbles:true})); }"
+                    )
+
+                display_name = self.resume_filename or Path(attach_path).name
                 return True, f"attached {display_name}"
             except Exception as exc:  # noqa: BLE001
                 return False, f"file upload failed: {exc}"
+            finally:
+                if tmp_dir:
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
 
         loc = await self._find_input_for_name(name)
         if loc is None:
@@ -688,7 +942,12 @@ class BrowserSession:
             # Greenhouse react-select / styled dropdowns. The original element
             # is an <input> (often type="text" with role=combobox). We click
             # it to open the listbox, then click the matching option.
-            if options:
+            # IMPORTANT: try this even when `options` is empty — Greenhouse EEO
+            # comboboxes are closed React dropdowns whose options aren't in the
+            # DOM until clicked, so discover_profile_fillables returns options=[].
+            # The ftype check ensures we still open-and-click for select fields.
+            if options or ftype in {"multi_value_single_select", "multi_value_multi_select",
+                                    "select", "combobox"}:
                 ok, detail = await self._select_styled_dropdown(
                     loc, name, target_label, target_value
                 )
@@ -749,31 +1008,43 @@ class BrowserSession:
 
         await asyncio.sleep(0.25)
 
-        # The listbox is usually rendered into a portal. Look for any
-        # role=option whose visible text contains the target label.
+        # The listbox is usually rendered into a portal. Scan [role="option"]
+        # elements in three passes — from most to least specific — so that
+        # short targets like "No" or "Male" don't accidentally match a longer
+        # option that merely *contains* those letters (e.g. "Hispanic or
+        # Latin**o**" or "Cisgender **man**").
+        #   Pass 1 — exact match (case-insensitive)
+        #   Pass 2 — prefix: option text starts with target, or target starts
+        #            with option text (handles "No" → "No, I do not have …")
+        #   Pass 3 — general substring in either direction (broad fallback)
         normalized_target = target_label.lower().strip()
         try:
             options_loc = self._page.locator('[role="option"]')
             count = await options_loc.count()
+            opt_texts: list[tuple[int, str, str]] = []
             for i in range(count):
                 opt = options_loc.nth(i)
                 try:
                     txt = (await opt.inner_text(timeout=500)).strip()
                 except Exception:  # noqa: BLE001
                     continue
-                if not txt:
-                    continue
-                nt = txt.lower().strip()
-                if (
-                    nt == normalized_target
-                    or normalized_target in nt
-                    or nt in normalized_target
-                ):
-                    try:
-                        await opt.click(timeout=1500)
-                        return True, f"clicked option `{txt}`"
-                    except Exception:  # noqa: BLE001
-                        continue
+                if txt:
+                    opt_texts.append((i, txt, txt.lower().strip()))
+
+            for pass_num in range(3):
+                for i, txt, nt in opt_texts:
+                    if pass_num == 0:
+                        match = nt == normalized_target
+                    elif pass_num == 1:
+                        match = nt.startswith(normalized_target) or normalized_target.startswith(nt)
+                    else:
+                        match = normalized_target in nt or nt in normalized_target
+                    if match:
+                        try:
+                            await options_loc.nth(i).click(timeout=1500)
+                            return True, f"clicked option `{txt}`"
+                        except Exception:  # noqa: BLE001
+                            continue
         except Exception:  # noqa: BLE001
             pass
 

@@ -76,6 +76,7 @@ from commands import Command, parse as parse_command  # noqa: E402
 from form_session import Session as FormSession, State as FormState  # noqa: E402
 from options import match_option  # noqa: E402
 from extractor import ExtractionResult, extract as _extract_job  # noqa: E402
+from answer_composer import compose_answer  # noqa: E402
 from field_mapper import FieldMapper  # noqa: E402
 from greenhouse_client import (  # noqa: E402
     SubmitError, build_payload, check_required, parse_response, post_application,
@@ -214,6 +215,9 @@ STORAGE_URL = f"{AGENTVERSE_URL}/v1/storage"
 # ---------------------------------------------------------------------------
 # Agent setup
 # ---------------------------------------------------------------------------
+
+# Ensure storage files land in ORCHESTRATOR_DIR regardless of launch directory.
+os.chdir(ORCHESTRATOR_DIR)
 
 agent = Agent(
     name=AGENT_NAME,
@@ -527,6 +531,29 @@ async def _send_payment_request(ctx: Context, sender: str) -> None:
 
 
 _MY_MENTION_RE = re.compile(r"^\s*@agent1[a-z0-9]{50,}\s*", re.IGNORECASE)
+
+# Phrases that signal the user wants the LLM to *generate* an answer rather
+# than supplying the literal text as the field value.
+_GENERATION_REQUEST_RE = re.compile(
+    r"\b("
+    r"can you|could you"
+    r"|please\s+(write|draft|answer|generate)"
+    r"|answer\s+(this|it)\s+for\s+me"
+    r"|write\s+(this|it)\s+for\s+me"
+    r"|draft\s+(this|it)\s+for\s+me"
+    r"|for\s+me\s+in\s+\d"
+    r"|based\s+on\s+my\s+(resume|profile|cv)"
+    r"|from\s+my\s+(resume|profile|cv)"
+    r"|in\s+\d+[- ]lines?"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _is_generation_request(text: str) -> bool:
+    """Return True when the user's text is an instruction to draft an answer,
+    not the literal value they want to set."""
+    return bool(_GENERATION_REQUEST_RE.search(text or ""))
 
 
 def _extract_text(message: ChatMessage) -> str:
@@ -1422,7 +1449,7 @@ async def _run_live_fill(ctx: Context, sender: str, sess: FormSession, applicati
         meta = sess.field_meta(f.get("name")) or {}
         enriched["options"] = meta.get("values") or meta.get("options") or []
         enriched["ftype"] = ftype or meta.get("type") or ""
-        if ftype in {"input_file", "file"}:
+        if ftype in {"input_file", "file", "attachment"}:
             fillables.insert(0, enriched)
         else:
             fillables.append(enriched)
@@ -1434,6 +1461,19 @@ async def _run_live_fill(ctx: Context, sender: str, sess: FormSession, applicati
                 streamed_any = True
     except Exception as exc:  # noqa: BLE001
         ctx.logger.warning(f"live-fill: initial_fill failed: {exc}")
+
+    # EEO demographic fields (Gender, Hispanic/Latino, Veteran Status,
+    # Disability Status) are not returned by the Greenhouse API and are
+    # sometimes missed by discover_profile_fillables when their select
+    # elements have opaque name attributes.  Fill them directly by label.
+    if profile_snapshot:
+        try:
+            eeo_results = await bs.fill_eeo_fields(profile_snapshot)
+            for lbl, ok, detail in eeo_results:
+                ctx.logger.info(f"eeo-fill: {lbl!r} ok={ok} {detail}")
+        except Exception as exc:  # noqa: BLE001
+            ctx.logger.warning(f"eeo-fill failed: {exc}")
+
     if headed:
         await _say(ctx, sender, "_Chrome stays open — scroll, edit, or double-check anything. Say `submit` when ready._")
     return streamed_any
@@ -1549,7 +1589,7 @@ async def _do_submit(ctx: Context, sender: str, sess: FormSession, *, dry_run: b
     filled_payload = {
         "filled": [{"name": f.get("name"), "label": f.get("label", ""), "value": f.get("value"),
                     "source": f.get("source", "user"), "confidence": f.get("confidence", 1.0)}
-                   for f in sess.filled if (f.get("ftype") or "").lower() not in {"input_file", "file"}],
+                   for f in sess.filled if (f.get("ftype") or "").lower() not in {"input_file", "file", "attachment"}],
         "missing_required": sess.missing_required,
     }
     try:
@@ -1623,7 +1663,11 @@ async def _ff_llm_handle(ctx: Context, sender: str, sess: FormSession, user_text
         return
     if intent in {"answer", "edit"}:
         if interp.field and interp.value is not None:
-            await _apply_field_edit(ctx, sender, sess, interp.field, interp.value, intent)
+            if _is_generation_request(interp.value):
+                target = interp.field if sess.field_meta(interp.field) else None
+                await _ff_compose_draft(ctx, sender, sess, target)
+            else:
+                await _apply_field_edit(ctx, sender, sess, interp.field, interp.value, intent)
         return
     if intent == "unfill":
         if interp.field:
@@ -1642,6 +1686,32 @@ async def _ff_llm_handle(ctx: Context, sender: str, sess: FormSession, user_text
         return
 
 
+def _build_profile_context(profile_obj) -> str:
+    """Build a text summary from structured profile fields for use when
+    resume_text is absent or to supplement it with job-specific context."""
+    parts: list[str] = []
+    name_parts = filter(None, [profile_obj.first_name, profile_obj.last_name])
+    full_name = " ".join(name_parts)
+    if full_name:
+        parts.append(f"Candidate: {full_name}")
+    if profile_obj.work_authorization:
+        parts.append(f"Work authorization: {profile_obj.work_authorization}")
+    if profile_obj.experience:
+        parts.append("\nWork experience:")
+        for exp in profile_obj.experience[:4]:
+            line = f"- {exp.job_title or 'Role'} at {exp.company_name or 'Company'}"
+            if exp.start_date:
+                line += f" ({exp.start_date}–{exp.end_date or 'present'})"
+            if exp.description:
+                line += f"\n  {exp.description[:300]}"
+            parts.append(line)
+    if profile_obj.education:
+        parts.append("\nEducation:")
+        for edu in profile_obj.education[:3]:
+            parts.append(f"- {edu.degree or ''} {edu.major or ''} — {edu.university_name or ''} ({edu.graduation_date or ''})")
+    return "\n".join(parts)
+
+
 async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, requested_field: Optional[str]) -> None:
     name = requested_field
     if not name:
@@ -1656,7 +1726,9 @@ async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, reques
         await _say(ctx, sender, "Tell me which question to draft — `show all` lists field names.")
         return
     meta = sess.field_meta(name) or {}
-    question = None
+
+    # Find the full question object so we have the label + description.
+    question: Optional[dict] = None
     for q in (sess.questions or []):
         for f in (q.get("fields") or []):
             if f.get("name") == name:
@@ -1668,22 +1740,57 @@ async def _ff_compose_draft(ctx: Context, sender: str, sess: FormSession, reques
     if not question:
         question = {"label": meta.get("label", name), "description": meta.get("description"),
                     "required": True, "fields": [meta]}
-    await _say(ctx, sender, f"✍️ Drafting an answer for `{name}` from your resume…")
+
     orch_sess = session_mod.load(ctx.storage, sender)
     user_key = orch_sess.user_key or DEFAULT_USER_KEY
     profile_obj = _profile_store(ctx).get(user_key)
     if profile_obj is None:
         await _say(ctx, sender, "❌ No profile found — set up your profile first.")
         return
+
+    if not _mapper.asi_api_key:
+        await _say(ctx, sender, "❌ No ASI:One API key configured — cannot draft answers.")
+        return
+
+    # Build the richest context available: resume text + structured profile.
+    # This lets the LLM draft answers even when resume_text is absent.
+    context_parts: list[str] = []
+    if profile_obj.resume_text:
+        context_parts.append(profile_obj.resume_text[:3500])
+    profile_ctx = _build_profile_context(profile_obj)
+    if profile_ctx:
+        context_parts.append(profile_ctx)
+    context_text = "\n\n".join(context_parts)
+    if not context_text:
+        await _say(ctx, sender,
+                   "❌ No resume or profile data to draft from. Upload your resume first.")
+        return
+
+    # Inject job role / company into the question label so the LLM can tailor
+    # the answer (e.g. "Why Anthropic?" with "[Role: ML Engineer at Anthropic]").
+    question_label = question.get("label") or name
+    if sess.job_title or sess.job_company:
+        job_ctx = sess.job_title or ""
+        if sess.job_company:
+            job_ctx = f"{job_ctx} at {sess.job_company}".lstrip(" at ")
+        question_label = f"{question_label}  [Role: {job_ctx}]"
+
+    await _say(ctx, sender, f"✍️ Drafting an answer for `{name}`…")
     try:
-        map_result = await asyncio.to_thread(_mapper.map_questions, profile_obj, [question], user_key=user_key)
-        result = json.loads(map_result.model_dump_json())
+        draft = await asyncio.to_thread(
+            compose_answer,
+            question_label=question_label,
+            question_desc=question.get("description"),
+            resume_text=context_text,
+            asi_api_key=_mapper.asi_api_key,
+            asi_model=_mapper.asi_model,
+        )
     except Exception as exc:  # noqa: BLE001
         await _say(ctx, sender, f"❌ Draft failed: {exc}")
         return
-    draft = next((f.get("value") for f in (result.get("filled") or []) if f.get("name") == name), None)
     if not draft:
-        await _say(ctx, sender, f"Couldn't draft anything useful. Try: `answer {name} <your text>`.")
+        await _say(ctx, sender,
+                   f"Couldn't generate a draft — try `answer {name} <your text>` to set it manually.")
         return
     await _say(ctx, sender, f"**Draft for `{name}`:**\n\n{draft}\n\nReply `answer {name} <edits>` to save.")
 
@@ -1714,6 +1821,15 @@ async def _handle_review_command(ctx: Context, sender: str, sess: FormSession, c
         value = cmd.value or ""
         if not name or not value:
             await _say(ctx, sender, "Try `answer first_name Aditya`.")
+            return
+        # If the "value" is an instruction asking the LLM to draft an answer
+        # (e.g. "can you answer this in 2 lines based on my profile"), redirect
+        # to compose mode. Use the field name when it exists on the form;
+        # otherwise fall back to the next missing field (covers "answer this
+        # for me…" where field_name="this" is not a real field).
+        if _is_generation_request(value):
+            target = name if sess.field_meta(name) else None
+            await _ff_compose_draft(ctx, sender, sess, target)
             return
         await _apply_field_edit(ctx, sender, sess, name, value, cmd.kind)
         return
@@ -1820,7 +1936,7 @@ async def _start_application(ctx: Context, sender: str, url: str) -> None:
         file_field_name = None
         for q in sess.questions:
             for f in q.get("fields") or []:
-                if (f.get("type") or "").lower() in {"input_file", "file"}:
+                if (f.get("type") or "").lower() in {"input_file", "file", "attachment"}:
                     file_field_name = f.get("name")
                     break
             if file_field_name:
@@ -1996,18 +2112,9 @@ async def _request_payment_for_apply(
 # ---------------------------------------------------------------------------
 
 
-@chat_proto.on_message(ChatMessage)
-async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
-    # Send attachment advertisement on every single inbound message — no
-    # exceptions. The client must receive this before it will deliver files
-    # as ResourceContent. Sending it unconditionally means the user can drop
-    # a resume at any point in the conversation.
-    await ctx.send(sender, ChatMessage(
-        timestamp=datetime.now(UTC),
-        msg_id=uuid4(),
-        content=[MetadataContent(type="metadata", metadata={"attachments": "true"})],
-    ))
-
+async def _handle_chat_impl(ctx: Context, sender: str, msg: ChatMessage) -> None:
+    """Inner handler — called by handle_chat() which always sends the
+    MetadataContent attachment advertisement after this returns."""
     user_text = _extract_text(msg)
     hot_apply_url = intents.find_greenhouse_url(user_text)
 
@@ -2122,14 +2229,16 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
 
     # Conversational LLM reply (warm tone). Skip:
     #   - while waiting on a payment (don't bury the wallet prompt)
-    #   - on `apply` intent (sending a TextContent bubble between the ACK
-    #     and the RequestPayment causes the chat client to skip rendering
-    #     the inline payment card — matches duffel-agent's pattern of
-    #     going ACK → RequestPayment with no intervening text).
+    #   - on `upload_resume`: the handler sends its own progress message
+    #   - on `greet`: the greet block below sends interp.reply itself to
+    #     avoid a duplicate for returning users
+    #   Note: `apply` was previously excluded here to avoid burying an
+    #   inline payment card, but the payment-gate path returns early above
+    #   (lines 2017-2050) so by this point payment is never in play.
     if (
         interp.reply
         and sess.apply_state != ApplyState.PAYMENT_PENDING
-        and interp.intent not in {"apply", "upload_resume", "greet"}
+        and interp.intent not in {"upload_resume", "greet"}
     ):
         await _say(ctx, sender, interp.reply)
 
@@ -2228,6 +2337,22 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         return
 
     # smalltalk / noop — reply was already sent above; nothing more to do.
+
+
+@chat_proto.on_message(ChatMessage)
+async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
+    # The attachment advertisement (MetadataContent) must be sent on every
+    # turn so the client can deliver files as ResourceContent.  We send it
+    # AFTER responding rather than first, so the platform's native
+    # "Putting together a response…" spinner stays visible while we process.
+    try:
+        await _handle_chat_impl(ctx, sender, msg)
+    finally:
+        await ctx.send(sender, ChatMessage(
+            timestamp=datetime.now(UTC),
+            msg_id=uuid4(),
+            content=[MetadataContent(type="metadata", metadata={"attachments": "true"})],
+        ))
 
 
 @chat_proto.on_message(ChatAcknowledgement)
