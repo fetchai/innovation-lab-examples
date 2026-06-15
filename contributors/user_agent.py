@@ -31,6 +31,7 @@ TARGET_AGENT_ADDRESS = (
     "agent1qtjys8khgg88v6gvjudrlxdp7njxn9utettjclyj68pfevm7df9e6nsseng"
 )
 
+
 # --- 2. Define the Triggers and Handlers ---
 @user_agent.on_event("startup")
 async def send_research_request(ctx: Context):
@@ -41,11 +42,12 @@ async def send_research_request(ctx: Context):
     research_message = ChatMessage(
         timestamp=datetime.utcnow(),
         msg_id=uuid4(),
-        content=[TextContent(type="text", text=topic)]
+        content=[TextContent(type="text", text=topic)],
     )
-    
+
     # Send the request to the Gemini Agent
     await ctx.send(TARGET_AGENT_ADDRESS, research_message)
+
 
 @chat_proto.on_message(ChatMessage)
 async def handle_response(ctx: Context, sender: str, msg: ChatMessage):
@@ -55,17 +57,20 @@ async def handle_response(ctx: Context, sender: str, msg: ChatMessage):
             ctx.logger.info("\n=== Received Research Summary ===")
             ctx.logger.info(item.text)
             ctx.logger.info("=================================\n")
-            
+
     # Send an acknowledgment back to the Gemini agent
     ack = ChatAcknowledgement(
-        timestamp=datetime.utcnow(),
-        acknowledged_msg_id=msg.msg_id
+        timestamp=datetime.utcnow(), acknowledged_msg_id=msg.msg_id
     )
     await ctx.send(sender, ack)
 
+
 @chat_proto.on_message(ChatAcknowledgement)
 async def handle_acknowledgement(ctx: Context, sender: str, msg: ChatAcknowledgement):
-    ctx.logger.info(f"Received acknowledgement from {sender} for message: {msg.acknowledged_msg_id}")
+    ctx.logger.info(
+        f"Received acknowledgement from {sender} for message: {msg.acknowledged_msg_id}"
+    )
+
 
 # Include the protocol in your agent
 user_agent.include(chat_proto, publish_manifest=True)
