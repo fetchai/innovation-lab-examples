@@ -1,84 +1,76 @@
-# Orchestrator Agent
+# Job Application Agent
 
 ![tag:user-facing](https://img.shields.io/badge/user--facing-3D8BD3)
-![tag:orchestrator](https://img.shields.io/badge/orchestrator-3D8BD3)
-![tag:profile](https://img.shields.io/badge/profile-3D8BD3)
+![tag:playwright](https://img.shields.io/badge/playwright-3D8BD3)
 ![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
 
-The single user-facing chat entry for the entire job-application workflow.
-Sits in front of the helper agents and gives the user one conversational
-surface for two distinct jobs:
+Conversational job-application assistant built on ASI:One. Manages your profile and resume, then fills Greenhouse applications end-to-end via Playwright — with a per-application Stripe payment gate.
 
-1. **Managing their job-search profile** — upload / update a resume
-   (kept in memory with versioning), edit structured profile fields
-   conversationally, view what's currently stored.
-2. **Applying for jobs** — paste a Greenhouse URL and the orchestrator
-   hands off into `form-filler-agent` to do the actual form-fill.
+**Agentverse profile:** [agent1qwyqpyj3h3ktnlagx0nzjw58py8d8s7vkf0ud09f3aewdzk0le6nsku07sl](https://agentverse.ai/agents/details/agent1qwyqpyj3h3ktnlagx0nzjw58py8d8s7vkf0ud09f3aewdzk0le6nsku07sl/profile)
 
-Everything the user answers during an application is saved back into
-their profile (delegated to `form-filler-agent` which already does this),
-so the next application starts with more pre-filled fields.
+## What it does
 
-```
-                user (ASI:One)
-                      │
-                      ▼
-            ┌─────────────────────┐
-            │ orchestrator-agent  │
-            └──────────┬──────────┘
-                       │ ctx.send_and_receive
-       ┌───────────────┴───────────────┐
-       ▼                               ▼
-┌──────────────┐              ┌────────────────────┐
-│ profile-     │              │ form-filler-agent  │
-│ agent        │              │ (+ extractor +     │
-│              │              │   submitter)       │
-└──────────────┘              └────────────────────┘
-```
+**Profile management**
+- Upload a resume (PDF, DOCX, TXT) directly in chat — parsed to markdown via ASI:One and stored with versioning.
+- Edit any field in plain English: name, contact, work authorisation, EEO, education, experience.
+- `show my profile` / `whoami` to review stored data at any time.
+
+**Applying for jobs**
+- Paste any Greenhouse URL — the agent scrapes the form, maps fields from your profile, drafts free-text answers with a compose→critique→revise loop, and streams live screenshots into chat.
+- A **one-time Stripe payment is required per application** (configurable; disabled by default). The payment card appears before the form fill begins.
+- Answers collected during each application are saved back to the profile for future use.
 
 ## Setup
 
 ```bash
-cd job-application-agent/orchestrator-agent
+cd Browser-based-agents/playwright/job-application-agent
+cp .env.example .env          # fill in ASI_ONE_API_KEY, AGENTVERSE_API_KEY
+cd orchestrator-agent
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
-```
-
-Boot the other agents (profile, extractor, submitter, form-filler) and
-paste their addresses into `.env`. Only `PROFILE_AGENT_ADDRESS` and
-`FORM_FILLER_AGENT_ADDRESS` are needed here — the orchestrator never
-talks to extractor or submitter directly; those are reached through
-form-filler.
-
-Run:
-
-```bash
+playwright install chromium
 python agent.py
 ```
 
-The agent registers itself with Agentverse on startup (if
-`AGENTVERSE_API_KEY` is set) and is then discoverable in ASI:One.
+## Environment variables
 
-## Chat capabilities (early)
+All vars live in `job-application-agent/.env` (one level above `orchestrator-agent/`). See `.env.example` for the full list. Key ones:
+
+| Variable | Required | Notes |
+|---|---|---|
+| `ASI_ONE_API_KEY` | Yes | ASI:One LLM key |
+| `AGENTVERSE_API_KEY` | Yes | For Agentverse registration |
+| `DEFAULT_RESUME_PATH` | Recommended | Path to a default resume file |
+| `LIVE_FILL_MODE` | No | `headed` (default) opens a visible Chrome window; `off` runs headless |
+| `PAYMENT_ENABLED` | No | `false` by default; set to `true` + add Stripe keys to charge per application |
+| `STRIPE_SECRET_KEY` | If paying | Stripe secret key |
+| `STRIPE_AMOUNT_CENTS` | If paying | Amount to charge (default `100` = $1.00) |
+
+## Chat commands
 
 | Say | What happens |
 |---|---|
-| `hi` / `hello` | A warm onboarding reply listing what you can do. |
-| `help` | The full capability list. |
-| `show my profile` / `whoami` | Print a summary of what's stored. |
-
-More to land in subsequent commits: `edit profile`, resume upload via
-attachment, resume version switching, `apply <greenhouse_url>`.
+| `hi` / `hello` | Onboarding walkthrough |
+| `help` | Full capability list |
+| `show my profile` / `whoami` | Display stored profile |
+| `my phone is +1-555-1234` | Update a profile field in plain English |
+| `set my work auth to US Citizen` | Update work authorisation |
+| `<greenhouse URL>` | Start an application (payment card shown first if gate is active) |
+| `cancel` | Discard in-progress application |
 
 ## Internals
 
-- `agent.py`         — chat handler + intent router + Agentverse reg
-- `intents.py`       — ASI:One classifier + regex short-circuits
-- `clients.py`       — wire-model duplicates + `ctx.send_and_receive` wrappers
-- `profile_proxy.py` — high-level helpers around the profile-agent
-- `rendering.py`     — chat-side formatters
-- `session.py`       — `OrchestratorSession` + `ctx.storage` helpers
-
-This agent intentionally holds **no business logic**: it parses intent,
-calls the right helper, and renders the result.
+| File | Purpose |
+|---|---|
+| `agent.py` | Chat handler, intent router, Agentverse registration |
+| `intents.py` | ASI:One classifier + regex short-circuits |
+| `browser_filler.py` | Playwright form-fill engine |
+| `extractor.py` | Greenhouse form scraper |
+| `field_mapper.py` | Profile → form field mapping via ASI:One |
+| `answer_composer.py` | LangGraph compose→critique→revise loop for free-text answers |
+| `profile_store.py` | Persistent profile storage via `ctx.storage` |
+| `resume_store.py` | Resume versioning and retrieval |
+| `resume_ingest.py` | PDF/DOCX/TXT → markdown via ASI:One |
+| `rendering.py` | Chat card and carousel formatters |
+| `payment_proto.py` | Stripe payment gate integration |
+| `session.py` | `OrchestratorSession` + storage helpers |
