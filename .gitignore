@@ -70,6 +70,8 @@ dmypy.json
 !requirements.txt
 !package.json
 !tsconfig.json
+!contributors/BADGE_REGISTRY.json
+!.github/labels/gssoc-labels.json
 !pyproject.toml
 
 # Docker

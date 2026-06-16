@@ -2,6 +2,8 @@
 
 Use this template when adding a new agent example to this repository.
 
+**Community contributors:** create your agent under `contributors/<your-agent-name>/` and follow [contributors/README.md](../contributors/README.md).
+
 ---
 
 ## 1) Project Title

@@ -1,0 +1,271 @@
+name: Award Contributor Badge
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  award-badge:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Evaluate contributor and changed paths
+        id: meta
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const headRepo = pr.head.repo.full_name;
+            const baseRepo = `${owner}/${repo}`;
+            const isFork = headRepo !== baseRepo;
+
+            let isMaintainer = false;
+            try {
+              await github.rest.orgs.checkMembershipForUser({ org: "fetchai", username: author });
+              isMaintainer = true;
+            } catch (_) {}
+
+            if (!isMaintainer) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner,
+                  repo,
+                  username: author,
+                });
+                if (["admin", "maintain", "write"].includes(data.permission)) {
+                  isMaintainer = true;
+                }
+              } catch (_) {}
+            }
+
+            const fs = require("fs");
+            const maintainersFile = ".github/MAINTAINERS";
+            if (fs.existsSync(maintainersFile)) {
+              const extra = fs
+                .readFileSync(maintainersFile, "utf8")
+                .split("\n")
+                .map((l) => l.trim().replace(/^@/, ""))
+                .filter((l) => l && !l.startsWith("#"));
+              if (extra.includes(author.toLowerCase()) || extra.includes(author)) {
+                isMaintainer = true;
+              }
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+            const contributorPaths = [
+              ...new Set(
+                files
+                  .map((f) => f.filename)
+                  .filter((p) => p.startsWith("contributors/") && !p.endsWith("CHANGELOG.md"))
+                  .filter((p) => p.split("/").length >= 2)
+                  .map((p) => p.split("/")[1])
+                  .filter((name) => !["README.md", "CHANGELOG.md", "profile-badge-sync", "BADGE_REGISTRY.json"].includes(name))
+              ),
+            ];
+
+            const external = !isMaintainer && (isFork || contributorPaths.length > 0);
+            core.setOutput("author", author);
+            core.setOutput("external", external ? "true" : "false");
+            core.setOutput("is_maintainer", isMaintainer ? "true" : "false");
+            core.setOutput("agent_dirs", contributorPaths.join(","));
+            core.setOutput("pr_number", String(pr.number));
+            core.setOutput("pr_title", pr.title);
+
+      - name: Skip badge for maintainers or non-contributor PRs
+        if: steps.meta.outputs.external != 'true' || steps.meta.outputs.agent_dirs == ''
+        run: |
+          echo "No external contributor agent changes to badge."
+
+      - name: Award badge in agent README and registry
+        if: steps.meta.outputs.external == 'true' && steps.meta.outputs.agent_dirs != ''
+        env:
+          AUTHOR: ${{ steps.meta.outputs.author }}
+          AGENT_DIRS: ${{ steps.meta.outputs.agent_dirs }}
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          PR_TITLE: ${{ steps.meta.outputs.pr_title }}
+        run: |
+          set -euo pipefail
+          BADGE_MD='![Innovation Lab Contributor](https://raw.githubusercontent.com/fetchai/innovation-lab-examples/main/.github/badges/contributor.png)'
+          BADGE_LINE="[![Innovation Lab Contributor](https://img.shields.io/badge/Innovation_Lab-Contributor-3D8BD3?style=for-the-badge&logo=github)](https://github.com/fetchai/innovation-lab-examples/tree/main/contributors)"
+          REGISTRY="contributors/BADGE_REGISTRY.json"
+
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          author = os.environ["AUTHOR"]
+          pr_number = int(os.environ["PR_NUMBER"])
+          agent_dirs = [d for d in os.environ["AGENT_DIRS"].split(",") if d]
+          badge_md = (
+              "![Innovation Lab Contributor]"
+              "(https://raw.githubusercontent.com/fetchai/innovation-lab-examples/main/.github/badges/contributor.png)"
+          )
+          badge_line = (
+              "[![Innovation Lab Contributor]"
+              "(https://img.shields.io/badge/Innovation_Lab-Contributor-3D8BD3?style=for-the-badge&logo=github)]"
+              "(https://github.com/fetchai/innovation-lab-examples/tree/main/contributors)"
+          )
+
+          registry_path = Path("contributors/BADGE_REGISTRY.json")
+          registry = (
+              json.loads(registry_path.read_text())
+              if registry_path.exists()
+              else {"contributors": []}
+          )
+          existing = {e["github"]: e for e in registry.get("contributors", [])}
+          now = datetime.now(timezone.utc).isoformat()
+
+          for agent_dir in agent_dirs:
+              readme = Path("contributors") / agent_dir / "README.md"
+              if readme.exists():
+                  text = readme.read_text()
+                  if (
+                      "Innovation Lab Contributor" not in text
+                      and "badges/contributor" not in text
+                  ):
+                      lines = text.splitlines()
+                      insert_at = 0
+                      for i, line in enumerate(lines):
+                          if line.startswith("#"):
+                              insert_at = i + 1
+                              break
+                      block = (
+                          f"\n{badge_md}\n\n"
+                          f"> Merged via PR #{pr_number} by [@{author}](https://github.com/{author})\n"
+                      )
+                      lines.insert(insert_at, block)
+                      readme.write_text("\n".join(lines).rstrip() + "\n")
+
+              entry = existing.get(
+                  author,
+                  {
+                      "github": author,
+                      "agents": [],
+                      "badges": ["contributor"],
+                      "first_merged_at": now,
+                  },
+              )
+              if agent_dir not in entry.get("agents", []):
+                  entry.setdefault("agents", []).append(agent_dir)
+              entry["last_merged_at"] = now
+              entry["last_pr"] = pr_number
+              entry["profile_badge_markdown"] = badge_line
+              existing[author] = entry
+
+          registry["contributors"] = sorted(
+              existing.values(), key=lambda x: x["github"].lower()
+          )
+          registry_path.write_text(json.dumps(registry, indent=2) + "\n")
+
+          cl = Path("contributors/CHANGELOG.md")
+          if cl.exists():
+              body = cl.read_text()
+              note = (
+                  f"- Awarded contributor badge to [@{author}](https://github.com/{author}) "
+                  f"for `{', '.join(agent_dirs)}` (PR #{pr_number})\n"
+              )
+              if note.strip() not in body:
+                  body = body.replace(
+                      "## [Unreleased]\n\n### Added\n",
+                      f"## [Unreleased]\n\n### Added\n{note}",
+                  )
+                  cl.write_text(body)
+          PY
+
+      - name: Commit badge updates
+        if: steps.meta.outputs.external == 'true' && steps.meta.outputs.agent_dirs != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add contributors/
+          if git diff --staged --quiet; then
+            echo "Nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: award contributor badge to @${{ steps.meta.outputs.author }} (PR #${{ steps.meta.outputs.pr_number }})"
+          git push
+
+      - name: Comment profile README instructions
+        if: steps.meta.outputs.external == 'true' && steps.meta.outputs.agent_dirs != ''
+        uses: actions/github-script@v7
+        env:
+          AUTHOR: ${{ steps.meta.outputs.author }}
+          AGENT_DIRS: ${{ steps.meta.outputs.agent_dirs }}
+        with:
+          script: |
+            const author = process.env.AUTHOR;
+            const badgeLine = `[![Innovation Lab Contributor](https://img.shields.io/badge/Innovation_Lab-Contributor-3D8BD3?style=for-the-badge&logo=github)](https://github.com/fetchai/innovation-lab-examples/tree/main/contributors)`;
+            const imgBadge = `![Innovation Lab Contributor](https://raw.githubusercontent.com/fetchai/innovation-lab-examples/main/.github/badges/contributor.png)`;
+            const body = `## 🎉 Contributor badge awarded
+
+            Congrats @${author}! Your PR was merged. We added the **Innovation Lab Contributor** badge to your agent README under \`contributors/\`.
+
+            ### Add to your GitHub Profile README (automatic option)
+
+            1. Copy [\`contributors/profile-badge-sync/profile-readme-badge.yml\`](https://github.com/fetchai/innovation-lab-examples/blob/main/contributors/profile-badge-sync/profile-readme-badge.yml) into your profile repo (\`${author}/${author}\`) at \`.github/workflows/innovation-lab-badge.yml\`
+            2. Run the workflow once (**Actions → Sync Innovation Lab badge → Run workflow**), or wait for the weekly schedule — it reads the public [BADGE_REGISTRY.json](https://github.com/fetchai/innovation-lab-examples/blob/main/contributors/BADGE_REGISTRY.json) and inserts the badge if you are listed.
+
+            ### Or paste manually into \`${author}/${author}/README.md\`
+
+            \`\`\`markdown
+            ${badgeLine}
+            \`\`\`
+
+            Or use the image badge:
+
+            \`\`\`markdown
+            ${imgBadge}
+            \`\`\`
+
+            You are registered in \`contributors/BADGE_REGISTRY.json\`. Welcome to the program! 🚀`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });
+
+      - name: Try profile repo repository_dispatch (optional one-time setup)
+        if: steps.meta.outputs.external == 'true'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          AUTHOR: ${{ steps.meta.outputs.author }}
+        with:
+          github-token: ${{ secrets.PROFILE_BADGE_DISPATCH_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const author = process.env.AUTHOR;
+            try {
+              await github.rest.repos.createDispatchEvent({
+                owner: author,
+                repo: author,
+                event_type: "innovation-lab-contributor-merged",
+                client_payload: {
+                  badge_shield: "https://img.shields.io/badge/Innovation_Lab-Contributor-3D8BD3?style=for-the-badge&logo=github",
+                  registry_url: "https://raw.githubusercontent.com/fetchai/innovation-lab-examples/main/contributors/BADGE_REGISTRY.json",
+                },
+              });
+              core.info(`Dispatched profile badge sync to ${author}/${author}`);
+            } catch (e) {
+              core.info(`Profile dispatch skipped (install profile-badge-sync workflow in ${author}/${author}): ${e.message}`);
+            }
