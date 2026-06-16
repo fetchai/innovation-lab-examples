@@ -170,7 +170,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [Composio](Composio/) | Composio agents — Gmail and LinkedIn automation | Python, Composio, uAgents | 🟡 Intermediate |
-| [Browser-based-agents](Browser-based-agents/) | Browser automation agents (Nike product scraper) | Python, Notte, uAgents | 🟡 Intermediate |
+| [Browser-based-agents](Browser-based-agents/) | Browser automation agents (Nike product scraper, job-application agent) | Python, Notte, Playwright, uAgents | 🟡 Intermediate |
 | [frontend-integration](frontend-integration/) | Next.js + uAgents frontend integration | Python, Next.js, uAgents | 🟡 Intermediate |
 
 ---
