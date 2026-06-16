@@ -96,3 +96,20 @@ Agent: Top headlines for 'sports':
 | `NEWS_API_KEY` | Yes | Your NewsAPI key from [newsapi.org](https://newsapi.org/) |
 
 ## Project structure
+
+contributors/news-summarizer-agent/
+
+├── agent.py          # uAgent with Chat Protocol, NewsAPI + ASI:One logic
+
+├── requirements.txt  # Python dependencies
+
+├── .env.example      # Environment variable template
+
+├── demo.png          # Demo screenshot
+
+└── README.md         # This file
+
+
+## License
+
+MIT (see repository root [LICENSE](../../LICENSE)).
