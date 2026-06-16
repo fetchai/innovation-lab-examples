@@ -1,7 +1,10 @@
 """Tests for both Fetch-side and local policy engines."""
 
-from orchestrator.policy import FetchPolicy
+import os
+
 from connector.policy import LocalPolicy
+from orchestrator.policy import FetchPolicy
+from shared.paths import demo_projects_dir
 from shared.schemas import (
     RejectionReason,
     StepType,
@@ -46,6 +49,32 @@ class TestFetchPolicy:
         assert policy.validate("u_1", plan) is None
         assert policy.validate("u_1", plan) == RejectionReason.QUOTA_EXCEEDED
 
+    def test_scan_directory_outside_demo_rejected(self):
+        policy = FetchPolicy()
+        plan = TaskPlan(
+            steps=[
+                TaskStep(
+                    type=StepType.LOCAL,
+                    action="scan_directory",
+                    params={"path": os.path.expanduser("~/Documents")},
+                )
+            ]
+        )
+        assert policy.validate("u_1", plan) == RejectionReason.PATH_NOT_ALLOWED
+
+    def test_scan_directory_under_demo_passes(self):
+        policy = FetchPolicy()
+        plan = TaskPlan(
+            steps=[
+                TaskStep(
+                    type=StepType.LOCAL,
+                    action="scan_directory",
+                    params={"path": str(demo_projects_dir())},
+                )
+            ]
+        )
+        assert policy.validate("u_1", plan) is None
+
 
 # =========================================================================
 # Local policy
@@ -84,6 +113,34 @@ class TestLocalPolicy:
                     type=StepType.LOCAL,
                     action="scan_directory",
                     params={"path": "/tmp/mydata"},
+                )
+            ]
+        )
+        assert policy.validate_plan(plan) is None
+
+    def test_default_policy_rejects_documents_path(self, monkeypatch):
+        monkeypatch.delenv("OPENCLAW_EXTENDED_PATHS", raising=False)
+        policy = LocalPolicy()
+        plan = TaskPlan(
+            steps=[
+                TaskStep(
+                    type=StepType.LOCAL,
+                    action="scan_directory",
+                    params={"path": os.path.expanduser("~/Documents")},
+                )
+            ]
+        )
+        assert policy.validate_plan(plan) == RejectionReason.PATH_NOT_ALLOWED
+
+    def test_default_policy_allows_demo_path(self, monkeypatch):
+        monkeypatch.delenv("OPENCLAW_EXTENDED_PATHS", raising=False)
+        policy = LocalPolicy()
+        plan = TaskPlan(
+            steps=[
+                TaskStep(
+                    type=StepType.LOCAL,
+                    action="scan_directory",
+                    params={"path": str(demo_projects_dir())},
                 )
             ]
         )

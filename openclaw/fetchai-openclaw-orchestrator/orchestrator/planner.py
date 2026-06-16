@@ -15,6 +15,7 @@ import logging
 import os
 import re
 
+from shared.paths import normalize_scan_directory_path
 from shared.schemas import StepType, TaskConstraints, TaskPlan, TaskStep
 
 logger = logging.getLogger(__name__)
@@ -329,6 +330,19 @@ def _plan_with_keywords(objective: str) -> TaskPlan:
 
 
 # ---------------------------------------------------------------------------
+# Path enforcement
+# ---------------------------------------------------------------------------
+
+
+def _enforce_scan_directory_paths(plan: TaskPlan) -> TaskPlan:
+    """Force scan_directory steps to use the demo sandbox (unless extended mode)."""
+    for step in plan.steps:
+        if step.action == "scan_directory":
+            step.params["path"] = normalize_scan_directory_path(step.params.get("path"))
+    return plan
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
@@ -344,7 +358,7 @@ def plan_objective(objective: str) -> TaskPlan:
     # Try LLM first
     plan = _plan_with_llm(objective)
     if plan is not None:
-        return plan
+        return _enforce_scan_directory_paths(plan)
 
     # Fallback to keywords
-    return _plan_with_keywords(objective)
+    return _enforce_scan_directory_paths(_plan_with_keywords(objective))

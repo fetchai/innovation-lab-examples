@@ -15,6 +15,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from shared.paths import default_allowed_scan_paths
 from shared.schemas import RejectionReason, TaskPlan, TaskStep
 
 logger = logging.getLogger(__name__)
@@ -35,16 +36,6 @@ DEFAULT_ALLOWED_ACTIONS: set[str] = {
     "generate_health_report",
 }
 
-_DEMO_DIR = os.getenv("DEMO_PROJECTS_DIR", "./demo_projects")
-
-DEFAULT_ALLOWED_PATHS: list[str] = [
-    os.path.expanduser("~/projects"),
-    os.path.expanduser("~/Documents"),
-    "/tmp",
-    str(Path(_DEMO_DIR).resolve()),  # demo directory (safe testing)
-    str(Path(".").resolve()),  # current working directory
-]
-
 
 # ---------------------------------------------------------------------------
 # Policy
@@ -58,9 +49,7 @@ class LocalPolicy:
     allowed_actions: set[str] = field(
         default_factory=lambda: set(DEFAULT_ALLOWED_ACTIONS)
     )
-    allowed_paths: list[str] = field(
-        default_factory=lambda: list(DEFAULT_ALLOWED_PATHS)
-    )
+    allowed_paths: list[str] = field(default_factory=default_allowed_scan_paths)
     require_user_confirmation: bool = True
     allow_background_execution: bool = False
 
@@ -75,11 +64,14 @@ class LocalPolicy:
         return None
 
     def check_path(self, step: TaskStep) -> RejectionReason | None:
+        if step.action != "scan_directory":
+            return None
+
         raw_path = step.params.get("path")
         if raw_path is None:
-            return None  # no path param → OK
+            return None
 
-        resolved = str(Path(os.path.expanduser(raw_path)).resolve())
+        resolved = str(Path(os.path.expanduser(str(raw_path))).resolve())
         for allowed in self.allowed_paths:
             allowed_resolved = str(Path(allowed).resolve())
             if resolved.startswith(allowed_resolved):

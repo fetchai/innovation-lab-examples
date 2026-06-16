@@ -22,6 +22,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from shared.paths import normalize_scan_directory_path
+
 logger = logging.getLogger(__name__)
 
 # Default scan path — uses demo directory to avoid leaking real data
@@ -41,14 +43,15 @@ def scan_directory(params: dict[str, Any]) -> dict[str, Any]:
     Defaults to the demo projects directory for safe testing.
     """
     raw_path = params.get("path", _DEFAULT_SCAN_PATH)
+    resolved_path = normalize_scan_directory_path(str(raw_path))
+    if str(raw_path) != resolved_path:
+        logger.info(
+            "scan_directory path normalized from %s to %s",
+            raw_path,
+            resolved_path,
+        )
 
-    # Sanitise: resolve relative to project root, never expose home dir
-    if raw_path.startswith("~"):
-        # In testing mode, redirect ~ paths to the demo directory
-        raw_path = _DEFAULT_SCAN_PATH
-        logger.info("Redirected home-relative path to demo directory: %s", raw_path)
-
-    root = Path(raw_path).resolve()
+    root = Path(resolved_path).resolve()
 
     if not root.exists():
         return {"error": f"Path does not exist: {root}", "scanned_path": str(root)}

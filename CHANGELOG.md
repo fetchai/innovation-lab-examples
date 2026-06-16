@@ -4,6 +4,10 @@ All notable changes to this repository are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- `openclaw/fetchai-openclaw-orchestrator`: enforce `scan_directory` sandbox to `DEMO_PROJECTS_DIR` by default — orchestrator and connector policies reject paths like `~/Documents`; planner and executor normalize paths; opt-in `OPENCLAW_EXTENDED_PATHS` restores broader local paths for development
+
 ### Added
 
 - `Browser-based-agents/playwright/job-application-agent/`: Playwright + ASI:One + Stripe job application agent. Orchestrates a Chromium session to auto-fill Greenhouse application forms using a stored user profile, with LLM-drafted free-text answers via ASI:One, Stripe-gated premium features, and resume ingestion.
