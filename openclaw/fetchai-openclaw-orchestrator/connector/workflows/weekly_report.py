@@ -40,14 +40,10 @@ def scan_directory(params: dict[str, Any]) -> dict[str, Any]:
 
     Defaults to the demo projects directory for safe testing.
     """
-    raw_path = params.get("path", _DEFAULT_SCAN_PATH)
+    raw_path = _DEFAULT_SCAN_PATH
 
     # Sanitise: resolve relative to project root, never expose home dir
-    if raw_path.startswith("~"):
-        # In testing mode, redirect ~ paths to the demo directory
-        raw_path = _DEFAULT_SCAN_PATH
-        logger.info("Redirected home-relative path to demo directory: %s", raw_path)
-
+   
     root = Path(raw_path).resolve()
 
     if not root.exists():

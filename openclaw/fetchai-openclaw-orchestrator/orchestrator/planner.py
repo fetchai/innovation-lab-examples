@@ -343,7 +343,13 @@ def plan_objective(objective: str) -> TaskPlan:
     """
     # Try LLM first
     plan = _plan_with_llm(objective)
+    
     if plan is not None:
+
+        for step in plan.steps:
+            if step.action == "scan_directory":
+                step.params["path"] = "./demo_projects"
+
         return plan
 
     # Fallback to keywords

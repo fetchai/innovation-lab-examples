@@ -38,12 +38,9 @@ DEFAULT_ALLOWED_ACTIONS: set[str] = {
 _DEMO_DIR = os.getenv("DEMO_PROJECTS_DIR", "./demo_projects")
 
 DEFAULT_ALLOWED_PATHS: list[str] = [
-    os.path.expanduser("~/projects"),
-    os.path.expanduser("~/Documents"),
-    "/tmp",
-    str(Path(_DEMO_DIR).resolve()),  # demo directory (safe testing)
-    str(Path(".").resolve()),  # current working directory
-]
+    str(Path(_DEMO_DIR).resolve()),
+] # restricted sandbox
+
 
 
 # ---------------------------------------------------------------------------
@@ -76,14 +73,20 @@ class LocalPolicy:
 
     def check_path(self, step: TaskStep) -> RejectionReason | None:
         raw_path = step.params.get("path")
-        if raw_path is None:
-            return None  # no path param → OK
 
-        resolved = str(Path(os.path.expanduser(raw_path)).resolve())
+        if raw_path is None:
+            return None
+
+        resolved = Path(os.path.expanduser(raw_path)).resolve()
+
         for allowed in self.allowed_paths:
-            allowed_resolved = str(Path(allowed).resolve())
-            if resolved.startswith(allowed_resolved):
+            allowed_resolved = Path(allowed).resolve()
+
+            try:
+                resolved.relative_to(allowed_resolved)
                 return None
+            except ValueError:
+                continue
 
         logger.warning("Path '%s' not within allowed sandboxes", resolved)
         return RejectionReason.PATH_NOT_ALLOWED
