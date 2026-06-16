@@ -41,7 +41,19 @@ async def handle_research_request(ctx: Context, sender: str, msg: ChatMessage):
     ack = ChatAcknowledgement(
         timestamp=datetime.utcnow(), acknowledged_msg_id=msg.msg_id
     )
-    await ctx.send(sender, ack)
+    user_query = None
+    for item in msg.content:
+        if isinstance(item, TextContent):
+            user_query = item.text
+            break
+
+    if not user_query:
+        ctx.logger.warning("Received ChatMessage with no text content")
+        return
+
+    ctx.logger.info(
+        f"Received research request from {sender[-8:]} for topic: '{user_query}'"
+    )
 
     # Extract the text content from the ChatMessage
     for item in msg.content:
