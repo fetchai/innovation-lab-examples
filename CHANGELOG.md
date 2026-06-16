@@ -29,6 +29,9 @@ All notable changes to this repository are documented in this file.
 - `stripe-payment-agents/conversational-property-finder`: ASI1 conversational property search agent (Repliers MLS, optional Stripe details paywall, OpenAI/regex parsing)
 - `ag2-agents/` — Two AG2 (formerly AutoGen) multi-agent examples: a payment approval workflow and a research synthesis team, both integrated with uAgents via the A2A protocol
 - `community_agent/` — AI Community Growth Agent for planning events, conferences, and hackathons
+
+### Fixed
+- `mcp-agents/Github MCP Agent/agent.py`: fixed GitHub authentication session handling, corrected MCP client typing, and cleaned up format/lint issues.
 - `CONTRIBUTING.md` with agent-focused contribution workflow and merge policy
 - Pull request CI workflow with checks for `stargazer-gate`, `lint`, `format`, `typecheck`, `validate-architecture`, and `test`
 - `.github/CODEOWNERS` for required reviewer routing
