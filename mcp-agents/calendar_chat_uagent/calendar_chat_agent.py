@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os, sys, pathlib, json
+import os, sys, pathlib, json  # noqa: E401
 from dotenv import load_dotenv
 from uagents import Agent, Context, Model
 
@@ -11,9 +11,14 @@ if str(PARENT) not in sys.path:
     sys.path.insert(0, str(PARENT))
 
 
-from calendar_chat_proto import chat_proto
-import json, pathlib
-from calendar_chat_proto import (_run_cal_tool, CURRENT_SESSION_DATA, _create_msg, SESSIONS_KEY)
+from calendar_chat_proto import chat_proto  # noqa: E402
+import json, pathlib  # noqa: E401, E402, F811
+from calendar_chat_proto import (  # noqa: E402
+    _run_cal_tool,
+    CURRENT_SESSION_DATA,
+    _create_msg,
+    SESSIONS_KEY,
+)
 
 
 class OAuthRequest(Model):
@@ -47,16 +52,22 @@ async def _cb(ctx: Context, req: OAuthRequest) -> OAuthResponse:
     # Load existing sessions from storage
     try:
         sessions_raw = ctx.storage.get(SESSIONS_KEY) or "{}"
-        sessions = json.loads(sessions_raw) if isinstance(sessions_raw, str) else sessions_raw
+        sessions = (
+            json.loads(sessions_raw) if isinstance(sessions_raw, str) else sessions_raw
+        )
     except Exception:
         sessions = {}
 
     data = sessions.get(sid, {})
-    ctx.logger.info("🌐 [REST] Session found=%s keys=%s", bool(sid in sessions), list(data.keys()))
+    ctx.logger.info(
+        "🌐 [REST] Session found=%s keys=%s", bool(sid in sessions), list(data.keys())
+    )
 
     # Ignore duplicate callbacks if already authenticated
     if data.get("cal_authenticated"):
-        ctx.logger.info("🌐 [REST] Session already authenticated – ignoring duplicate callback")
+        ctx.logger.info(
+            "🌐 [REST] Session already authenticated – ignoring duplicate callback"
+        )
         return OAuthResponse(success=True, message="Already authenticated")
 
     # Prepare a unique token file for this session
@@ -75,8 +86,13 @@ async def _cb(ctx: Context, req: OAuthRequest) -> OAuthResponse:
         out = await _run_cal_tool("complete_oauth", {"auth_code": code})
         ctx.logger.info("🌐 [REST] complete_oauth raw response: %s", out[:200])
         res = json.loads(out)
-        if not res.get("success") and "flow not initialised" in res.get("error", "").lower():
-            ctx.logger.info("🌐 [REST] Flow missing – calling setup_oauth then retrying complete_oauth")
+        if (
+            not res.get("success")
+            and "flow not initialised" in res.get("error", "").lower()
+        ):
+            ctx.logger.info(
+                "🌐 [REST] Flow missing – calling setup_oauth then retrying complete_oauth"
+            )
             await _run_cal_tool("setup_oauth", {"session_id": sid})
             out = await _run_cal_tool("complete_oauth", {"auth_code": code})
             res = json.loads(out)
@@ -96,7 +112,9 @@ async def _cb(ctx: Context, req: OAuthRequest) -> OAuthResponse:
     # both the JSON and the *canonical* path in the session so that
     # _run_cal_tool can later rebuild temp files if needed.
 
-    from server import TOKENS_PATH as CANONICAL_TOKENS_PATH  # local import to avoid cycles
+    from server import (
+        TOKENS_PATH as CANONICAL_TOKENS_PATH,
+    )  # local import to avoid cycles
 
     try:
         with open(CANONICAL_TOKENS_PATH, "r", encoding="utf-8") as cf:
@@ -109,9 +127,15 @@ async def _cb(ctx: Context, req: OAuthRequest) -> OAuthResponse:
                 tpath.unlink()
         except Exception:
             pass
-        ctx.logger.info("🌐 [REST] Token JSON loaded from canonical path %s", CANONICAL_TOKENS_PATH)
+        ctx.logger.info(
+            "🌐 [REST] Token JSON loaded from canonical path %s", CANONICAL_TOKENS_PATH
+        )
     except Exception as f_err:
-        ctx.logger.warning("🌐 [REST] Failed to load canonical token file %s: %s", CANONICAL_TOKENS_PATH, f_err)
+        ctx.logger.warning(
+            "🌐 [REST] Failed to load canonical token file %s: %s",
+            CANONICAL_TOKENS_PATH,
+            f_err,
+        )
 
     data["cal_authenticated"] = True
     data.pop("awaiting_auth_code", None)
@@ -124,7 +148,12 @@ async def _cb(ctx: Context, req: OAuthRequest) -> OAuthResponse:
     # Notify the chat user if we know their address
     if addr := data.get("sender_address"):
         ctx.logger.info("🌐 [REST] Notifying sender %s", addr)
-        await ctx.send(addr, _create_msg("✅ Calendar authorisation successful! You can now ask me about your calendar."))
+        await ctx.send(
+            addr,
+            _create_msg(
+                "✅ Calendar authorisation successful! You can now ask me about your calendar."
+            ),
+        )
 
     return OAuthResponse(success=True, message="OAuth completed and tokens stored")
 
@@ -140,4 +169,4 @@ async def _stop(ctx: Context):
 
 
 if __name__ == "__main__":
-    agent.run() 
+    agent.run()

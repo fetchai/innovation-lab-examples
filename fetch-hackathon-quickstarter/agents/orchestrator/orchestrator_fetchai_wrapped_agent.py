@@ -3,9 +3,16 @@ from uuid import uuid4
 
 from agents.models.config import ORCHESTRATOR_SEED
 from agents.models.models import SharedAgentState
-from agents.orchestrator.chat_protocol import chat_proto, generate_orchestrator_response_from_state
+from agents.orchestrator.chat_protocol import (
+    chat_proto,
+    generate_orchestrator_response_from_state,
+)
 from uagents import Agent, Context, Model
-from uagents_core.contrib.protocols.chat import ChatMessage, EndSessionContent, TextContent
+from uagents_core.contrib.protocols.chat import (
+    ChatMessage,
+    EndSessionContent,
+    TextContent,
+)
 
 orchestrator = Agent(
     name="orchestrator",
@@ -71,7 +78,9 @@ async def handle_agent_response(ctx: Context, sender: str, state: SharedAgentSta
     The orchestrator is the sole bridge between the internal agent flow and ASI:One —
     so once a helper agent finishes, we relay the result directly back to the original user.
     """
-    ctx.logger.info(f"Received state back from agent: session={state.chat_session_id}, result={state.result!r}")
+    ctx.logger.info(
+        f"Received state back from agent: session={state.chat_session_id}, result={state.result!r}"
+    )
     response = generate_orchestrator_response_from_state(state)
     await ctx.send(
         state.user_sender_address,

@@ -40,13 +40,19 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-VERBOSE_GMAIL_LOGS = os.getenv("VERBOSE_GMAIL_LOGS", "true").lower() in ("1", "true", "yes")
+VERBOSE_GMAIL_LOGS = os.getenv("VERBOSE_GMAIL_LOGS", "true").lower() in (
+    "1",
+    "true",
+    "yes",
+)
 logger.setLevel(logging.DEBUG if VERBOSE_GMAIL_LOGS else logging.INFO)
 
 LOG_FILE = os.getenv("GMAIL_LOG", "gmail_debug.log")
 if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
     _fh = logging.FileHandler(LOG_FILE, mode="a", encoding="utf-8")
-    _fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    _fh.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    )
     _fh.setLevel(logging.DEBUG)
     logger.addHandler(_fh)
 
@@ -92,7 +98,9 @@ logger.info("🚀 Gmail MCP server instance created")
 class GmailAuth:
     """Handles OAuth for Gmail and provides an authenticated service."""
 
-    def __init__(self, credentials_path: str = CREDENTIALS_PATH, tokens_path: str = TOKENS_PATH):
+    def __init__(
+        self, credentials_path: str = CREDENTIALS_PATH, tokens_path: str = TOKENS_PATH
+    ):
         self.credentials_path = credentials_path
         self.tokens_path = tokens_path
         self._service = None  # Cached Gmail service
@@ -103,19 +111,23 @@ class GmailAuth:
     def get_oauth_url(self, session_id: str = None) -> str:
         logger.info("🔗 Starting OAuth flow - generating authorization URL")
         if not os.path.exists(self.credentials_path):
-            raise FileNotFoundError(f"Google OAuth client secrets not found at {self.credentials_path}.")
+            raise FileNotFoundError(
+                f"Google OAuth client secrets not found at {self.credentials_path}."
+            )
         self._flow = Flow.from_client_secrets_file(
             self.credentials_path,
             scopes=SCOPES,
             redirect_uri="http://localhost:8080/callback",
         )
-        
+
         # Use session_id as state if provided, otherwise let Google generate one
         if session_id:
-            auth_url, _ = self._flow.authorization_url(prompt="consent", state=session_id)
+            auth_url, _ = self._flow.authorization_url(
+                prompt="consent", state=session_id
+            )
         else:
             auth_url, _ = self._flow.authorization_url(prompt="consent")
-        
+
         logger.info(f"✅ OAuth URL generated successfully: {auth_url[:100]}…")
         return auth_url
 
@@ -143,7 +155,9 @@ class GmailAuth:
         if self._service:
             return self._service
         if not os.path.exists(self.tokens_path):
-            raise RuntimeError("Not authenticated – run setup_oauth/complete_oauth first.")
+            raise RuntimeError(
+                "Not authenticated – run setup_oauth/complete_oauth first."
+            )
         with open(self.tokens_path, "r") as f:
             token_info = json.load(f)
         creds = Credentials(
@@ -168,6 +182,7 @@ gmail_auth = GmailAuth()
 # ---------------------------------------------------------------------------
 # Helper utilities
 # ---------------------------------------------------------------------------
+
 
 def _create_message(
     to: str,
@@ -224,9 +239,13 @@ def check_auth_status() -> str:
             with open(token_file, "r") as f:
                 scopes = json.load(f).get("scopes", [])
             gmail_auth.get_service()  # refresh check
-            return json.dumps({"success": True, "authenticated": True, "scopes": scopes}, indent=2)
+            return json.dumps(
+                {"success": True, "authenticated": True, "scopes": scopes}, indent=2
+            )
         except Exception as e:
-            return json.dumps({"success": False, "authenticated": False, "error": str(e)})
+            return json.dumps(
+                {"success": False, "authenticated": False, "error": str(e)}
+            )
     return json.dumps({"success": True, "authenticated": False}, indent=2)
 
 
@@ -238,13 +257,16 @@ def reset_oauth_tokens() -> str:
         return json.dumps({"success": True}, indent=2)
     return json.dumps({"success": False, "error": "No token file"}, indent=2)
 
+
 # ---------------------------------------------------------------------------
 # Gmail action tools
 # ---------------------------------------------------------------------------
 
 
 @mcp.tool()
-def send_email(to: str, subject: str, body: str, cc: str = "", bcc: str = "", is_html: bool = False) -> str:
+def send_email(
+    to: str, subject: str, body: str, cc: str = "", bcc: str = "", is_html: bool = False
+) -> str:
     try:
         service = gmail_auth.get_service()
         msg = _create_message(to, subject, body, cc or None, bcc or None, is_html)
@@ -255,23 +277,45 @@ def send_email(to: str, subject: str, body: str, cc: str = "", bcc: str = "", is
 
 
 @mcp.tool()
-def list_emails(query: str = "", label_ids: str = "INBOX", max_results: int = 10) -> str:
+def list_emails(
+    query: str = "", label_ids: str = "INBOX", max_results: int = 10
+) -> str:
     try:
         service = gmail_auth.get_service()
         labels = [lbl.strip() for lbl in label_ids.split(",") if lbl.strip()]
-        resp = service.users().messages().list(userId="me", q=query, labelIds=labels, maxResults=max_results).execute()
+        resp = (
+            service.users()
+            .messages()
+            .list(userId="me", q=query, labelIds=labels, maxResults=max_results)
+            .execute()
+        )
         msgs = resp.get("messages", [])
         output: List[Dict[str, Any]] = []
         for msg in msgs:
-            detail = service.users().messages().get(userId="me", id=msg["id"], format="metadata", metadataHeaders=["Subject", "From", "Date"]).execute()
-            headers = {h["name"]: h["value"] for h in detail.get("payload", {}).get("headers", [])}
-            output.append({
-                "id": detail.get("id"),
-                "snippet": detail.get("snippet"),
-                "subject": headers.get("Subject", ""),
-                "from": headers.get("From", ""),
-                "date": headers.get("Date", ""),
-            })
+            detail = (
+                service.users()
+                .messages()
+                .get(
+                    userId="me",
+                    id=msg["id"],
+                    format="metadata",
+                    metadataHeaders=["Subject", "From", "Date"],
+                )
+                .execute()
+            )
+            headers = {
+                h["name"]: h["value"]
+                for h in detail.get("payload", {}).get("headers", [])
+            }
+            output.append(
+                {
+                    "id": detail.get("id"),
+                    "snippet": detail.get("snippet"),
+                    "subject": headers.get("Subject", ""),
+                    "from": headers.get("From", ""),
+                    "date": headers.get("Date", ""),
+                }
+            )
         return json.dumps({"success": True, "emails": output}, indent=2)
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
@@ -281,18 +325,28 @@ def list_emails(query: str = "", label_ids: str = "INBOX", max_results: int = 10
 def read_email(message_id: str) -> str:
     try:
         service = gmail_auth.get_service()
-        detail = service.users().messages().get(userId="me", id=message_id, format="full").execute()
-        headers = {h["name"]: h["value"] for h in detail.get("payload", {}).get("headers", [])}
-        return json.dumps({
-            "success": True,
-            "id": detail.get("id"),
-            "snippet": detail.get("snippet"),
-            "subject": headers.get("Subject", ""),
-            "from": headers.get("From", ""),
-            "to": headers.get("To", ""),
-            "date": headers.get("Date", ""),
-            "payload": detail.get("payload"),
-        }, indent=2)
+        detail = (
+            service.users()
+            .messages()
+            .get(userId="me", id=message_id, format="full")
+            .execute()
+        )
+        headers = {
+            h["name"]: h["value"] for h in detail.get("payload", {}).get("headers", [])
+        }
+        return json.dumps(
+            {
+                "success": True,
+                "id": detail.get("id"),
+                "snippet": detail.get("snippet"),
+                "subject": headers.get("Subject", ""),
+                "from": headers.get("From", ""),
+                "to": headers.get("To", ""),
+                "date": headers.get("Date", ""),
+                "payload": detail.get("payload"),
+            },
+            indent=2,
+        )
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
 
@@ -315,10 +369,22 @@ def delete_last_sent_email(to: str, query: str = "", label_ids: str = "SENT") ->
     try:
         service = gmail_auth.get_service()
         full_query = f"to:{to} {query}".strip()
-        resp = service.users().messages().list(userId="me", q=full_query, labelIds=[lbl.strip() for lbl in label_ids.split(",") if lbl.strip()], maxResults=1).execute()
+        resp = (
+            service.users()
+            .messages()
+            .list(
+                userId="me",
+                q=full_query,
+                labelIds=[lbl.strip() for lbl in label_ids.split(",") if lbl.strip()],
+                maxResults=1,
+            )
+            .execute()
+        )
         msgs = resp.get("messages", [])
         if not msgs:
-            return json.dumps({"success": False, "error": "No matching email found"}, indent=2)
+            return json.dumps(
+                {"success": False, "error": "No matching email found"}, indent=2
+            )
         msg_id = msgs[0]["id"]
         try:
             service.users().messages().trash(userId="me", id=msg_id).execute()
@@ -351,4 +417,4 @@ def main():  # pragma: no cover
 
 
 if __name__ == "__main__":
-    main() 
+    main()

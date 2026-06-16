@@ -79,9 +79,7 @@ def download_resource(ctx: Context, item: ResourceContent) -> dict | None:
         mime_type = "application/pdf"
 
     os.makedirs(DOWNLOADS_DIR, exist_ok=True)
-    filename = (
-        f"{DOWNLOADS_DIR}/pdf_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
-    )
+    filename = f"{DOWNLOADS_DIR}/pdf_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
     with open(filename, "wb") as pdf_file:
         pdf_file.write(content_bytes)
     ctx.logger.info(f"Saved resource locally to {filename}")
@@ -142,21 +140,21 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     try:
         ctx.logger.info("Extracting text from PDF(s)...")
         extracted_text = get_pdf_text(prompt_content, logger=ctx.logger)
-        
+
         if not extracted_text or extracted_text == "No PDF content found to extract.":
             await ctx.send(sender, create_text_chat("No text found in PDF."))
             return
-        
+
         ctx.logger.info("Summarizing extracted text...")
         summary = summarize_text(extracted_text, logger=ctx.logger)
-        
+
         if summary:
             await ctx.send(sender, create_text_chat(summary))
         else:
             # Fallback: send extracted text if summarization fails
             ctx.logger.warning("Summarization failed, sending extracted text instead")
             await ctx.send(sender, create_text_chat(extracted_text))
-            
+
     except Exception as err:
         ctx.logger.error(f"PDF extraction failed: {err}")
         await ctx.send(
@@ -172,4 +170,3 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
     ctx.logger.info(
         f"Got an acknowledgement from {sender} for {msg.acknowledged_msg_id}"
     )
-

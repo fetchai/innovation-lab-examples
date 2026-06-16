@@ -10,7 +10,8 @@ class CalculatorTools:
         expression, a couple examples are `200*7` or `5000/2*10`
         """
         import re
-        if not re.match(r'^[0-9+\-*/().\s]+$', str(operation)):
+
+        if not re.match(r"^[0-9+\-*/().\s]+$", str(operation)):
             return "Error: Invalid characters in mathematical expression"
         try:
             return eval(operation)  # nosec B307

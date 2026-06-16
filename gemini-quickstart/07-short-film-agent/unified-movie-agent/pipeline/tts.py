@@ -23,6 +23,7 @@ _clients = {k: genai.Client(api_key=k) for k in set(API_KEYS)}
 
 # ── Helpers ──────────────────────────────────────────────────────
 
+
 def _is_base64(data: bytes) -> bool:
     if len(data) < 100:
         return False
@@ -64,9 +65,19 @@ def _to_wav(pcm: bytes, mime_type: str) -> bytes:
     block_align = ch * (bits // 8)
     header = struct.pack(
         "<4sI4s4sIHHIIHH4sI",
-        b"RIFF", 36 + len(pcm), b"WAVE", b"fmt ", 16,
-        1, ch, rate, byte_rate, block_align, bits,
-        b"data", len(pcm),
+        b"RIFF",
+        36 + len(pcm),
+        b"WAVE",
+        b"fmt ",
+        16,
+        1,
+        ch,
+        rate,
+        byte_rate,
+        block_align,
+        bits,
+        b"data",
+        len(pcm),
     )
     return header + pcm
 
@@ -77,6 +88,7 @@ def _estimate_duration(wav_bytes: bytes, rate: int = 24000, bits: int = 16) -> f
 
 
 # ── Public API ──────────────────────────────────────────────────
+
 
 def _generate_voice_sync(
     client: genai.Client,
@@ -120,10 +132,12 @@ def _generate_voice_sync(
         ):
             part = chunk.candidates[0].content.parts[0]
             if part.inline_data and part.inline_data.data:
-                chunks.append({
-                    "data": part.inline_data.data,
-                    "mime_type": part.inline_data.mime_type,
-                })
+                chunks.append(
+                    {
+                        "data": part.inline_data.data,
+                        "mime_type": part.inline_data.mime_type,
+                    }
+                )
 
     if not chunks:
         raise RuntimeError("No audio generated from TTS")

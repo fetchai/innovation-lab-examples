@@ -23,9 +23,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         ChatAcknowledgement(timestamp=datetime.now(), acknowledged_msg_id=msg.msg_id),
     )
 
-    text = " ".join(
-        item.text for item in msg.content if isinstance(item, TextContent)
-    )
+    text = " ".join(item.text for item in msg.content if isinstance(item, TextContent))
     ctx.logger.info(f"Received: {text}")
 
     chat_session_id = str(ctx.session)

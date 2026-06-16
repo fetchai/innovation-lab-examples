@@ -45,7 +45,7 @@ def resolve_name(name: str) -> str | None:
                 "User-Agent": "OpenClaw-FetchAgents/1.0",
                 "Accept": "application/json",
             },
-            timeout=10
+            timeout=10,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -154,7 +154,7 @@ async def register_mailbox_delayed(port: int, ctx, done_event: asyncio.Event) ->
             f"http://localhost:{port}/connect",
             data=payload,
             headers={"Content-Type": "application/json"},
-            timeout=30
+            timeout=30,
         )
         body = resp.text
         if resp.status_code == 200:

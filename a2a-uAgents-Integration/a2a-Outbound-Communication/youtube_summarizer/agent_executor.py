@@ -13,8 +13,10 @@ from agent import YoutubeSummarizerAgent
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class SummarizerAgentExecutor(AgentExecutor):
     """A YouTube Summarizer agent executor."""
+
     def __init__(self):
         self.agent = YoutubeSummarizerAgent()
 
@@ -24,24 +26,26 @@ class SummarizerAgentExecutor(AgentExecutor):
         if not task and context.message:
             task = new_task(context.message)
             await event_queue.enqueue_event(task)
-        
+
         if not task:
             logger.error("No task available for execution")
             return
 
         async for item in self.agent.stream(query, task.contextId):
-            is_task_complete = item['is_task_complete']
-            require_user_input = item['require_user_input']
-            content = item['content']
+            is_task_complete = item["is_task_complete"]
+            require_user_input = item["require_user_input"]
+            content = item["content"]
             logger.info(
-                f'Stream item received: complete={is_task_complete}, require_input={require_user_input}, content_len={len(content)}'
+                f"Stream item received: complete={is_task_complete}, require_input={require_user_input}, content_len={len(content)}"
             )
             if not is_task_complete and not require_user_input:
                 await event_queue.enqueue_event(
                     TaskStatusUpdateEvent(
                         status=TaskStatus(
                             state=TaskState.working,
-                            message=new_agent_text_message(content, task.contextId, task.id),
+                            message=new_agent_text_message(
+                                content, task.contextId, task.id
+                            ),
                         ),
                         final=False,
                         contextId=task.contextId,
@@ -53,7 +57,9 @@ class SummarizerAgentExecutor(AgentExecutor):
                     TaskStatusUpdateEvent(
                         status=TaskStatus(
                             state=TaskState.input_required,
-                            message=new_agent_text_message(content, task.contextId, task.id),
+                            message=new_agent_text_message(
+                                content, task.contextId, task.id
+                            ),
                         ),
                         final=True,
                         contextId=task.contextId,
@@ -68,8 +74,8 @@ class SummarizerAgentExecutor(AgentExecutor):
                         taskId=task.id,
                         lastChunk=True,
                         artifact=new_text_artifact(
-                            name='video_summary',
-                            description='Summary of the YouTube video.',
+                            name="video_summary",
+                            description="Summary of the YouTube video.",
                             text=content,
                         ),
                     )
@@ -84,4 +90,4 @@ class SummarizerAgentExecutor(AgentExecutor):
                 )
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
-        raise Exception('cancel not supported')
+        raise Exception("cancel not supported")

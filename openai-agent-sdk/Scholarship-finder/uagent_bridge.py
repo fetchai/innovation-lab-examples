@@ -2,6 +2,7 @@
 Bridge between OpenAI Agent SDK and Fetch.ai uAgents platform.
 This makes the Scholarship Finder accessible via ASI-One chat interface.
 """
+
 from __future__ import annotations
 
 import os
@@ -29,7 +30,9 @@ def _load_workflow_module():
     """Dynamically load the workflow.py module containing OpenAI Agent SDK logic"""
     here = os.path.dirname(__file__)
     workflow_path = os.path.join(here, "workflow.py")
-    spec = importlib.util.spec_from_file_location("scholarship_finder_workflow", workflow_path)
+    spec = importlib.util.spec_from_file_location(
+        "scholarship_finder_workflow", workflow_path
+    )
     if spec is None or spec.loader is None:
         raise RuntimeError("Failed to load workflow module spec")
     mod = importlib.util.module_from_spec(spec)
@@ -72,9 +75,7 @@ def text_msg(text: str, *, end_session: bool = False) -> ChatMessage:
     if end_session:
         content.append(EndSessionContent(type="end-session"))
     return ChatMessage(
-        timestamp=datetime.now(timezone.utc),
-        msg_id=uuid4(),
-        content=content
+        timestamp=datetime.now(timezone.utc), msg_id=uuid4(), content=content
     )
 
 
@@ -105,8 +106,7 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     await ctx.send(
         sender,
         ChatAcknowledgement(
-            timestamp=datetime.now(timezone.utc),
-            acknowledged_msg_id=msg.msg_id
+            timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id
         ),
     )
 
@@ -119,10 +119,11 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                 ChatMessage(
                     timestamp=datetime.now(timezone.utc),
                     msg_id=uuid4(),
-                    content=[MetadataContent(
-                        type="metadata",
-                        metadata={"attachments": "false"}
-                    )],
+                    content=[
+                        MetadataContent(
+                            type="metadata", metadata={"attachments": "false"}
+                        )
+                    ],
                 ),
             )
             # Send welcome message
@@ -133,33 +134,61 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         if isinstance(item, TextContent):
             user_text = item.text.strip()
             user_text_lower = user_text.lower()
-            
+
             # Handle empty messages
             if not user_text or len(user_text) < 3:
                 await ctx.send(
                     sender,
-                    text_msg("Please share your student profile so I can find scholarships for you!")
+                    text_msg(
+                        "Please share your student profile so I can find scholarships for you!"
+                    ),
                 )
                 return
-            
+
             # Handle help requests - check if ANY help keyword is in the message
             help_keywords = ["help", "how", "info", "what", "example", "start", "guide"]
-            if any(keyword in user_text_lower for keyword in help_keywords) and len(user_text) < 50:
+            if (
+                any(keyword in user_text_lower for keyword in help_keywords)
+                and len(user_text) < 50
+            ):
                 ctx.logger.info(f"Help request detected: {user_text}")
                 await ctx.send(sender, text_msg(WELCOME_MESSAGE))
                 return
-            
+
             # Check if profile has minimum info
-            has_gpa = any(word in user_text.lower() for word in ["gpa", "grade", "3.", "2.", "4."])
-            has_major = any(word in user_text.lower() for word in [
-                "major", "computer", "engineering", "business", "science", 
-                "psychology", "education", "nursing", "cs", "stem"
-            ])
-            has_year = any(word in user_text.lower() for word in [
-                "freshman", "sophomore", "junior", "senior", 
-                "1st", "2nd", "3rd", "4th", "year"
-            ])
-            
+            has_gpa = any(
+                word in user_text.lower() for word in ["gpa", "grade", "3.", "2.", "4."]
+            )
+            has_major = any(
+                word in user_text.lower()
+                for word in [
+                    "major",
+                    "computer",
+                    "engineering",
+                    "business",
+                    "science",
+                    "psychology",
+                    "education",
+                    "nursing",
+                    "cs",
+                    "stem",
+                ]
+            )
+            has_year = any(
+                word in user_text.lower()
+                for word in [
+                    "freshman",
+                    "sophomore",
+                    "junior",
+                    "senior",
+                    "1st",
+                    "2nd",
+                    "3rd",
+                    "4th",
+                    "year",
+                ]
+            )
+
             if not (has_gpa or has_major or has_year):
                 await ctx.send(
                     sender,
@@ -171,22 +200,26 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                         "• Your year in school\n"
                         "• Your location\n\n"
                         "Type 'help' for an example."
-                    )
+                    ),
                 )
                 return
-            
+
             # Send processing message
             await ctx.send(
                 sender,
-                text_msg("🔍 Searching for scholarships matching your profile...\n\nThis may take 10-15 seconds.")
+                text_msg(
+                    "🔍 Searching for scholarships matching your profile...\n\nThis may take 10-15 seconds."
+                ),
             )
-            
+
             # Run the OpenAI Agent SDK workflow
             try:
-                ctx.logger.info(f"Running scholarship search for profile: {user_text[:100]}...")
+                ctx.logger.info(
+                    f"Running scholarship search for profile: {user_text[:100]}..."
+                )
                 result = await run_workflow(WorkflowInput(input_as_text=user_text))
                 answer = (result or {}).get("output_text", "")
-                
+
                 if answer:
                     # Send the scholarship results
                     await ctx.send(sender, text_msg(answer))
@@ -197,7 +230,7 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                         text_msg(
                             "Sorry, I couldn't find scholarships matching your profile. "
                             "Try providing more details about your background and interests."
-                        )
+                        ),
                     )
             except Exception as e:
                 ctx.logger.exception("Workflow error")
@@ -207,12 +240,14 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                         f"❌ Sorry, I encountered an error while searching for scholarships.\n\n"
                         f"Error: {str(e)}\n\n"
                         f"Please try again or contact support if the issue persists."
-                    )
+                    ),
                 )
             return
 
     # If no supported content found
-    await ctx.send(sender, text_msg("Unsupported message content. Please send text only."))
+    await ctx.send(
+        sender, text_msg("Unsupported message content. Please send text only.")
+    )
 
 
 @chat_proto.on_message(ChatAcknowledgement)

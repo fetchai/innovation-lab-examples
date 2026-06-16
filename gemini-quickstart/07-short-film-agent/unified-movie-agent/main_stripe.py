@@ -28,14 +28,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from uagents import Agent, Context, Protocol
-from uagents_core.contrib.protocols.chat import (
+from uagents import Agent, Context, Protocol  # noqa: E402
+from uagents_core.contrib.protocols.chat import (  # noqa: E402
     ChatMessage,
     ChatAcknowledgement,
     TextContent,
     chat_protocol_spec,
 )
-from uagents_core.contrib.protocols.payment import (
+from uagents_core.contrib.protocols.payment import (  # noqa: E402
     CommitPayment,
     CompletePayment,
     Funds,
@@ -43,10 +43,10 @@ from uagents_core.contrib.protocols.payment import (
     RequestPayment,
 )
 
-from config import SCENE_COUNT
-from pipeline.orchestrator import produce_film
-from payment_proto import build_payment_proto
-from stripe_payments import (
+from config import SCENE_COUNT  # noqa: E402
+from pipeline.orchestrator import produce_film  # noqa: E402
+from payment_proto import build_payment_proto  # noqa: E402
+from stripe_payments import (  # noqa: E402
     STRIPE_AMOUNT_CENTS,
     STRIPE_CURRENCY,
     create_embedded_checkout_session,
@@ -103,6 +103,7 @@ def _chat_msg(text: str) -> ChatMessage:
 
 # ── State helpers (per-sender, stored in ctx.storage) ─────────────
 
+
 def _state_key(sender: str) -> str:
     return f"film_payment_state:{sender}"
 
@@ -130,8 +131,8 @@ def _clear_state(ctx: Context, sender: str) -> None:
 
 # ── Request queue (one film at a time) ─────────────────────────────
 
-_active: Optional[str] = None          # request-id of in-flight film
-_queue: List[Dict[str, Any]] = []      # waiting requests
+_active: Optional[str] = None  # request-id of in-flight film
+_queue: List[Dict[str, Any]] = []  # waiting requests
 
 
 async def _process_queue(ctx: Context) -> None:
@@ -142,7 +143,9 @@ async def _process_queue(ctx: Context) -> None:
         return
     nxt = _queue.pop(0)
     for i, q in enumerate(_queue):
-        await ctx.send(q["user"], _chat_msg(f"⏳ Queue update: you are now #{i+1} in line."))
+        await ctx.send(
+            q["user"], _chat_msg(f"⏳ Queue update: you are now #{i + 1} in line.")
+        )
     await _run_film(ctx, nxt["user"], nxt["prompt"], nxt["refs"])
 
 
@@ -191,7 +194,7 @@ async def _run_film(ctx: Context, user: str, prompt: str, refs: List[str]) -> No
             lines.append("")
         if result.final_url:
             lines.append(f"📽️ **[Watch Full Movie]({result.final_url})**\n")
-            lines.append(f"**Final Movie:**\n")
+            lines.append(f"**Final Movie:**\n")  # noqa: F541
             lines.append(f"![]({result.final_url})\n")
         lines.append("Thank you for creating with the Unified Movie Agent ✨")
         await notify("\n".join(lines))
@@ -201,6 +204,7 @@ async def _run_film(ctx: Context, user: str, prompt: str, refs: List[str]) -> No
 
 
 # ── Chat handler (payment-gated) ──────────────────────────────────
+
 
 @chat_proto.on_message(ChatMessage)
 async def handle_user_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
@@ -242,10 +246,13 @@ async def handle_user_message(ctx: Context, sender: str, msg: ChatMessage) -> No
         )
     except Exception as e:
         log.error("Stripe checkout creation failed: %s", e, exc_info=True)
-        await ctx.send(sender, _chat_msg(
-            f"❌ **Payment setup failed.** Could not create Stripe checkout session.\n"
-            f"Error: {e}\n\nPlease try again."
-        ))
+        await ctx.send(
+            sender,
+            _chat_msg(
+                f"❌ **Payment setup failed.** Could not create Stripe checkout session.\n"
+                f"Error: {e}\n\nPlease try again."
+            ),
+        )
         return
 
     log.info(
@@ -268,7 +275,9 @@ async def handle_user_message(ctx: Context, sender: str, msg: ChatMessage) -> No
     # Send RequestPayment FIRST (triggers Stripe checkout UI in Agentverse)
     amount_str = f"{STRIPE_AMOUNT_CENTS / 100:.2f}"
     req = RequestPayment(
-        accepted_funds=[Funds(currency="USD", amount=amount_str, payment_method="stripe")],
+        accepted_funds=[
+            Funds(currency="USD", amount=amount_str, payment_method="stripe")
+        ],
         recipient=str(ctx.agent.address),
         deadline_seconds=300,
         reference=str(ctx.session),
@@ -277,9 +286,12 @@ async def handle_user_message(ctx: Context, sender: str, msg: ChatMessage) -> No
     )
     await ctx.send(sender, req)
     # Chat message AFTER RequestPayment (UI needs RequestPayment first to render checkout)
-    await ctx.send(sender, _chat_msg(
-        "Once payment completes, I'll start generating your film automatically."
-    ))
+    await ctx.send(
+        sender,
+        _chat_msg(
+            "Once payment completes, I'll start generating your film automatically."
+        ),
+    )
 
     log.info("💳 RequestPayment sent for %s — awaiting payment", sender[:16])
 
@@ -291,16 +303,22 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> Non
 
 # ── Payment handlers ──────────────────────────────────────────────
 
+
 async def on_commit(ctx: Context, sender: str, msg: CommitPayment) -> None:
     """Called when the UI sends CommitPayment after user completes Stripe checkout."""
     try:
         log.info("💰 CommitPayment received from %s", sender[:16])
         log.info("   transaction_id=%s", msg.transaction_id)
         log.info("   funds=%s", msg.funds)
-        log.info("   payment_method=%s", getattr(msg.funds, "payment_method", None) if msg.funds else None)
+        log.info(
+            "   payment_method=%s",
+            getattr(msg.funds, "payment_method", None) if msg.funds else None,
+        )
 
         # Defensive: check funds exists before accessing payment_method
-        payment_method = getattr(msg.funds, "payment_method", None) if msg.funds else None
+        payment_method = (  # noqa: F841
+            getattr(msg.funds, "payment_method", None) if msg.funds else None
+        )
         if not msg.transaction_id:
             log.warning("No transaction_id in CommitPayment")
             await ctx.send(sender, RejectPayment(reason="Missing transaction ID."))
@@ -311,9 +329,12 @@ async def on_commit(ctx: Context, sender: str, msg: CommitPayment) -> None:
         paid = await asyncio.to_thread(verify_checkout_session_paid, msg.transaction_id)
         log.info("Stripe verification result: paid=%s", paid)
         if not paid:
-            await ctx.send(sender, RejectPayment(
-                reason="Stripe payment not completed yet. Please finish checkout."
-            ))
+            await ctx.send(
+                sender,
+                RejectPayment(
+                    reason="Stripe payment not completed yet. Please finish checkout."
+                ),
+            )
             return
 
         # Payment verified — send CompletePayment
@@ -322,31 +343,45 @@ async def on_commit(ctx: Context, sender: str, msg: CommitPayment) -> None:
 
         # Load the stored prompt + refs
         state = _load_state(ctx, sender)
-        log.info("Loaded state for %s: has_prompt=%s, has_refs=%s", sender[:16], bool(state.get("prompt")), bool(state.get("refs")))
+        log.info(
+            "Loaded state for %s: has_prompt=%s, has_refs=%s",
+            sender[:16],
+            bool(state.get("prompt")),
+            bool(state.get("refs")),
+        )
         prompt = state.get("prompt", "")
         refs = state.get("refs", [])
         _clear_state(ctx, sender)
 
         if not prompt:
-            await ctx.send(sender, _chat_msg(
-                "✅ Payment received, but I couldn't find your film prompt. "
-                "Please send your prompt again (no additional payment needed — "
-                "contact support if charged)."
-            ))
+            await ctx.send(
+                sender,
+                _chat_msg(
+                    "✅ Payment received, but I couldn't find your film prompt. "
+                    "Please send your prompt again (no additional payment needed — "
+                    "contact support if charged)."
+                ),
+            )
             return
 
-        await ctx.send(sender, _chat_msg(
-            "✅ **Payment confirmed!** Starting your film production now...\n"
-        ))
+        await ctx.send(
+            sender,
+            _chat_msg(
+                "✅ **Payment confirmed!** Starting your film production now...\n"
+            ),
+        )
 
         # Queue or run immediately
         if _active is not None:
             _queue.append({"user": sender, "prompt": prompt, "refs": refs})
             pos = len(_queue)
-            await ctx.send(sender, _chat_msg(
-                f"⏳ **You're #{pos} in the queue.**\n"
-                f"Another film is being produced. Yours will start automatically!"
-            ))
+            await ctx.send(
+                sender,
+                _chat_msg(
+                    f"⏳ **You're #{pos} in the queue.**\n"
+                    f"Another film is being produced. Yours will start automatically!"
+                ),
+            )
         else:
             asyncio.create_task(_run_film(ctx, sender, prompt, refs))
 
@@ -362,10 +397,13 @@ async def on_reject(ctx: Context, sender: str, msg: RejectPayment) -> None:
     """Called when payment is rejected or cancelled."""
     log.info("❌ RejectPayment from %s: %s", sender[:16], msg.reason)
     _clear_state(ctx, sender)
-    await ctx.send(sender, _chat_msg(
-        f"❌ **Payment was cancelled or rejected.** {msg.reason or ''}\n\n"
-        f"Send your prompt again anytime to start a new checkout."
-    ))
+    await ctx.send(
+        sender,
+        _chat_msg(
+            f"❌ **Payment was cancelled or rejected.** {msg.reason or ''}\n\n"
+            f"Send your prompt again anytime to start a new checkout."
+        ),
+    )
 
 
 # ── Wire up protocols ─────────────────────────────────────────────
@@ -378,6 +416,7 @@ agent.include(payment_proto, publish_manifest=True)
 
 # ── Lifecycle ─────────────────────────────────────────────────────
 
+
 @agent.on_event("startup")
 async def startup(ctx: Context) -> None:
     log.info("🎬 Unified Movie Agent (Stripe-gated) starting…")
@@ -388,6 +427,8 @@ async def startup(ctx: Context) -> None:
 if __name__ == "__main__":
     print("🎬 Unified Movie Agent (Stripe-gated)")
     print(f"📍 Address: {agent.address}")
-    print(f"🎞️  {SCENE_COUNT} scenes | 💳 Stripe payment: ${STRIPE_AMOUNT_CENTS/100:.2f} {STRIPE_CURRENCY.upper()}")
+    print(
+        f"🎞️  {SCENE_COUNT} scenes | 💳 Stripe payment: ${STRIPE_AMOUNT_CENTS / 100:.2f} {STRIPE_CURRENCY.upper()}"
+    )
     print()
     agent.run()

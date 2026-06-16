@@ -8,9 +8,9 @@ web_search_tool = WebSearchTool(
         "country": "US",
         "region": None,
         "city": None,
-        "timezone": None
+        "timezone": None,
     },
-    search_context_size="high"
+    search_context_size="high",
 )
 
 scholarship_agent = Agent(
@@ -88,7 +88,7 @@ Rules:
 - Never show citations or reference markers
 - Focus on scholarships with verifiable information""",
     model="gpt-4o",
-    tools=[web_search_tool]
+    tools=[web_search_tool],
 )
 
 
@@ -102,29 +102,24 @@ async def run_workflow(workflow_input: WorkflowInput):
     conversation_history: list[TResponseInputItem] = [
         {
             "role": "user",
-            "content": [
-                {
-                    "type": "input_text",
-                    "text": workflow["input_as_text"]
-                }
-            ]
+            "content": [{"type": "input_text", "text": workflow["input_as_text"]}],
         }
     ]
-    
+
     agent_result_temp = await Runner.run(
         scholarship_agent,
         input=[*conversation_history],
         run_config=RunConfig(
             trace_metadata={
                 "__trace_source__": "agent-builder",
-                "workflow_id": "scholarship_finder_v1"
+                "workflow_id": "scholarship_finder_v1",
             }
-        )
+        ),
     )
 
-    conversation_history.extend([item.to_input_item() for item in agent_result_temp.new_items])
+    conversation_history.extend(
+        [item.to_input_item() for item in agent_result_temp.new_items]
+    )
 
-    agent_result = {
-        "output_text": agent_result_temp.final_output_as(str)
-    }
+    agent_result = {"output_text": agent_result_temp.final_output_as(str)}
     return agent_result

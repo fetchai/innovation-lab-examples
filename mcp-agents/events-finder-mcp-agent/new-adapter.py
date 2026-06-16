@@ -4,7 +4,7 @@ import json
 import logging
 import threading
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List  # noqa: F401
 from uuid import uuid4
 
 import requests
@@ -144,29 +144,43 @@ class MCPServerAdapter:
                     ctx.logger.info(f"[BEFORE CLEANING] Raw user message: {item.text}")
                     cleaned_text = item.text
                     if "[Additional Context]" in cleaned_text:
-                        cleaned_text = cleaned_text.split("[Additional Context]")[0].strip()
+                        cleaned_text = cleaned_text.split("[Additional Context]")[
+                            0
+                        ].strip()
                     import re
-                    cleaned_text = re.sub(r'<user_details>.*?</user_details>', '', cleaned_text, flags=re.DOTALL)
-                    cleaned_text = re.sub(r'<.*?>', '', cleaned_text)  # Remove any remaining XML tags
+
+                    cleaned_text = re.sub(
+                        r"<user_details>.*?</user_details>",
+                        "",
+                        cleaned_text,
+                        flags=re.DOTALL,
+                    )
+                    cleaned_text = re.sub(
+                        r"<.*?>", "", cleaned_text
+                    )  # Remove any remaining XML tags
                     cleaned_text = cleaned_text.strip()
-                    ctx.logger.info(f"[AFTER CLEANING] Cleaned user message: {cleaned_text}")
+                    ctx.logger.info(
+                        f"[AFTER CLEANING] Cleaned user message: {cleaned_text}"
+                    )
                     try:
                         session_id = str(ctx.session)
-                        
+
                         # Load session data (new format only)
                         session_data = {}
                         try:
                             session_serialized = ctx.storage.get(session_id)
                             if session_serialized:
                                 session_data = deserialize_session(session_serialized)
-                                ctx.logger.info(f"[SESSION] Loaded session data")
+                                ctx.logger.info(f"[SESSION] Loaded session data")  # noqa: F541
                         except Exception as e:
                             ctx.logger.error(f"Error loading session: {str(e)}")
                             session_data = {}
-                        
+
                         # Extract messages from session data
                         messages = session_data.get("messages", [])
-                        ctx.logger.info(f"[CHAT HISTORY] Loaded {len(messages)} messages from storage")
+                        ctx.logger.info(
+                            f"[CHAT HISTORY] Loaded {len(messages)} messages from storage"
+                        )
 
                         system_prompt_template = {
                             "role": "system",
@@ -180,7 +194,7 @@ class MCPServerAdapter:
                             === Developer additions ===  
                             {self.system_prompt or ""}  
                             === End additions ===  
-                            """
+                            """,
                         }
 
                         messages = [m for m in messages if m.get("role") != "system"]
@@ -189,7 +203,9 @@ class MCPServerAdapter:
                         user_message = {"role": "user", "content": cleaned_text}
                         messages.append(user_message)
 
-                        ctx.logger.info(f"[CHAT HISTORY] Added user message, total messages: {len(messages)}")
+                        ctx.logger.info(
+                            f"[CHAT HISTORY] Added user message, total messages: {len(messages)}"
+                        )
 
                         # Only include full history if self.include_history is True
                         if not self.include_history:
@@ -199,7 +215,7 @@ class MCPServerAdapter:
                         # Get tools from session or fetch from MCP server if not available
                         available_tools = []
                         tools_list = session_data.get("tools_list", [])
-                        
+
                         if tools_list:
                             # Use tools from session
                             available_tools = [
@@ -213,7 +229,9 @@ class MCPServerAdapter:
                                 }
                                 for tool in tools_list
                             ]
-                            ctx.logger.info(f"[TOOLS] Using cached tools from session: {len(tools_list)} tools")
+                            ctx.logger.info(
+                                f"[TOOLS] Using cached tools from session: {len(tools_list)} tools"
+                            )
                         else:
                             # Fetch tools from MCP server (for new sessions)
                             try:
@@ -226,7 +244,7 @@ class MCPServerAdapter:
                                     }
                                     for tool in tools
                                 ]
-                                
+
                                 available_tools = [
                                     {
                                         "type": "function",
@@ -238,14 +256,18 @@ class MCPServerAdapter:
                                     }
                                     for tool in tools
                                 ]
-                                ctx.logger.info(f"[TOOLS] Fetched fresh tools from MCP server: {len(tools_list)} tools")
+                                ctx.logger.info(
+                                    f"[TOOLS] Fetched fresh tools from MCP server: {len(tools_list)} tools"
+                                )
                             except Exception as e:
                                 ctx.logger.error(
                                     f"Error: Failed to retrieve tools from MCP Server: {str(e)}"
                                 )
                                 available_tools = []
 
-                        ctx.logger.info(f"Available tools: {len(available_tools)} tools")
+                        ctx.logger.info(
+                            f"Available tools: {len(available_tools)} tools"
+                        )
 
                         payload = {
                             "model": self.model,
@@ -269,7 +291,7 @@ class MCPServerAdapter:
                                 json=payload,
                             )
                             response_json = response.json()
-                            
+
                         except Exception as e:
                             ctx.logger.error(f"Error calling ASI1 API: {str(e)}")
                             error_msg = (
@@ -286,8 +308,6 @@ class MCPServerAdapter:
                             )
                             continue
 
-
-
                         if response_json.get("choices"):
                             assistant_message = response_json["choices"][0]["message"]
 
@@ -303,7 +323,9 @@ class MCPServerAdapter:
 
                             messages.append(assistant_msg)
 
-                            ctx.logger.info(f"[CHAT HISTORY] After adding assistant message: {json.dumps(messages, indent=2)}")
+                            ctx.logger.info(
+                                f"[CHAT HISTORY] After adding assistant message: {json.dumps(messages, indent=2)}"
+                            )
 
                             if assistant_message.get("tool_calls"):
                                 for tool_call in assistant_message["tool_calls"]:
@@ -341,17 +363,28 @@ class MCPServerAdapter:
                                         response_text = "\n".join(
                                             str(r) for r in tool_results
                                         )
-                                        
+
                                         # Check if response has the problematic format
-                                        if response_text.startswith("type='text' text="):
-                                            ctx.logger.warning("Detected MCP response format issue - contains type annotations")
+                                        if response_text.startswith(
+                                            "type='text' text="
+                                        ):
+                                            ctx.logger.warning(
+                                                "Detected MCP response format issue - contains type annotations"
+                                            )
                                             # Clean up the format
                                             import re
-                                            match = re.search(r"type='text' text=\"(.*)\" annotations=", response_text, re.DOTALL)
+
+                                            match = re.search(
+                                                r"type='text' text=\"(.*)\" annotations=",
+                                                response_text,
+                                                re.DOTALL,
+                                            )
                                             if match:
-                                                cleaned_text = match.group(1).replace('\\n', '\n')
+                                                cleaned_text = match.group(1).replace(
+                                                    "\\n", "\n"
+                                                )
                                                 response_text = cleaned_text
-                                        
+
                                         ctx.logger.info(
                                             f"Tool '{selected_tool}' response: {response_text}"
                                         )
@@ -376,8 +409,10 @@ class MCPServerAdapter:
                                         }
                                     )
 
-                                ctx.logger.info(f"[CHAT HISTORY] After tool call, total messages: {len(messages)}")
-                                
+                                ctx.logger.info(
+                                    f"[CHAT HISTORY] After tool call, total messages: {len(messages)}"
+                                )
+
                                 # Get final response after tool calls
                                 try:
                                     follow_up_payload = {
@@ -391,7 +426,9 @@ class MCPServerAdapter:
                                         headers=headers,
                                         json=follow_up_payload,
                                     )
-                                    ctx.logger.info(f"[FINAL LLM CALL] Response status: {follow_up_response.status_code}")
+                                    ctx.logger.info(
+                                        f"[FINAL LLM CALL] Response status: {follow_up_response.status_code}"
+                                    )
                                     follow_up_json = follow_up_response.json()
 
                                     final_response = (
@@ -402,12 +439,13 @@ class MCPServerAdapter:
                                             "I've processed your request. Let me know if you need anything else!",
                                         )
                                     )
-                                    ctx.logger.info(f"[FINAL LLM CALL] Final response extracted: {final_response}")
+                                    ctx.logger.info(
+                                        f"[FINAL LLM CALL] Final response extracted: {final_response}"
+                                    )
                                     # Append the final LLM response to the chat history
-                                    messages.append({
-                                        "role": "assistant",
-                                        "content": final_response
-                                    })
+                                    messages.append(
+                                        {"role": "assistant", "content": final_response}
+                                    )
                                 except Exception as e:
                                     ctx.logger.error(
                                         f"Error getting final response from ASI1: {str(e)}"
@@ -438,15 +476,15 @@ class MCPServerAdapter:
                                 session_data = {
                                     "tools_list": tools_list,
                                     "messages": [],
-                                    "sender": sender
+                                    "sender": sender,
                                 }
-                            
+
                             session_data["messages"] = messages
                             session_data["sender"] = sender
-                            
+
                             # Save the complete session data
                             ctx.storage.set(session_id, serialize_session(session_data))
-                            ctx.logger.info(f"[SESSION] Saved session data to storage")
+                            ctx.logger.info(f"[SESSION] Saved session data to storage")  # noqa: F541
                         except Exception as e:
                             ctx.logger.error(f"Error saving session data: {str(e)}")
 
@@ -473,10 +511,14 @@ class MCPServerAdapter:
                                 content=[TextContent(type="text", text=error_msg)],
                             ),
                         )
-                elif hasattr(item, 'type') and item.type == 'metadata':
-                    ctx.logger.info(f"Got metadata from {sender}: {getattr(item, 'metadata', {})}")
+                elif hasattr(item, "type") and item.type == "metadata":
+                    ctx.logger.info(
+                        f"Got metadata from {sender}: {getattr(item, 'metadata', {})}"
+                    )
                 else:
-                    ctx.logger.info(f"Got unexpected content from {sender}: {type(item)}")
+                    ctx.logger.info(
+                        f"Got unexpected content from {sender}: {type(item)}"
+                    )
 
         @self.chat_proto.on_message(model=ChatAcknowledgement)
         async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):

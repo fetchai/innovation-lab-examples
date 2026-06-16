@@ -3,7 +3,7 @@ Payment protocol for ASI1 One LLM API agent.
 """
 
 import os
-import traceback
+import traceback  # noqa: F401
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -50,9 +50,13 @@ def verify_fet_payment_to_agent(
     try:
         from cosmpy.aerial.client import LedgerClient, NetworkConfig
 
-        use_testnet = not use_mainnet
-        testnet = os.getenv("FET_USE_TESTNET", "true").lower() == "true" if not use_mainnet else False
-        
+        use_testnet = not use_mainnet  # noqa: F841
+        testnet = (
+            os.getenv("FET_USE_TESTNET", "true").lower() == "true"
+            if not use_mainnet
+            else False
+        )
+
         network_config = (
             NetworkConfig.fetchai_stable_testnet()
             if testnet
@@ -60,28 +64,28 @@ def verify_fet_payment_to_agent(
         )
         ledger = LedgerClient(network_config)
         expected_amount_micro = int(float(expected_amount_fet) * 10**18)
-        
+
         if not recipient_agent_wallet:
             logger.error("Recipient agent wallet is not set")
             return False
-            
+
         expected_recipient = str(recipient_agent_wallet.address())
-        
+
         logger.info(
             f"Verifying payment of {expected_amount_fet} FET from {sender_fet_address} "
             f"to {expected_recipient} on {'testnet' if testnet else 'mainnet'}"
         )
-        
+
         tx_response = ledger.query_tx(transaction_id)
         if not tx_response.is_successful():
             logger.error(f"Transaction {transaction_id} was not successful")
             return False
-            
+
         recipient_found = False
         amount_found = False
         sender_found = False
         denom = "atestfet" if testnet else "afet"
-        
+
         for event_type, event_attrs in tx_response.events.items():
             if event_type == "transfer":
                 if event_attrs.get("recipient") == expected_recipient:
@@ -96,11 +100,11 @@ def verify_fet_payment_to_agent(
                                 amount_found = True
                         except Exception:
                             pass
-                            
+
         if recipient_found and amount_found and sender_found:
             logger.info(f"Payment verified: {transaction_id}")
             return True
-            
+
         logger.error(
             f"Payment verification failed - recipient: {recipient_found}, "
             f"amount: {amount_found}, sender: {sender_found}"
@@ -109,6 +113,7 @@ def verify_fet_payment_to_agent(
     except Exception as e:
         logger.error(f"FET payment verification failed: {e}")
         import traceback
+
         logger.error(f"Traceback: {traceback.format_exc()}")
         return False
 
@@ -117,38 +122,47 @@ async def request_payment_from_user(
     ctx: Context, user_address: str, description: str | None = None
 ):
     session = str(ctx.session)
-    
+
     # Build accepted funds list
     accepted_funds: list[Funds] = []
-    
+
     # Add FET payment option
     fet_amount = os.getenv("FIXED_FET_AMOUNT", "0.1")
-    accepted_funds.append(Funds(currency="FET", amount=str(fet_amount), payment_method="fet_direct"))
-    
+    accepted_funds.append(
+        Funds(currency="FET", amount=str(fet_amount), payment_method="fet_direct")
+    )
+
     if not accepted_funds:
-        ctx.logger.warning(f"[payment] no accepted_funds; cannot send RequestPayment user={user_address} session={session}")
+        ctx.logger.warning(
+            f"[payment] no accepted_funds; cannot send RequestPayment user={user_address} session={session}"
+        )
         await ctx.send(
             user_address,
             AvChatMessage(
-                content=[TextContent(type="text", text="No payment methods are currently available. Please try again in a moment.")]
+                content=[
+                    TextContent(
+                        type="text",
+                        text="No payment methods are currently available. Please try again in a moment.",
+                    )
+                ]
             ),
         )
         return
-    
+
     # Build metadata
     metadata: dict[str, str] = {
         "agent": "asi1-llm-agent",
         "service": "llm_processing",
     }
-    
+
     use_testnet = os.getenv("FET_USE_TESTNET", "true").lower() == "true"
     fet_network = "stable-testnet" if use_testnet else "mainnet"
     metadata["fet_network"] = fet_network
     metadata["mainnet"] = "false" if use_testnet else "true"
-    
+
     if _agent_wallet:
         metadata["provider_agent_wallet"] = str(_agent_wallet.address())
-    
+
     if description:
         metadata["content"] = description
     else:
@@ -156,28 +170,36 @@ async def request_payment_from_user(
             "Please complete the payment to proceed. "
             "After payment, I will process your request using ASI1 One LLM."
         )
-    
-    recipient_addr = str(_agent_wallet.address()) if _agent_wallet else str(ctx.agent.address)
-    
+
+    recipient_addr = (
+        str(_agent_wallet.address()) if _agent_wallet else str(ctx.agent.address)
+    )
+
     # Log payment request details
-    funds_log = [{"method": f.payment_method, "currency": f.currency, "amount": f.amount} for f in accepted_funds]
+    funds_log = [
+        {"method": f.payment_method, "currency": f.currency, "amount": f.amount}
+        for f in accepted_funds
+    ]
     ctx.logger.info(
         f"[payment] outbound RequestPayment user={user_address} session={session} "
         f"funds={funds_log} metadata={metadata} deadline_seconds=300"
     )
-    
+
     payment_request = RequestPayment(
         accepted_funds=accepted_funds,
         recipient=recipient_addr,
         deadline_seconds=300,
         reference=session,
-        description=description or "ASI1 One LLM: after payment, I will process your request",
+        description=description
+        or "ASI1 One LLM: after payment, I will process your request",
         metadata=metadata,
     )
-    
+
     # Send RequestPayment
     await ctx.send(user_address, payment_request)
-    ctx.logger.info(f"[payment] RequestPayment sent to {user_address} with recipient {recipient_addr}")
+    ctx.logger.info(
+        f"[payment] RequestPayment sent to {user_address} with recipient {recipient_addr}"
+    )
 
 
 def _allow_retry(ctx: Context, sender: str, session_id: str) -> bool:
@@ -202,9 +224,9 @@ async def handle_commit_payment(ctx: Context, sender: str, msg: CommitPayment):
         try:
             buyer_fet_wallet = None
             if isinstance(msg.metadata, dict):
-                buyer_fet_wallet = msg.metadata.get("buyer_fet_wallet") or msg.metadata.get(
-                    "buyer_fet_address"
-                )
+                buyer_fet_wallet = msg.metadata.get(
+                    "buyer_fet_wallet"
+                ) or msg.metadata.get("buyer_fet_address")
             if not buyer_fet_wallet:
                 ctx.logger.error("Missing buyer_fet_wallet in CommitPayment.metadata")
             else:
@@ -293,8 +315,10 @@ async def process_api_result(ctx: Context, sender: str, result: dict):
     if image_url:
         try:
             # Send image as markdown in text content (matches ASI1 example)
-            image_markdown = f"Image generated successfully.\n\n![Generated image]({image_url})\n\n"
-            
+            image_markdown = (
+                f"Image generated successfully.\n\n![Generated image]({image_url})\n\n"
+            )
+
             await ctx.send(
                 sender,
                 AvChatMessage(
@@ -320,14 +344,19 @@ async def process_api_result(ctx: Context, sender: str, result: dict):
             else:
                 await ctx.send(
                     sender,
-                    create_text_chat("Could not send image. Please try again or start a new session."),
+                    create_text_chat(
+                        "Could not send image. Please try again or start a new session."
+                    ),
                 )
         return
 
     # Fallback: handle text response (for backward compatibility)
     response_text = result.get("response_text")
     if not response_text:
-        await ctx.send(sender, create_text_chat("Response generated but could not retrieve image or text"))
+        await ctx.send(
+            sender,
+            create_text_chat("Response generated but could not retrieve image or text"),
+        )
         if _allow_retry(ctx, sender, session_id):
             await ctx.send(
                 sender,
@@ -364,5 +393,7 @@ async def process_api_result(ctx: Context, sender: str, result: dict):
         else:
             await ctx.send(
                 sender,
-                create_text_chat("Could not send response. Please try again or start a new session."),
+                create_text_chat(
+                    "Could not send response. Please try again or start a new session."
+                ),
             )

@@ -6,7 +6,7 @@ Uses Gemini Flash for fast, cheap planning.
 import json
 import re
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional  # noqa: F401
 
 from google import genai
 
@@ -19,6 +19,7 @@ _client = genai.Client(api_key=CREATIVE_KEY)
 
 
 # ── Text helpers ────────────────────────────────────────────────
+
 
 def _clean(text: str) -> str:
     if text is None:
@@ -54,13 +55,17 @@ def _fallback_scene(index: int, story: str) -> Dict[str, Any]:
         m = "Steady, hopeful underscore with subtle momentum"
         t = "Side by side, we keep pushing the world forward."
     return {
-        "scene_index": index, "scene_title": f"Scene {index}",
-        "visual_prompt": v, "music_prompt": m,
-        "voiceover_prompt": t, "duration_seconds": 8,
+        "scene_index": index,
+        "scene_title": f"Scene {index}",
+        "visual_prompt": v,
+        "music_prompt": m,
+        "voiceover_prompt": t,
+        "duration_seconds": 8,
     }
 
 
 # ── Gemini prompt ───────────────────────────────────────────────
+
 
 def _build_prompt(user_prompt: str, refs: List[str]) -> str:
     refs_str = json.dumps(refs or [], ensure_ascii=False)
@@ -166,7 +171,7 @@ def _parse_json(raw: str) -> Dict[str, Any]:
         start, end = raw.find("{"), raw.rfind("}")
         if start != -1 and end > start:
             try:
-                return json.loads(raw[start:end + 1])
+                return json.loads(raw[start : end + 1])
             except json.JSONDecodeError:
                 pass
         raise
@@ -182,21 +187,29 @@ def _normalize(data: Dict[str, Any], story: str) -> List[SceneBrief]:
 
     for i, s in enumerate(raw_scenes[:SCENE_COUNT]):
         idx = max(1, min(SCENE_COUNT, int(s.get("scene_index", i + 1))))
-        vp = _clean(str(s.get("visual_prompt", s.get("video_prompt", "")))) or \
-             "Visualize a key moment from the story."
-        mp = _clean(str(s.get("music_prompt", ""))) or \
-             "Cinematic, hopeful underscore with gentle forward motion"
-        vt = _truncate(str(s.get("voiceover_prompt", s.get("voiceover_text", "")))) or \
-             "Side by side, we turn this idea into something real."
+        vp = (
+            _clean(str(s.get("visual_prompt", s.get("video_prompt", ""))))
+            or "Visualize a key moment from the story."
+        )
+        mp = (
+            _clean(str(s.get("music_prompt", "")))
+            or "Cinematic, hopeful underscore with gentle forward motion"
+        )
+        vt = (
+            _truncate(str(s.get("voiceover_prompt", s.get("voiceover_text", ""))))
+            or "Side by side, we turn this idea into something real."
+        )
 
-        briefs.append(SceneBrief(
-            scene_index=idx,
-            scene_title=_clean(str(s.get("scene_title", f"Scene {idx}"))),
-            visual_prompt=vp,
-            music_prompt=mp,
-            voiceover_prompt=vt,
-            duration_seconds=int(s.get("duration_seconds", 8)),
-        ))
+        briefs.append(
+            SceneBrief(
+                scene_index=idx,
+                scene_title=_clean(str(s.get("scene_title", f"Scene {idx}"))),
+                visual_prompt=vp,
+                music_prompt=mp,
+                voiceover_prompt=vt,
+                duration_seconds=int(s.get("duration_seconds", 8)),
+            )
+        )
 
     while len(briefs) < SCENE_COUNT:
         fb = _fallback_scene(len(briefs) + 1, story)
@@ -210,6 +223,7 @@ def _normalize(data: Dict[str, Any], story: str) -> List[SceneBrief]:
 
 
 # ── Public API ──────────────────────────────────────────────────
+
 
 async def plan_story(user_prompt: str, ref_urls: List[str]) -> StoryPlan:
     """
@@ -234,11 +248,15 @@ async def plan_story(user_prompt: str, ref_urls: List[str]) -> StoryPlan:
 
     except Exception as e:
         log.error("Creative Director error: %s — using fallbacks", e)
-        fallback_scenes = [SceneBrief(**_fallback_scene(i, user_prompt))
-                           for i in range(1, SCENE_COUNT + 1)]
+        fallback_scenes = [
+            SceneBrief(**_fallback_scene(i, user_prompt))
+            for i in range(1, SCENE_COUNT + 1)
+        ]
         return StoryPlan(
             title="AI Story (Fallback)",
-            logline=user_prompt[:100] if user_prompt else "A story about humans and AI.",
+            logline=user_prompt[:100]
+            if user_prompt
+            else "A story about humans and AI.",
             scenes=fallback_scenes,
             status="fallback",
             error=str(e),

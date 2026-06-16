@@ -1,5 +1,6 @@
-import re
+import re  # noqa: F401
 from hyperon import MeTTa, E, S, ValueAtom
+
 
 class InvestmentRAG:
     def __init__(self, metta_instance: MeTTa):
@@ -8,65 +9,95 @@ class InvestmentRAG:
     def query_risk_profile(self, risk_profile):
         """Find investment types suitable for a risk profile."""
         risk_profile = risk_profile.strip('"')
-        query_str = f'!(match &self (risk_profile {risk_profile} $investment) $investment)'
+        query_str = (
+            f"!(match &self (risk_profile {risk_profile} $investment) $investment)"
+        )
         results = self.metta.run(query_str)
         print(results, query_str)
 
-        unique_investments = list(set(str(r[0]) for r in results if r and len(r) > 0)) if results else []
+        unique_investments = (
+            list(set(str(r[0]) for r in results if r and len(r) > 0)) if results else []
+        )
         return unique_investments
 
     def get_expected_return(self, investment):
         """Find expected returns for an investment type."""
         investment = investment.strip('"')
-        query_str = f'!(match &self (expected_return {investment} $return) $return)'
+        query_str = f"!(match &self (expected_return {investment} $return) $return)"
         results = self.metta.run(query_str)
         print(results, query_str)
-        return [r[0].get_object().value for r in results if r and len(r) > 0] if results else []
+        return (
+            [r[0].get_object().value for r in results if r and len(r) > 0]
+            if results
+            else []
+        )
 
     def get_risk_level(self, investment):
         """Find risk level of an investment type."""
         investment = investment.strip('"')
-        query_str = f'!(match &self (risk_level {investment} $risk) $risk)'
+        query_str = f"!(match &self (risk_level {investment} $risk) $risk)"
         results = self.metta.run(query_str)
         print(results, query_str)
 
-        return [r[0].get_object().value for r in results if r and len(r) > 0] if results else []
+        return (
+            [r[0].get_object().value for r in results if r and len(r) > 0]
+            if results
+            else []
+        )
 
     def get_age_allocation(self, age_group):
         """Get recommended asset allocation for age group."""
         age_group = age_group.strip('"')
-        query_str = f'!(match &self (age_allocation {age_group} $allocation) $allocation)'
+        query_str = (
+            f"!(match &self (age_allocation {age_group} $allocation) $allocation)"
+        )
         results = self.metta.run(query_str)
         print(results, query_str)
 
-        return [r[0].get_object().value for r in results if r and len(r) > 0] if results else []
+        return (
+            [r[0].get_object().value for r in results if r and len(r) > 0]
+            if results
+            else []
+        )
 
     def get_goal_strategy(self, goal):
         """Get investment strategy for a specific goal."""
         goal = goal.strip('"')
-        query_str = f'!(match &self (goal_strategy {goal} $strategy) $strategy)'
+        query_str = f"!(match &self (goal_strategy {goal} $strategy) $strategy)"
         results = self.metta.run(query_str)
         print(results, query_str)
 
-        return [r[0].get_object().value for r in results if r and len(r) > 0] if results else []
+        return (
+            [r[0].get_object().value for r in results if r and len(r) > 0]
+            if results
+            else []
+        )
 
     def query_sector_stocks(self, sector):
         """Get top performing stocks in a sector."""
         sector = sector.strip('"')
-        query_str = f'!(match &self (sector_stocks {sector} $stocks) $stocks)'
+        query_str = f"!(match &self (sector_stocks {sector} $stocks) $stocks)"
         results = self.metta.run(query_str)
         print(results, query_str)
 
-        return [r[0].get_object().value for r in results if r and len(r) > 0] if results else []
+        return (
+            [r[0].get_object().value for r in results if r and len(r) > 0]
+            if results
+            else []
+        )
 
     def get_mistake_warning(self, mistake):
         """Get warning about common investment mistakes."""
         mistake = mistake.strip('"')
-        query_str = f'!(match &self (mistake {mistake} $warning) $warning)'
+        query_str = f"!(match &self (mistake {mistake} $warning) $warning)"
         results = self.metta.run(query_str)
         print(results, query_str)
 
-        return [r[0].get_object().value for r in results if r and len(r) > 0] if results else []
+        return (
+            [r[0].get_object().value for r in results if r and len(r) > 0]
+            if results
+            else []
+        )
 
     def query_faq(self, question):
         """Retrieve investment FAQ answers."""

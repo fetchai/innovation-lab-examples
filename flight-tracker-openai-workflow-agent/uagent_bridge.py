@@ -20,7 +20,9 @@ from uagents_core.contrib.protocols.chat import (
 def _load_workflow_module():
     here = os.path.dirname(__file__)
     workflow_path = os.path.join(here, "workflow.py")
-    spec = importlib.util.spec_from_file_location("flight_tracker_workflow", workflow_path)
+    spec = importlib.util.spec_from_file_location(
+        "flight_tracker_workflow", workflow_path
+    )
     if spec is None or spec.loader is None:
         raise RuntimeError("Failed to load workflow module spec")
     mod = importlib.util.module_from_spec(spec)
@@ -41,7 +43,9 @@ def text_msg(text: str, *, end_session: bool = False) -> ChatMessage:
     content = [TextContent(type="text", text=text)]
     if end_session:
         content.append(EndSessionContent(type="end-session"))
-    return ChatMessage(timestamp=datetime.now(timezone.utc), msg_id=uuid4(), content=content)
+    return ChatMessage(
+        timestamp=datetime.now(timezone.utc), msg_id=uuid4(), content=content
+    )
 
 
 @chat_proto.on_message(ChatMessage)
@@ -62,10 +66,16 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                 ChatMessage(
                     timestamp=datetime.now(timezone.utc),
                     msg_id=uuid4(),
-                    content=[MetadataContent(type="metadata", metadata={"attachments": "false"})],
+                    content=[
+                        MetadataContent(
+                            type="metadata", metadata={"attachments": "false"}
+                        )
+                    ],
                 ),
             )
-            await ctx.send(sender, text_msg("Hi! Send a flight number like 'AI102 today'."))
+            await ctx.send(
+                sender, text_msg("Hi! Send a flight number like 'AI102 today'.")
+            )
             return
 
         if isinstance(item, TextContent):
@@ -96,5 +106,3 @@ agent.include(chat_proto, publish_manifest=True)
 
 if __name__ == "__main__":
     agent.run()
-
-

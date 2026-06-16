@@ -14,11 +14,17 @@ JWKS_URL = os.getenv("JWKS_URL") or f"{APP_BASE}/.well-known/jwks.json"
 # Normalize issuer to avoid trailing-slash mismatches
 JWT_ISSUER = (os.getenv("JWT_ISSUER") or APP_BASE).rstrip("/")
 # Prefer explicit audience, then seller account id, then legacy account id
-JWT_AUDIENCE = os.getenv("JWT_AUDIENCE") or os.getenv("SELLER_ACCOUNT_ID") or os.getenv("SKYFIRE_ACCOUNT_ID", "")
+JWT_AUDIENCE = (
+    os.getenv("JWT_AUDIENCE")
+    or os.getenv("SELLER_ACCOUNT_ID")
+    or os.getenv("SKYFIRE_ACCOUNT_ID", "")
+)
 JWT_ALGORITHM = "ES256"
 
 # Charge API (provider flow)
-SKYFIRE_TOKENS_API_URL = os.getenv("SKYFIRE_TOKENS_API_URL", f"{API_BASE}/api/v1/tokens/charge")
+SKYFIRE_TOKENS_API_URL = os.getenv(
+    "SKYFIRE_TOKENS_API_URL", f"{API_BASE}/api/v1/tokens/charge"
+)
 
 # Prefer SELLER_* variables if provided; fallback to legacy names
 SKYFIRE_API_KEY = os.getenv("SKYFIRE_API_KEY") or os.getenv("SELLER_SKYFIRE_API_KEY")
@@ -61,7 +67,9 @@ async def verify_token_claims(skyfire_token: str, logger: logging.Logger) -> boo
         )
         ssi = claims.get("ssi")
         if SKYFIRE_SERVICE_ID and ssi != SKYFIRE_SERVICE_ID:
-            raise JWTError(f"Token is not issued for this service: {SKYFIRE_SERVICE_ID}")
+            raise JWTError(
+                f"Token is not issued for this service: {SKYFIRE_SERVICE_ID}"
+            )
         return True
     except JWTError as err:
         logger.error(f"Skyfire token JWT verification failed: {err}")
@@ -71,7 +79,9 @@ async def verify_token_claims(skyfire_token: str, logger: logging.Logger) -> boo
         return False
 
 
-async def charge_token(token: str, amount_to_charge: str, logger: logging.Logger) -> bool:
+async def charge_token(
+    token: str, amount_to_charge: str, logger: logging.Logger
+) -> bool:
     try:
         async with aiohttp.ClientSession() as session:
             payload = {"token": token, "chargeAmount": amount_to_charge}
@@ -94,8 +104,12 @@ async def charge_token(token: str, amount_to_charge: str, logger: logging.Logger
         return False
 
 
-async def verify_and_charge(token: str, amount_usdc: str, logger: logging.Logger) -> bool:
-    if not (SKYFIRE_API_KEY and SKYFIRE_SERVICE_ID and (SELLER_ACCOUNT_ID or JWT_AUDIENCE)):
+async def verify_and_charge(
+    token: str, amount_usdc: str, logger: logging.Logger
+) -> bool:
+    if not (
+        SKYFIRE_API_KEY and SKYFIRE_SERVICE_ID and (SELLER_ACCOUNT_ID or JWT_AUDIENCE)
+    ):
         logger.error("Skyfire seller variables not configured")
         return False
     ok = await verify_token_claims(token, logger)
@@ -106,5 +120,3 @@ async def verify_and_charge(token: str, amount_usdc: str, logger: logging.Logger
 
 def get_skyfire_service_id() -> Optional[str]:
     return SKYFIRE_SERVICE_ID
-
-

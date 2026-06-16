@@ -33,8 +33,7 @@ def _get_conn() -> sqlite3.Connection:
 def load_state(user_id: str) -> Dict[str, Any]:
     conn = _get_conn()
     cur = conn.execute(
-        "SELECT state_json FROM session_state WHERE user_id = ?",
-        (user_id,)
+        "SELECT state_json FROM session_state WHERE user_id = ?", (user_id,)
     )
     row = cur.fetchone()
     if row:
@@ -58,14 +57,11 @@ def save_state(user_id: str, state: Dict[str, Any]) -> None:
               state_json=excluded.state_json, 
               updated_at=CURRENT_TIMESTAMP
             """,
-            (user_id, state_json)
+            (user_id, state_json),
         )
 
 
 def clear_state(user_id: str) -> None:
     conn = _get_conn()
     with _conn_lock:
-        conn.execute(
-            "DELETE FROM session_state WHERE user_id = ?",
-            (user_id,)
-        )
+        conn.execute("DELETE FROM session_state WHERE user_id = ?", (user_id,))

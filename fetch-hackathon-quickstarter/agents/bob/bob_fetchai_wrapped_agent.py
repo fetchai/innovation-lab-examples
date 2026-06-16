@@ -26,7 +26,9 @@ def super_cool_bob_workflow(state: SharedAgentState) -> SharedAgentState:
 
 @bob.on_message(SharedAgentState)
 async def handle_message(ctx: Context, sender: str, state: SharedAgentState):
-    ctx.logger.info(f"Received state from orchestrator: session={state.chat_session_id}, query={state.query!r}")
+    ctx.logger.info(
+        f"Received state from orchestrator: session={state.chat_session_id}, query={state.query!r}"
+    )
     state = super_cool_bob_workflow(state)
     await ctx.send(sender, state)
 

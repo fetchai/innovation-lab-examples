@@ -2,6 +2,7 @@ from crewai import Agent
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
+
 class CodeAgents:
     def __init__(self):
         # Initialize the LLM with enhanced prompt for fetching relevant links
@@ -14,7 +15,7 @@ class CodeAgents:
                 Additionally, include relevant resources from Medium, StackOverflow, and Dev.to related to the query or code.
                 Format links as markdown: [Source Title](URL).
                 Ensure all code is syntactically correct and follows best practices (e.g., PEP 8 for Python).
-            """)
+            """),
         )
 
     def code_analyzer_agent(self):
