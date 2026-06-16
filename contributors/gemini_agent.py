@@ -70,7 +70,32 @@ async def handle_research_request(ctx: Context, sender: str, msg: ChatMessage):
                     "Successfully generated and returned the research summary."
                 )
 
-            # TODO: In a production environment, catch specific exceptions (e.g., genai.APIError, network timeouts) 
+except (genai.APIError, genai.ClientError, genai.QuotaExceededError) as e:
+    ctx.logger.error(f"Gemini API Error: {e}")
+    error_msg = ChatMessage(
+        timestamp=datetime.now(timezone.utc),
+        msg_id=uuid4(),
+        content=[
+            TextContent(
+                type="text",
+                text=f"Agent Error: Could not process request. {str(e)}",
+            )
+        ],
+    )
+    await ctx.send(sender, error_msg)
+except Exception as e:
+    ctx.logger.error(f"Unexpected error: {e}")
+    error_msg = ChatMessage(
+        timestamp=datetime.now(timezone.utc),
+        msg_id=uuid4(),
+        content=[
+            TextContent(
+                type="text",
+                text=f"Agent Error: Unexpected failure. {str(e)}",
+            )
+        ],
+    )
+    await ctx.send(sender, error_msg)
             # to handle failure modes appropriately.
             except Exception as e:
                 ctx.logger.error(f"Gemini API Error: {e}")
