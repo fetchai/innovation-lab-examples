@@ -64,6 +64,10 @@ innovation-lab-examples/
 ├── setup.sh                   # Quickstart setup script
 ├── Dockerfile                 # Run any example in Docker
 ├── docker-compose.yml         # Docker Compose support
+├── contributors/              # Community-submitted agent examples (start here!)
+│   ├── README.md              # Contributor guide
+│   ├── CHANGELOG.md           # Community agent changelog
+│   └── community_agent/       # Example community agent
 ├── docs/                      # Templates and guides
 │   └── AGENT_README_TEMPLATE.md
 ├── .github/                   # CI workflows and templates
@@ -98,6 +102,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [asi1-llm-example](asi1-llm-example/) | ASI:One LLM with LangChain integration | Python, LangChain, ASI:One | 🟢 Beginner |
+| [news-card-agent](news-card-agent/) | Live news rendered as ASI:One interactive cards (custom element-tree) with Tavily + ASI1 polish | Python, uAgents, ASI:One, Tavily, Cards | 🟡 Intermediate |
 | [anthropic-quickstart](anthropic-quickstart/) | Claude integration series — basic, vision, functions, MCP, multi-agent | Python, Anthropic SDK, uAgents | 🟢–🔴 Series |
 | [gemini-quickstart](gemini-quickstart/) | Google Gemini series — text, Imagen, Veo, Lyria, TTS, research, film | Python, Google Gemini, uAgents | 🟢–🔴 Series |
 | [openai-agent-sdk](openai-agent-sdk/) | OpenAI Agents SDK examples (scholarship finder) | Python, OpenAI SDK, uAgents | 🟡 Intermediate |
@@ -144,7 +149,14 @@ innovation-lab-examples/
 | [advance-agent-examples](advance-agent-examples/) | Advanced patterns — sub-agents, search, policy, security, SEO, due diligence | Python, uAgents, Google ADK | 🟡–🔴 Collection |
 | [Crewai-agents](Crewai-agents/) | CrewAI agents — trip planner, code analyzer, meeting prep, blood report | Python, CrewAI, uAgents | 🟡–🔴 Collection |
 | [ag2-agents](ag2-agents/) | AG2 framework — research synthesis, payment approval | Python, AG2, uAgents | 🔴 Advanced |
-| [community_agent](community_agent/) | AI community growth agent for events and hackathons | Python, uAgents, ASI:One, Tavily | 🟡 Intermediate |
+
+### 🌍 Community Contributors
+
+**New community agents belong in [`contributors/`](contributors/)** — see [contributors/README.md](contributors/README.md).
+
+| Example | Description | Tech Stack | Difficulty |
+|---------|-------------|------------|------------|
+| [contributors/community_agent](contributors/community_agent/) | AI community growth agent for events and hackathons | Python, uAgents, ASI:One, Tavily | 🟡 Intermediate |
 
 ### 🌐 Web3 & Blockchain
 
@@ -158,7 +170,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [Composio](Composio/) | Composio agents — Gmail and LinkedIn automation | Python, Composio, uAgents | 🟡 Intermediate |
-| [Browser-based-agents](Browser-based-agents/) | Browser automation agents (Nike product scraper) | Python, Notte, uAgents | 🟡 Intermediate |
+| [Browser-based-agents](Browser-based-agents/) | Browser automation agents (Nike product scraper, job-application agent) | Python, Notte, Playwright, uAgents | 🟡 Intermediate |
 | [frontend-integration](frontend-integration/) | Next.js + uAgents frontend integration | Python, Next.js, uAgents | 🟡 Intermediate |
 
 ---
@@ -191,9 +203,10 @@ We welcome contributions from everyone! Whether it's a new agent example, a bug 
 
 1. **Star this repository** (required before opening a PR)
 2. **Fork and create a feature branch** from `main`
-3. **Follow the folder structure** — see [CONTRIBUTING.md](CONTRIBUTING.md)
-4. **Run linting** — `ruff check . && ruff format .`
-5. **Open a PR** using the [PR template](.github/pull_request_template.md)
+3. **New agents go in `contributors/<your-agent-name>/`** — see [contributors/README.md](contributors/README.md)
+4. **Pick an issue** — [good first issues](https://github.com/fetchai/innovation-lab-examples/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or feature challenges (real-time booking, payments, etc.)
+5. **Run linting** — `ruff check . && ruff format .`
+6. **Open a PR** using the [PR template](.github/pull_request_template.md) — **PRs require maintainer review before merge**
 
 Every example should include: `README.md`, `requirements.txt`, `.env.example` (if env vars needed), and a demo screenshot.
 
@@ -210,8 +223,10 @@ Use the [Agent README Template](docs/AGENT_README_TEMPLATE.md) for new examples.
 | ASI:One API | [asi1.ai](https://asi1.ai/) |
 | uAgents Framework | [github.com/fetchai/uAgents](https://github.com/fetchai/uAgents) |
 | Contributing Guide | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Community Agents Folder | [contributors/README.md](contributors/README.md) |
 | Security Policy | [SECURITY.md](SECURITY.md) |
 | Changelog | [CHANGELOG.md](CHANGELOG.md) |
+| Community Changelog | [contributors/CHANGELOG.md](contributors/CHANGELOG.md) |
 | Issues Guide | [ISSUES_GUIDE.md](ISSUES_GUIDE.md) |
 
 ---

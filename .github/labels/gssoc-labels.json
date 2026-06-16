@@ -1,0 +1,38 @@
+{
+  "program": [
+    { "name": "gssoc26", "color": "ff6d00", "description": "GirlScript Summer of Code 2026 contribution" }
+  ],
+  "level": [
+    { "name": "level1", "color": "00c853", "description": "GSSoC level 1 - beginner friendly (lowest points)" },
+    { "name": "level2", "color": "fbc02d", "description": "GSSoC level 2 - intermediate (medium points)" },
+    { "name": "level3", "color": "d50000", "description": "GSSoC level 3 - advanced (highest points)" }
+  ],
+  "difficulty": [
+    { "name": "level:beginner", "color": "7057ff", "description": "GSSoC difficulty: beginner-friendly task" },
+    { "name": "level:intermediate", "color": "fbca04", "description": "GSSoC difficulty: intermediate-level task" },
+    { "name": "level:advanced", "color": "d93f0b", "description": "GSSoC difficulty: advanced-level task" },
+    { "name": "level:critical", "color": "b60205", "description": "GSSoC difficulty: critical-level task" }
+  ],
+  "quality": [
+    { "name": "quality:clean", "color": "0e8a16", "description": "GSSoC quality: clean, well-structured code" },
+    { "name": "quality:exceptional", "color": "006b75", "description": "GSSoC quality: exceptional contribution (optional bonus)" }
+  ],
+  "type_bonus": [
+    { "name": "type:docs", "color": "0075ca", "description": "GSSoC bonus: documentation improvement" },
+    { "name": "type:testing", "color": "bfd4f2", "description": "GSSoC bonus: test coverage improvement" },
+    { "name": "type:accessibility", "color": "d4c5f9", "description": "GSSoC bonus: accessibility improvement" },
+    { "name": "type:performance", "color": "f9d0c4", "description": "GSSoC bonus: performance optimization" },
+    { "name": "type:security", "color": "b60205", "description": "GSSoC bonus: security fix or improvement" },
+    { "name": "type:design", "color": "c5def5", "description": "GSSoC bonus: UI/UX design improvement" },
+    { "name": "type:refactor", "color": "fef2c0", "description": "GSSoC bonus: code refactoring" },
+    { "name": "type:devops", "color": "1d76db", "description": "GSSoC bonus: DevOps or CI/CD improvement" },
+    { "name": "type:bug", "color": "d73a4a", "description": "GSSoC bonus: bug fix" },
+    { "name": "type:feature", "color": "a2eeef", "description": "GSSoC bonus: new feature implementation" }
+  ],
+  "validation": [
+    { "name": "gssoc:approved", "color": "0e8a16", "description": "GSSoC validation: approved by Project Admin" },
+    { "name": "gssoc:invalid", "color": "e4e669", "description": "GSSoC validation: marked invalid by Project Admin" },
+    { "name": "gssoc:spam", "color": "b60205", "description": "GSSoC validation: marked as spam" },
+    { "name": "gssoc:ai-slop", "color": "d93f0b", "description": "GSSoC validation: AI-generated low-effort contribution" }
+  ]
+}

@@ -1,0 +1,62 @@
+# Copy this file to your GitHub Profile README repository:
+#   https://github.com/<your-username>/<your-username>
+# Save as: .github/workflows/innovation-lab-badge.yml
+#
+# After a merged PR in fetchai/innovation-lab-examples, this workflow can
+# automatically add the Innovation Lab Contributor badge to your profile README.
+
+name: Sync Innovation Lab Contributor Badge
+
+on:
+  schedule:
+    - cron: "0 12 * * 1"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [innovation-lab-contributor-merged]
+
+permissions:
+  contents: write
+
+jobs:
+  sync-badge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout profile README repo
+        uses: actions/checkout@v4
+
+      - name: Sync badge from Innovation Lab registry
+        env:
+          GITHUB_USER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          REGISTRY_URL="https://raw.githubusercontent.com/fetchai/innovation-lab-examples/main/contributors/BADGE_REGISTRY.json"
+          BADGE_LINE='[![Innovation Lab Contributor](https://img.shields.io/badge/Innovation_Lab-Contributor-3D8BD3?style=for-the-badge&logo=github)](https://github.com/fetchai/innovation-lab-examples/tree/main/contributors)'
+          MARKER="Innovation Lab Contributor"
+
+          curl -fsSL "$REGISTRY_URL" -o /tmp/registry.json
+          if ! python3 -c "import json,sys,os; r=json.load(open('/tmp/registry.json')); u=os.environ['GITHUB_USER']; sys.exit(0 if any(c['github'].lower()==u.lower() for c in r.get('contributors',[])) else 1)"; then
+            echo "User not in BADGE_REGISTRY.json yet."
+            exit 0
+          fi
+
+          README="README.md"
+          if [ ! -f "$README" ]; then
+            echo "$BADGE_LINE" > "$README"
+          elif ! grep -q "$MARKER" "$README"; then
+            { echo "$BADGE_LINE"; echo ""; cat "$README"; } > README.new
+            mv README.new "$README"
+          else
+            echo "Badge already present."
+            exit 0
+          fi
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          if git diff --staged --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: add Innovation Lab contributor badge"
+          git push
