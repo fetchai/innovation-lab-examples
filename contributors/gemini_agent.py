@@ -70,6 +70,8 @@ async def handle_research_request(ctx: Context, sender: str, msg: ChatMessage):
                     "Successfully generated and returned the research summary."
                 )
 
+            # TODO: In a production environment, catch specific exceptions (e.g., genai.APIError, network timeouts) 
+            # to handle failure modes appropriately.
             except Exception as e:
                 ctx.logger.error(f"Gemini API Error: {e}")
 

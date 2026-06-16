@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import datetime
 from uuid import uuid4
 from uagents import Agent, Context, Protocol
@@ -26,11 +27,11 @@ user_agent = Agent(
 # Initialize the chat protocol
 chat_proto = Protocol(spec=chat_protocol_spec)
 
-# YOUR TARGET ADDRESS
-TARGET_AGENT_ADDRESS = (
+# Pull from environment for real deployments, fallback to hardcoded for local testing
+TARGET_AGENT_ADDRESS = os.getenv(
+    "TARGET_AGENT_ADDRESS",
     "agent1qtjys8khgg88v6gvjudrlxdp7njxn9utettjclyj68pfevm7df9e6nsseng"
 )
-
 
 # --- 2. Define the Triggers and Handlers ---
 @user_agent.on_event("startup")
