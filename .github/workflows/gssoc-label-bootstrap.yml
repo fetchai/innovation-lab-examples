@@ -1,0 +1,35 @@
+name: GSSoC Label Bootstrap
+
+# Creates/updates the GSSoC label set defined in
+# .github/labels/gssoc-labels.json so the GSSoC dashboard can track
+# contributions. Runs on manual dispatch and whenever the label definitions
+# (or this workflow/script) change on the default branch.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/labels/gssoc-labels.json"
+      - ".github/scripts/create-gssoc-labels.sh"
+      - ".github/workflows/gssoc-label-bootstrap.yml"
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: gssoc-label-bootstrap
+  cancel-in-progress: true
+
+jobs:
+  bootstrap-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create / update GSSoC labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/create-gssoc-labels.sh "${{ github.repository }}"
