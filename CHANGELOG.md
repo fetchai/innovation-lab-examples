@@ -5,7 +5,7 @@ All notable changes to this repository are documented in this file.
 ## [Unreleased]
 
 ### Added
-- `contributors/gemini-research-agent/`: Added Gemini-powered research assistant demonstrating the standard Agent Chat Protocol (@Kavurubuvanesh)
+
 - `Browser-based-agents/playwright/job-application-agent/`: Playwright + ASI:One + Stripe job application agent. Orchestrates a Chromium session to auto-fill Greenhouse application forms using a stored user profile, with LLM-drafted free-text answers via ASI:One, Stripe-gated premium features, and resume ingestion.
 - GSSoC '26 label system: [.github/labels/gssoc-labels.json](.github/labels/gssoc-labels.json) definitions, [.github/scripts/create-gssoc-labels.sh](.github/scripts/create-gssoc-labels.sh) bootstrap script, `gssoc-label-bootstrap` workflow (auto-create/update labels), `gssoc-label-sync` workflow (copy `gssoc26`/`level1-3` labels from linked issues to PRs for dashboard tracking), and [docs/GSSOC.md](docs/GSSOC.md) guide
 - `langchain-agents/deep-agents/hackflow-agent/`: LangChain Deep Agents hackathon intelligence agent for ASI:One. Three-subagent research pipeline (event_finder, sponsor_researcher, winner_researcher), Stripe-gated full analysis, ASI:One primary LLM with fallbacks, Tavily web search, and persisted cross-turn follow-up memory.
