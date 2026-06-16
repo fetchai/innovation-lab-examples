@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 from uagents import Agent, Context, Protocol
 from uagents_core.contrib.protocols.chat import (
@@ -39,7 +39,7 @@ gemini_client = genai.Client()
 async def handle_research_request(ctx: Context, sender: str, msg: ChatMessage):
     # Send an immediate acknowledgment that the message was received
     ack = ChatAcknowledgement(
-        timestamp=datetime.utcnow(), acknowledged_msg_id=msg.msg_id
+        timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id
     )
     user_query = None
     for item in msg.content:

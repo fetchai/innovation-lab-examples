@@ -1,6 +1,6 @@
 import asyncio
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 from uagents import Agent, Context, Protocol
 from uagents_core.contrib.protocols.chat import (
@@ -41,7 +41,7 @@ async def send_research_request(ctx: Context):
 
     # Package the prompt into a TextContent object inside a ChatMessage
     research_message = ChatMessage(
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         msg_id=uuid4(),
         content=[TextContent(type="text", text=topic)],
     )
