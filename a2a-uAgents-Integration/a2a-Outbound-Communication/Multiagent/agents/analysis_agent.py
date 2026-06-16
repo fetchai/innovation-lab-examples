@@ -11,17 +11,18 @@ from typing_extensions import override
 # Load environment variables
 load_dotenv()
 
+
 class AnalysisAgentExecutor(AgentExecutor):
     """Analysis agent that specializes in data analysis and insights generation."""
-    
+
     def __init__(self):
         self.url = "https://api.asi1.ai/v1/chat/completions"
         self.api_key = os.getenv("ASI1_API_KEY")
         self.model = "asi1-mini"
         self.headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': f'Bearer {self.api_key}'
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
         }
         self.system_prompt = """You are a Senior Data Analyst AI agent. Your expertise includes:
 1. Data analysis and interpretation
@@ -41,7 +42,7 @@ Analysis Commands you can handle:
 
 Always provide structured, data-driven insights with clear recommendations.
         """
-    
+
     @override
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         message_content = ""
@@ -49,7 +50,7 @@ Always provide structured, data-driven insights with clear recommendations.
             if isinstance(part, Part) and isinstance(part.root, TextPart):
                 message_content = part.root.text
                 break
-        
+
         try:
             # Parse command if it's a structured analysis request
             if message_content.startswith("ANALYZE:"):
@@ -67,33 +68,35 @@ Always provide structured, data-driven insights with clear recommendations.
             else:
                 # General analysis request
                 await self._handle_general_request(message_content, event_queue)
-                
+
         except Exception as e:
             await event_queue.enqueue_event(
                 new_agent_text_message(f"❌ Analysis error: {str(e)}")
             )
-    
+
     async def _handle_analyze_command(self, command: str, event_queue: EventQueue):
         """Handle ANALYZE:data/topic commands."""
         data_or_topic = command.replace("ANALYZE:", "", 1)
-        
+
         prompt = f"Perform a comprehensive analysis of: {data_or_topic}. Include key findings, patterns, and recommendations."
-        
-        payload = json.dumps({
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": 2000,
-            "temperature": 0.3,
-            "stream": False
-        })
-        
+
+        payload = json.dumps(
+            {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": 2000,
+                "temperature": 0.3,
+                "stream": False,
+            }
+        )
+
         response = requests.post(self.url, headers=self.headers, data=payload)
         response.raise_for_status()
-        analysis = response.json()['choices'][0]['message']['content']
-        
+        analysis = response.json()["choices"][0]["message"]["content"]
+
         formatted_response = f"""📊 Analysis Agent - Comprehensive Analysis
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 Subject: {data_or_topic}
@@ -102,26 +105,30 @@ Always provide structured, data-driven insights with clear recommendations.
 
 ✅ Analysis completed by AI Senior Data Analyst
         """
-        
+
         await event_queue.enqueue_event(new_agent_text_message(formatted_response))
-    
-    async def _handle_general_request(self, message_content: str, event_queue: EventQueue):
+
+    async def _handle_general_request(
+        self, message_content: str, event_queue: EventQueue
+    ):
         """Handle general analysis requests."""
-        payload = json.dumps({
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": f"Analysis Request: {message_content}"}
-            ],
-            "max_tokens": 1500,
-            "temperature": 0.4,
- "stream": False
-        })
-        
+        payload = json.dumps(
+            {
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": f"Analysis Request: {message_content}"},
+                ],
+                "max_tokens": 1500,
+                "temperature": 0.4,
+                "stream": False,
+            }
+        )
+
         response = requests.post(self.url, headers=self.headers, data=payload)
         response.raise_for_status()
-        content = response.json()['choices'][0]['message']['content']
-        
+        content = response.json()["choices"][0]["message"]["content"]
+
         formatted_response = f"""📊 Analysis Agent Response
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 Request: {message_content}
@@ -130,25 +137,27 @@ Always provide structured, data-driven insights with clear recommendations.
 
 ✅ Response by AI Senior Data Analyst
         """
-        
+
         await event_queue.enqueue_event(new_agent_text_message(formatted_response))
-    
+
     @override
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
-        await event_queue.enqueue_event(new_agent_text_message("Analysis task cancelled."))
-    
+        await event_queue.enqueue_event(
+            new_agent_text_message("Analysis task cancelled.")
+        )
+
     # Placeholder methods for other commands (same structure, omitted for brevity)
     async def _handle_trends_command(self, command: str, event_queue: EventQueue):
         pass
-    
+
     async def _handle_compare_command(self, command: str, event_queue: EventQueue):
         pass
-    
+
     async def _handle_metrics_command(self, command: str, event_queue: EventQueue):
         pass
-    
+
     async def _handle_insights_command(self, command: str, event_queue: EventQueue):
         pass
-    
+
     async def _handle_forecast_command(self, command: str, event_queue: EventQueue):
         pass

@@ -16,10 +16,14 @@ mcp = FastMCP("events_finder")
 TICKETMASTER_API_KEY = os.getenv("TICKETMASTER_API_KEY")
 TICKETMASTER_API_URL = "https://app.ticketmaster.com/discovery/v2"
 
+
 def _clean_params(params: Dict[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in params.items() if v is not None}
 
-async def ticketmaster_get(path: str, params: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+
+async def ticketmaster_get(
+    path: str, params: Dict[str, Any]
+) -> Optional[Dict[str, Any]]:
     params = _clean_params(params)
     params["apikey"] = TICKETMASTER_API_KEY
     url = f"{TICKETMASTER_API_URL}{path}"
@@ -30,6 +34,7 @@ async def ticketmaster_get(path: str, params: Dict[str, Any]) -> Optional[Dict[s
             return resp.json()
         except Exception:
             return None
+
 
 @mcp.tool()
 async def search_events(
@@ -58,8 +63,11 @@ async def search_events(
     lines = []
     for idx, event in enumerate(events, 1):
         venue = event.get("_embedded", {}).get("venues", [{}])[0]
-        lines.append(f"{idx}. {event.get('name')}\n   Date: {event.get('dates', {}).get('start', {}).get('dateTime', 'N/A')}\n   Venue: {venue.get('name', 'N/A')}\n   Event ID: {event.get('id')}\n   More info: {event.get('url', 'N/A')}\n")
+        lines.append(
+            f"{idx}. {event.get('name')}\n   Date: {event.get('dates', {}).get('start', {}).get('dateTime', 'N/A')}\n   Venue: {venue.get('name', 'N/A')}\n   Event ID: {event.get('id')}\n   More info: {event.get('url', 'N/A')}\n"
+        )
     return "\n".join(lines)
+
 
 @mcp.tool()
 async def get_event_details(
@@ -74,9 +82,13 @@ async def get_event_details(
         return "Event not found."
     venue = data.get("_embedded", {}).get("venues", [{}])[0]
     price = data.get("priceRanges", [{}])[0]
-    genres = ", ".join([
-        c.get("genre", {}).get("name", "") for c in data.get("classifications", []) if c.get("genre")
-    ])
+    genres = ", ".join(
+        [
+            c.get("genre", {}).get("name", "")
+            for c in data.get("classifications", [])
+            if c.get("genre")
+        ]
+    )
     return (
         f"Event ID: {data.get('id')}\n"
         f"Name: {data.get('name')}\n"
@@ -88,6 +100,7 @@ async def get_event_details(
         f"More info: {data.get('url', 'N/A')}\n"
         f"Description: {data.get('info', '') or data.get('pleaseNote', '') or 'N/A'}"
     )
+
 
 @mcp.tool()
 async def search_venues(
@@ -117,9 +130,11 @@ async def search_venues(
     for idx, venue in enumerate(venues, 1):
         address = venue.get("address", {}).get("line1", "N/A")
         city = venue.get("city", {}).get("name", "N/A")
-        lines.append(f"{idx}. {venue.get('name')}\n   Address: {address}, {city}\n   Venue ID: {venue.get('id')}\n   More info: {venue.get('url', 'N/A')}\n")
+        lines.append(
+            f"{idx}. {venue.get('name')}\n   Address: {address}, {city}\n   Venue ID: {venue.get('id')}\n   More info: {venue.get('url', 'N/A')}\n"
+        )
     return "\n".join(lines)
 
 
 if __name__ == "__main__":
-    mcp.run(transport="stdio") 
+    mcp.run(transport="stdio")

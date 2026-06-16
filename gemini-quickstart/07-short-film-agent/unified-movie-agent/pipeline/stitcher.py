@@ -34,13 +34,34 @@ def _concat_ffmpeg(paths: List[Path], out: Path) -> None:
     cmd = ["ffmpeg", "-loglevel", "warning"]
     for p in paths:
         cmd.extend(["-i", str(p)])
-    cmd.extend([
-        "-filter_complex", filt,
-        "-map", "[outv]", "-map", "[outa]",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
-        "-movflags", "+faststart", "-y", str(out),
-    ])
+    cmd.extend(
+        [
+            "-filter_complex",
+            filt,
+            "-map",
+            "[outv]",
+            "-map",
+            "[outa]",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-crf",
+            "23",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-ar",
+            "48000",
+            "-ac",
+            "2",
+            "-movflags",
+            "+faststart",
+            "-y",
+            str(out),
+        ]
+    )
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -48,6 +69,7 @@ def _concat_ffmpeg(paths: List[Path], out: Path) -> None:
 
 
 # ── Public API ──────────────────────────────────────────────────
+
 
 async def stitch_story(
     scene_urls: List[str],

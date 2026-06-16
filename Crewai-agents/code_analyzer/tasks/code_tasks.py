@@ -1,6 +1,7 @@
 from textwrap import dedent
 from crewai import Task
 
+
 class CodeTasks:
     def analyze_task(self, agent, code_snippet, language):
         return Task(
@@ -103,4 +104,4 @@ class CodeTasks:
         )
 
     def __tip_section(self):
-        return "Code Analysis " 
+        return "Code Analysis "

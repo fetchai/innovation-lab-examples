@@ -38,6 +38,7 @@ async def _noop(_msg: str) -> None:
 
 # ── Per-scene pipeline ──────────────────────────────────────────
 
+
 async def _produce_scene(
     brief: SceneBrief,
     ref_urls: List[str],
@@ -49,12 +50,16 @@ async def _produce_scene(
     Uses retry wrapper for each step.
     """
     idx = brief.scene_index  # 1-based
-    idx0 = idx - 1            # 0-based (for key assignment)
+    idx0 = idx - 1  # 0-based (for key assignment)
     result = SceneResult(scene_index=idx, scene_title=brief.scene_title)
 
     try:
         # --- Generate video / voice / music in parallel ---
-        video_url, (voice_url, voice_dur), (music_url, music_dur) = await asyncio.gather(
+        (
+            video_url,
+            (voice_url, voice_dur),
+            (music_url, music_dur),
+        ) = await asyncio.gather(
             with_retry(
                 video.generate_scene_video,
                 scene_index=idx0,
@@ -110,6 +115,7 @@ async def _produce_scene(
 
 # ── Full pipeline ───────────────────────────────────────────────
 
+
 async def produce_film(
     user_prompt: str,
     ref_urls: Optional[List[str]] = None,
@@ -128,7 +134,9 @@ async def produce_film(
     if not is_safe:
         log.warning("Prompt rejected: %s", reason)
         return FilmResult(
-            title="", logline="", scenes=[],
+            title="",
+            logline="",
+            scenes=[],
             error=f"Content policy violation: {reason}",
         )
     log.info("Safety check passed")
@@ -140,11 +148,7 @@ async def produce_film(
     )
     plan: StoryPlan = await creative.plan_story(user_prompt, ref_urls)
 
-    summary = (
-        f"📖 **{plan.title}**\n"
-        f"🧵 {plan.logline}\n\n"
-        f"**Scene Briefs:**\n\n"
-    )
+    summary = f"📖 **{plan.title}**\n🧵 {plan.logline}\n\n**Scene Briefs:**\n\n"
     for sb in plan.scenes:
         summary += (
             f"**Scene {sb.scene_index}: {sb.scene_title}**\n"
@@ -162,7 +166,9 @@ async def produce_film(
         )
         scene_visual_prompts = [s.visual_prompt for s in plan.scenes]
         auto_refs = await chargen.generate_character_refs(
-            plan.title, plan.logline, scene_visual_prompts,
+            plan.title,
+            plan.logline,
+            scene_visual_prompts,
         )
         if auto_refs:
             ref_urls = auto_refs
@@ -178,10 +184,7 @@ async def produce_film(
     )
 
     # Scene tasks
-    scene_coros = [
-        _produce_scene(brief, ref_urls, notify)
-        for brief in plan.scenes
-    ]
+    scene_coros = [_produce_scene(brief, ref_urls, notify) for brief in plan.scenes]
     # Opening / closing tasks
     opening_coro = with_retry(
         video.generate_opening,
@@ -206,9 +209,15 @@ async def produce_film(
         return_exceptions=True,
     )
 
-    scene_results: List[SceneResult] = results[0] if not isinstance(results[0], Exception) else []
-    opening_url: Optional[str] = results[1] if not isinstance(results[1], Exception) else None
-    closing_url: Optional[str] = results[2] if not isinstance(results[2], Exception) else None
+    scene_results: List[SceneResult] = (
+        results[0] if not isinstance(results[0], Exception) else []
+    )
+    opening_url: Optional[str] = (
+        results[1] if not isinstance(results[1], Exception) else None
+    )
+    closing_url: Optional[str] = (
+        results[2] if not isinstance(results[2], Exception) else None
+    )
 
     if isinstance(results[0], Exception):
         log.error("Scene batch failed: %s", results[0])

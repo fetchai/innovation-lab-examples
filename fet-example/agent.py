@@ -5,8 +5,8 @@ from uagents import Agent, Context
 
 load_dotenv()
 
-from chat_proto import chat_proto
-from payment import payment_proto, set_agent_wallet
+from chat_proto import chat_proto  # noqa: E402
+from payment import payment_proto, set_agent_wallet  # noqa: E402
 
 agent = Agent(
     name=os.getenv("AGENT_NAME", "Fet Example Agent"),

@@ -68,7 +68,8 @@ def _extract_text_from_response(response) -> str:
                 return text
         if result.artifacts:
             artifact_texts = [
-                _extract_text_from_parts(artifact.parts) for artifact in result.artifacts
+                _extract_text_from_parts(artifact.parts)
+                for artifact in result.artifacts
             ]
             final_text = "\n\n".join(text for text in artifact_texts if text)
             if final_text:
@@ -81,7 +82,9 @@ async def call_remote_agent(agent_url: str, prompt: str) -> str:
     async with httpx.AsyncClient(timeout=90) as httpx_client:
         resolver = A2ACardResolver(httpx_client=httpx_client, base_url=agent_url)
         agent_card = await resolver.get_agent_card()
-        client = A2AClient(httpx_client=httpx_client, agent_card=agent_card, url=agent_url)
+        client = A2AClient(
+            httpx_client=httpx_client, agent_card=agent_card, url=agent_url
+        )
 
         payload = {
             "message": {

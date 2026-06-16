@@ -26,7 +26,9 @@ class TripTasks:
                 Traveler Interests: {interests}
             """),
             agent=agent,
-            expected_output=("Detailed report on the chosen city including flight costs, weather forecast, Helpfull Link , News and Photos and attractions"),
+            expected_output=(
+                "Detailed report on the chosen city including flight costs, weather forecast, Helpfull Link , News and Photos and attractions"
+            ),
         )
 
     def gather_task(self, agent, origin, interests, range):
@@ -54,7 +56,9 @@ class TripTasks:
                 Traveler Interests: {interests}
             """),
             agent=agent,
-            expected_output=("Comprehensive city guide including hidden gems, cultural hotspots, and practical travel tips and photos "),
+            expected_output=(
+                "Comprehensive city guide including hidden gems, cultural hotspots, and practical travel tips and photos "
+            ),
         )
 
     def plan_task(self, agent, origin, interests, range):
@@ -84,7 +88,9 @@ class TripTasks:
                 Traveler Interests: {interests}
             """),
             agent=agent,
-            expected_output=("Complete travel plan with daily schedule, weather conditions, packing suggestions, and budget breakdown"),
+            expected_output=(
+                "Complete travel plan with daily schedule, weather conditions, packing suggestions, and budget breakdown"
+            ),
         )
 
     def __tip_section(self):

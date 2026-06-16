@@ -6,6 +6,7 @@ from uagents_adapter import SingleA2AAdapter, A2AAgentConfig, a2a_servers
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class YoutubeSummarizerSystem:
     def __init__(self):
         self.coordinator = None
@@ -21,7 +22,12 @@ class YoutubeSummarizerSystem:
                 description="AI Agent for summarizing YouTube videos using closed captions",
                 url="http://localhost:10030",
                 port=10030,
-                specialties=["youtube", "video summarization", "transcription", "content analysis"],
+                specialties=[
+                    "youtube",
+                    "video summarization",
+                    "transcription",
+                    "content analysis",
+                ],
                 priority=3,
                 examples=[
                     "Summarize this YouTube video: https://www.youtube.com/watch?v=dQw4w9WgXcQ",
@@ -42,7 +48,9 @@ class YoutubeSummarizerSystem:
         logger.info("🤖 Creating YouTube Summarizer Coordinator...")
         executor = self.executors.get("youtube-summarizer-specialist")
         if executor is None:
-            raise ValueError("SummarizerAgentExecutor not found in executors dictionary.")
+            raise ValueError(
+                "SummarizerAgentExecutor not found in executors dictionary."
+            )
         self.coordinator = SingleA2AAdapter(
             agent_executor=executor,
             name="youtube-summarizer-coordinator",
@@ -59,7 +67,9 @@ class YoutubeSummarizerSystem:
             self.start_individual_a2a_servers()
             coordinator = self.create_coordinator()
             self.running = True
-            logger.info(f"🎯 Starting YouTube Summarizer coordinator on port {coordinator.port}...")
+            logger.info(
+                f"🎯 Starting YouTube Summarizer coordinator on port {coordinator.port}..."
+            )
             coordinator.run()
         except KeyboardInterrupt:
             logger.info("👋 Shutting down YouTube Summarizer system...")
@@ -67,6 +77,7 @@ class YoutubeSummarizerSystem:
         except Exception as e:
             logger.error(f"❌ Error: {e}")
             self.running = False
+
 
 if __name__ == "__main__":
     system = YoutubeSummarizerSystem()

@@ -1,9 +1,5 @@
-
 import asyncio
-from pathlib import Path
 from textwrap import dedent
-from typing import List
-from uuid import uuid4
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
@@ -13,15 +9,16 @@ from agno.agent import Agent, Message, RunOutput
 from agno.models.google import Gemini
 from agno.team.team import Team
 from agno.tools.arxiv import ArxivTools
-from agno.tools.duckduckgo import DuckDuckGoTools
 from agno.tools.googlesearch import GoogleSearchTools
 from typing_extensions import override
 
 reddit_researcher = Agent(
     name="Reddit Researcher",
     role="Research a topic on Reddit",
-    model=Gemini(id="gemini-2.0-flash"), 
-    tools=[GoogleSearchTools()], # Use Google Search instead of DuckDuckGo for better reliability
+    model=Gemini(id="gemini-2.0-flash"),
+    tools=[
+        GoogleSearchTools()
+    ],  # Use Google Search instead of DuckDuckGo for better reliability
     instructions=dedent("""
     You are a Reddit researcher specializing in detailed community analysis.
     You will be given a topic to research on Reddit.
@@ -52,7 +49,9 @@ hackernews_researcher = Agent(
     name="HackerNews Researcher",
     model=Gemini(id="gemini-2.0-flash"),
     role="Research a topic on HackerNews.",
-    tools=[GoogleSearchTools()], # Use Google Search instead of DuckDuckGo for better reliability
+    tools=[
+        GoogleSearchTools()
+    ],  # Use Google Search instead of DuckDuckGo for better reliability
     instructions=dedent("""
     You are a HackerNews researcher specializing in technical and industry analysis.
     You will be given a topic to research on HackerNews.
@@ -129,7 +128,9 @@ twitter_researcher = Agent(
     name="Twitter Researcher",
     model=Gemini(id="gemini-2.0-flash"),
     role="Research trending discussions and real-time updates",
-    tools=[GoogleSearchTools()], # Use Google Search instead of DuckDuckGo for better reliability
+    tools=[
+        GoogleSearchTools()
+    ],  # Use Google Search instead of DuckDuckGo for better reliability
     instructions=dedent("""
     You are a Twitter/X researcher specializing in real-time trend analysis.
     You will be given a topic to research on Twitter/X.
@@ -201,16 +202,18 @@ discussion_team = Team(
         "6. **Conclusion** - Summary of key takeaways",
         "**MANDATORY: Ensure ALL agents create their summary tables as specified in their instructions**",
         "**MANDATORY: Include ALL direct links provided by agents in the final response**",
-        "**MANDATORY: Create at least 3 summary tables in the final response**"
+        "**MANDATORY: Create at least 3 summary tables in the final response**",
     ],
     markdown=True,
     show_members_responses=True,
 )
 
+
 class DiscussionTeamExecutor(AgentExecutor):
     """
     AgentExecutor wrapper for the agno.team discussion team.
     """
+
     def __init__(self):
         self.agent_team = discussion_team
 
@@ -226,36 +229,53 @@ class DiscussionTeamExecutor(AgentExecutor):
                 if isinstance(part.root, TextPart):
                     message_content = part.root.text
                     break
-        
+
         if not message_content:
-            await event_queue.enqueue_event(new_agent_text_message("Error: No message content received."))
+            await event_queue.enqueue_event(
+                new_agent_text_message("Error: No message content received.")
+            )
             return
 
         message: Message = Message(role="user", content=message_content)
         print(f"DEBUG: [DiscussionTeamExecutor] Received message: {message.content}")
-        
+
         try:
-            print("DEBUG: [DiscussionTeamExecutor] Starting agno team run with timeout...")
+            print(
+                "DEBUG: [DiscussionTeamExecutor] Starting agno team run with timeout..."
+            )
             # Set a very generous timeout for the agno team's execution (e.g., 10 minutes)
             # Team discussions with multiple tools can take a long time.
-            result: RunOutput = await asyncio.wait_for(self.agent_team.arun(message), timeout=600) # 10 minutes timeout
-            print(f"DEBUG: [DiscussionTeamExecutor] Agno team finished run. Response content type: {type(result.content)}")
-            
-            response_text = str(result.content) 
+            result: RunOutput = await asyncio.wait_for(
+                self.agent_team.arun(message), timeout=600
+            )  # 10 minutes timeout
+            print(
+                f"DEBUG: [DiscussionTeamExecutor] Agno team finished run. Response content type: {type(result.content)}"
+            )
+
+            response_text = str(result.content)
             await event_queue.enqueue_event(new_agent_text_message(response_text))
             print("DEBUG: [DiscussionTeamExecutor] Event enqueued successfully.")
 
         except asyncio.TimeoutError:
             error_message = "Agno team execution timed out. The discussion might be too complex or require more time."
             print(f"❌ {error_message}")
-            await event_queue.enqueue_event(new_agent_text_message(f"Error: {error_message}. Please try again or simplify your query."))
+            await event_queue.enqueue_event(
+                new_agent_text_message(
+                    f"Error: {error_message}. Please try again or simplify your query."
+                )
+            )
         except Exception as e:
             error_message = f"Error during agno agent execution: {e}"
             print(f"❌ {error_message}")
             import traceback
+
             traceback.print_exc()
-            await event_queue.enqueue_event(new_agent_text_message(f"Error: {error_message}. Please check logs for details."))
-        
+            await event_queue.enqueue_event(
+                new_agent_text_message(
+                    f"Error: {error_message}. Please check logs for details."
+                )
+            )
+
         print("DEBUG: [DiscussionTeamExecutor] execute method finished.")
 
     @override

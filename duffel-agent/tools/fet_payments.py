@@ -30,6 +30,7 @@ FET_DENOM = os.getenv("FET_DENOM", "afet")
 FET_VERIFY_ATTEMPTS = int(os.getenv("FET_VERIFY_ATTEMPTS", "5"))
 FET_VERIFY_DELAY_SEC = float(os.getenv("FET_VERIFY_DELAY_SEC", "2.0"))
 
+
 def _denom_scale(denom: Optional[str]) -> float:
     """Determine scaling factor: converts atomic units to FET units."""
     env = os.getenv("FET_DENOM_SCALE")
@@ -47,14 +48,19 @@ def _denom_scale(denom: Optional[str]) -> float:
     # default to atto (1e18)
     return 1e18
 
+
 def _to_float(s: Any) -> Optional[float]:
     try:
         return float(s)
     except Exception:
         return None
 
-def _nearly_equal(a: float, b: float, rel_tol: float = 1e-6, abs_tol: float = 1e-12) -> bool:
+
+def _nearly_equal(
+    a: float, b: float, rel_tol: float = 1e-6, abs_tol: float = 1e-12
+) -> bool:
     return math.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol)
+
 
 def _parse_amount_denom_atom(s: str) -> tuple[Optional[float], str]:
     """
@@ -75,6 +81,7 @@ def _parse_amount_denom_atom(s: str) -> tuple[Optional[float], str]:
     except ValueError:
         return None, "".join(denom)
     return amt_atom, "".join(denom)
+
 
 async def _fetch_tx_json(tx_hash: str, logger) -> Optional[Dict[str, Any]]:
     """Fetch transaction JSON from Fetch ledger with retries."""
@@ -102,6 +109,7 @@ async def _fetch_tx_json(tx_hash: str, logger) -> Optional[Dict[str, Any]]:
     logger.error("LCD tx fetch failed: not found after retries")
     return None
 
+
 def _check_tx_code_ok(data: Dict[str, Any], logger) -> bool:
     try:
         code = int((data.get("tx_response") or {}).get("code", 0))
@@ -112,13 +120,14 @@ def _check_tx_code_ok(data: Dict[str, Any], logger) -> bool:
     except Exception:
         return True
 
+
 def _match_via_messages(
     data: Dict[str, Any],
     recipient_address: str,
     expected_amount_fet: float,
     logger,
     *,
-    sender_address: Optional[str] = None
+    sender_address: Optional[str] = None,
 ) -> bool:
     """Check for Cosmos MsgSend in body-messages matching recipient and amount."""
     tx = data.get("tx") or {}
@@ -134,7 +143,7 @@ def _match_via_messages(
             continue
         if sender_address and from_addr and sender_address != from_addr:
             continue
-        for coin in (m.get("amount") or []):
+        for coin in m.get("amount") or []:
             denom = (coin.get("denom") or "").lower()
             amt_atom = _to_float(coin.get("amount"))
             if amt_atom is None:
@@ -145,26 +154,24 @@ def _match_via_messages(
                 return True
     return False
 
+
 def _match_via_events(
-    data: Dict[str, Any],
-    recipient_address: str,
-    expected_amount_fet: float,
-    logger
+    data: Dict[str, Any], recipient_address: str, expected_amount_fet: float, logger
 ) -> bool:
     """Fallback: scan logs → events 'coin_received' or 'transfer'."""
     txr = data.get("tx_response") or {}
     logs = txr.get("logs") or []
     for log in logs:
-        for ev in (log.get("events") or []):
+        for ev in log.get("events") or []:
             etype = (ev.get("type") or "").lower()
-            if etype not in ("coin_received","transfer"):
+            if etype not in ("coin_received", "transfer"):
                 continue
             receiver = None
             amount_raw = None
-            for a in (ev.get("attributes") or []):
+            for a in ev.get("attributes") or []:
                 k = (a.get("key") or "").lower()
                 v = a.get("value") or ""
-                if k in ("receiver","recipient"):
+                if k in ("receiver", "recipient"):
                     receiver = v
                 elif k == "amount":
                     amount_raw = v
@@ -181,13 +188,14 @@ def _match_via_events(
                     return True
     return False
 
+
 async def verify_fet_payment(
     tx_hash: str,
     recipient_address: str,
     amount_fet: str | float,
     logger,
     *,
-    sender_address: Optional[str] = None
+    sender_address: Optional[str] = None,
 ) -> bool:
     """Main entry: ensure tx_hash sent `amount_fet` FET to `recipient_address`."""
     if not tx_hash or not recipient_address:
@@ -205,7 +213,9 @@ async def verify_fet_payment(
     if not _check_tx_code_ok(data, logger):
         return False
 
-    if _match_via_messages(data, recipient_address, expected_amount, logger, sender_address=sender_address):
+    if _match_via_messages(
+        data, recipient_address, expected_amount, logger, sender_address=sender_address
+    ):
         return True
 
     if _match_via_events(data, recipient_address, expected_amount, logger):

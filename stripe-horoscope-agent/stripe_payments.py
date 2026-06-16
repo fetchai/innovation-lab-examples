@@ -25,7 +25,9 @@ def _stripe_expires_at() -> int:
     return int(time.time()) + expires_in_s
 
 
-def create_embedded_checkout_session(*, user_address: str, chat_session_id: str, description: str) -> dict:
+def create_embedded_checkout_session(
+    *, user_address: str, chat_session_id: str, description: str
+) -> dict:
     stripe = _get_stripe_sdk()
 
     return_url = (
@@ -46,7 +48,10 @@ def create_embedded_checkout_session(*, user_address: str, chat_session_id: str,
             {
                 "price_data": {
                     "currency": STRIPE_CURRENCY,
-                    "product_data": {"name": STRIPE_PRODUCT_NAME, "description": description},
+                    "product_data": {
+                        "name": STRIPE_PRODUCT_NAME,
+                        "description": description,
+                    },
                     "unit_amount": STRIPE_AMOUNT_CENTS,
                 },
                 "quantity": 1,
@@ -76,4 +81,3 @@ def verify_checkout_session_paid(checkout_session_id: str) -> bool:
     stripe = _get_stripe_sdk()
     session = stripe.checkout.Session.retrieve(checkout_session_id)
     return getattr(session, "payment_status", None) == "paid"
-

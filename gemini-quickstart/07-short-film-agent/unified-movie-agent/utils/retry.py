@@ -35,13 +35,18 @@ async def with_retry(
                 wait = backoff * (attempt + 1)
                 log.warning(
                     "%s failed (attempt %d/%d): %s — retrying in %.0fs",
-                    label or fn.__name__, attempt + 1, max_retries + 1,
-                    str(e)[:120], wait,
+                    label or fn.__name__,
+                    attempt + 1,
+                    max_retries + 1,
+                    str(e)[:120],
+                    wait,
                 )
                 await asyncio.sleep(wait)
             else:
                 log.error(
                     "%s failed after %d attempts: %s",
-                    label or fn.__name__, max_retries + 1, str(e)[:200],
+                    label or fn.__name__,
+                    max_retries + 1,
+                    str(e)[:200],
                 )
     raise last_error  # type: ignore[misc]

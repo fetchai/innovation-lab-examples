@@ -22,7 +22,10 @@ from state import (
     save_state,
     wants_horoscope,
 )
-from stripe_payments import create_embedded_checkout_session, verify_checkout_session_paid
+from stripe_payments import (
+    create_embedded_checkout_session,
+    verify_checkout_session_paid,
+)
 
 
 def _looks_like_new_chat(text_l: str) -> bool:
@@ -51,9 +54,15 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     awaiting_sign = bool(state.get("awaiting_sign"))
     was_awaiting_sign = awaiting_sign
     awaiting_payment = bool(state.get("awaiting_payment"))
-    pending_stripe = state.get("pending_stripe") if isinstance(state.get("pending_stripe"), dict) else None
+    pending_stripe = (
+        state.get("pending_stripe")
+        if isinstance(state.get("pending_stripe"), dict)
+        else None
+    )
 
-    ctx.logger.info(f"[chat] inbound sender={sender} session={ctx.session} text={text!r} state={state}")
+    ctx.logger.info(
+        f"[chat] inbound sender={sender} session={ctx.session} text={text!r} state={state}"
+    )
 
     wants = wants_horoscope(text_l)
 
@@ -78,7 +87,13 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             )
             return
         req = RequestPayment(
-            accepted_funds=[Funds(currency="USD", amount=f"{STRIPE_AMOUNT_CENTS / 100:.2f}", payment_method="stripe")],
+            accepted_funds=[
+                Funds(
+                    currency="USD",
+                    amount=f"{STRIPE_AMOUNT_CENTS / 100:.2f}",
+                    payment_method="stripe",
+                )
+            ],
             recipient=str(ctx.agent.address),
             deadline_seconds=300,
             reference=str(ctx.session),
@@ -86,7 +101,12 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             metadata={"stripe": pending_stripe, "service": "daily_horoscope"},
         )
         await ctx.send(sender, req)
-        await ctx.send(sender, make_chat("Payment is still pending. Please complete the Stripe checkout above."))
+        await ctx.send(
+            sender,
+            make_chat(
+                "Payment is still pending. Please complete the Stripe checkout above."
+            ),
+        )
         return
 
     # If we're waiting for the user to provide a sign, treat the next message as the sign input.
@@ -109,7 +129,9 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     # Decide whether to reply normally or run the horoscope flow.
     if not wants:
         reply = await normal_reply(text)
-        await ctx.send(sender, make_chat(reply or "Say 'give me my horoscope' to begin."))
+        await ctx.send(
+            sender, make_chat(reply or "Say 'give me my horoscope' to begin.")
+        )
         return
 
     # Horoscope flow: require a sign.
@@ -140,7 +162,13 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     save_state(ctx, sender, state)
 
     req = RequestPayment(
-        accepted_funds=[Funds(currency="USD", amount=f"{STRIPE_AMOUNT_CENTS / 100:.2f}", payment_method="stripe")],
+        accepted_funds=[
+            Funds(
+                currency="USD",
+                amount=f"{STRIPE_AMOUNT_CENTS / 100:.2f}",
+                payment_method="stripe",
+            )
+        ],
         recipient=str(ctx.agent.address),
         deadline_seconds=300,
         reference=str(ctx.session),
@@ -148,17 +176,28 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         metadata={"stripe": checkout, "service": "daily_horoscope"},
     )
     await ctx.send(sender, req)
-    await ctx.send(sender, make_chat("Once payment completes, I’ll reply here with your horoscope."))
+    await ctx.send(
+        sender,
+        make_chat("Once payment completes, I’ll reply here with your horoscope."),
+    )
 
 
 async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
     if msg.funds.payment_method != "stripe" or not msg.transaction_id:
-        await ctx.send(sender, RejectPayment(reason="Unsupported payment method (expected stripe)."))
+        await ctx.send(
+            sender,
+            RejectPayment(reason="Unsupported payment method (expected stripe)."),
+        )
         return
 
     paid = await asyncio.to_thread(verify_checkout_session_paid, msg.transaction_id)
     if not paid:
-        await ctx.send(sender, RejectPayment(reason="Stripe payment not completed yet. Please finish checkout."))
+        await ctx.send(
+            sender,
+            RejectPayment(
+                reason="Stripe payment not completed yet. Please finish checkout."
+            ),
+        )
         return
 
     state = load_state(ctx, sender)
@@ -166,11 +205,18 @@ async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
 
     sign = str(state.get("sign") or "").strip() or "unknown"
     horoscope = await generate_horoscope(sign)
-    await ctx.send(sender, make_chat(horoscope or "Payment received, but I couldn’t generate your horoscope right now."))
+    await ctx.send(
+        sender,
+        make_chat(
+            horoscope
+            or "Payment received, but I couldn’t generate your horoscope right now."
+        ),
+    )
     clear_state(ctx, sender)
 
 
 async def on_reject(ctx: Context, sender: str, msg: RejectPayment):
     clear_state(ctx, sender)
-    await ctx.send(sender, make_chat(f"Payment was rejected. {msg.reason or ''}".strip()))
-
+    await ctx.send(
+        sender, make_chat(f"Payment was rejected. {msg.reason or ''}".strip())
+    )

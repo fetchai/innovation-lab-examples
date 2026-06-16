@@ -31,6 +31,7 @@ from uagents_adapter.a2a_outbound.ap2.bridge_mapping import (
     PAYMENT_MANDATE_KEY,
     PAYMENT_SUCCESS_KEY,
 )
+
 try:
     from .skyfire_payment import (
         is_skyfire_payment,
@@ -125,14 +126,22 @@ class StoreAgentExecutor(AgentExecutor):
                     Message(
                         message_id=uuid.uuid4().hex,
                         role=Role.agent,
-                        parts=[Part(root=DataPart(data={PAYMENT_SUCCESS_KEY: success.dict()}))],
+                        parts=[
+                            Part(
+                                root=DataPart(
+                                    data={PAYMENT_SUCCESS_KEY: success.dict()}
+                                )
+                            )
+                        ],
                         context_id=context.context_id,
                         task_id=context.task_id,
                     )
                 )
                 # Clear cart and deliver
                 cart = self._carts.pop("global", {})
-                summary = ", ".join(f"{sku} x{qty}" for sku, qty in cart.items()) or "(empty)"
+                summary = (
+                    ", ".join(f"{sku} x{qty}" for sku, qty in cart.items()) or "(empty)"
+                )
                 await event_queue.enqueue_event(
                     new_agent_text_message(
                         f"🧾 Payment received (tx={tx_id}).\n📦 Your items: {summary}.\n✅ Delivered."
@@ -152,7 +161,9 @@ class StoreAgentExecutor(AgentExecutor):
             return
 
         if lowered in ("list", "catalog"):
-            await event_queue.enqueue_event(new_agent_text_message(self._catalog_text()))
+            await event_queue.enqueue_event(
+                new_agent_text_message(self._catalog_text())
+            )
             return
 
         if lowered.startswith("add "):
@@ -190,11 +201,15 @@ class StoreAgentExecutor(AgentExecutor):
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         return
 
-    async def _cmd_add(self, context: RequestContext, event_queue: EventQueue, lowered: str) -> None:
+    async def _cmd_add(
+        self, context: RequestContext, event_queue: EventQueue, lowered: str
+    ) -> None:
         # Supports: add <sku> [qty] [<sku> [qty]] ...
         body = lowered[len("add ") :].strip()
         if not body:
-            await event_queue.enqueue_event(new_agent_text_message("Usage: add <sku> [qty] [<sku> [qty]] ..."))
+            await event_queue.enqueue_event(
+                new_agent_text_message("Usage: add <sku> [qty] [<sku> [qty]] ...")
+            )
             return
 
         tokens = body.split()
@@ -235,25 +250,35 @@ class StoreAgentExecutor(AgentExecutor):
             await self._emit_cart_text(context, event_queue)
             return
 
-    async def _cmd_remove(self, context: RequestContext, event_queue: EventQueue, lowered: str) -> None:
+    async def _cmd_remove(
+        self, context: RequestContext, event_queue: EventQueue, lowered: str
+    ) -> None:
         # remove <sku>
         m = re.match(r"remove\s+(\w+)", lowered)
         if not m:
-            await event_queue.enqueue_event(new_agent_text_message("Usage: remove <sku>"))
+            await event_queue.enqueue_event(
+                new_agent_text_message("Usage: remove <sku>")
+            )
             return
         sku = m.group(1)
         cart = self._get_cart(context.context_id)
         if sku in cart:
             cart.pop(sku)
-            await event_queue.enqueue_event(new_agent_text_message(f"➖ Removed {sku}."))
+            await event_queue.enqueue_event(
+                new_agent_text_message(f"➖ Removed {sku}.")
+            )
         else:
             await event_queue.enqueue_event(new_agent_text_message("Item not in cart."))
         await self._emit_cart_text(context, event_queue)
 
-    async def _emit_cart_text(self, context: RequestContext, event_queue: EventQueue) -> None:
+    async def _emit_cart_text(
+        self, context: RequestContext, event_queue: EventQueue
+    ) -> None:
         cart = self._get_cart(context.context_id)
         if not cart:
-            await event_queue.enqueue_event(new_agent_text_message("🧺 Cart is empty. Type 'list' to see items."))
+            await event_queue.enqueue_event(
+                new_agent_text_message("🧺 Cart is empty. Type 'list' to see items.")
+            )
             return
         lines: List[str] = ["🧺 Cart:"]
         total = 0.0
@@ -265,10 +290,14 @@ class StoreAgentExecutor(AgentExecutor):
         lines.append(f"Total: {total:.3f} USDC\nType 'checkout' to pay.")
         await event_queue.enqueue_event(new_agent_text_message("\n".join(lines)))
 
-    async def _emit_cart_mandate(self, context: RequestContext, event_queue: EventQueue) -> None:
+    async def _emit_cart_mandate(
+        self, context: RequestContext, event_queue: EventQueue
+    ) -> None:
         cart = self._get_cart(context.context_id)
         if not cart:
-            await event_queue.enqueue_event(new_agent_text_message("🧺 Cart is empty. Add items before checkout."))
+            await event_queue.enqueue_event(
+                new_agent_text_message("🧺 Cart is empty. Add items before checkout.")
+            )
             return
         display_items: List[PaymentItem] = []
         total_value = 0.0
@@ -277,9 +306,15 @@ class StoreAgentExecutor(AgentExecutor):
             line_total = ci.price * qty
             total_value += line_total
             display_items.append(
-                PaymentItem(label=f"{ci.title} x{qty}", amount=PaymentCurrencyAmount(currency="USDC", value=line_total))
+                PaymentItem(
+                    label=f"{ci.title} x{qty}",
+                    amount=PaymentCurrencyAmount(currency="USDC", value=line_total),
+                )
             )
-        total_item = PaymentItem(label="Total", amount=PaymentCurrencyAmount(currency="USDC", value=total_value))
+        total_item = PaymentItem(
+            label="Total",
+            amount=PaymentCurrencyAmount(currency="USDC", value=total_value),
+        )
         cart_id = "cart-" + uuid.uuid4().hex[:10]
         pr = PaymentRequest(
             # Showcase Skyfire as the payment method so UI offers Skyfire pay
@@ -291,30 +326,39 @@ class StoreAgentExecutor(AgentExecutor):
                     },
                 ),
             ],
-            details=PaymentDetailsInit(id=cart_id, display_items=display_items, total=total_item),
+            details=PaymentDetailsInit(
+                id=cart_id, display_items=display_items, total=total_item
+            ),
             options=PaymentOptions(request_shipping=False),
         )
         contents = CartContents(
             id=cart_id,
             payment_request=pr,
             user_cart_confirmation_required=True,
-            cart_expiry=(datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat() + "Z",
+            cart_expiry=(datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+            + "Z",
             merchant_name="Demo Store",
         )
         cart_mandate = CartMandate(
-            contents=contents, merchant_authorization="demo_auth", cart_hash=compute_cart_hash(contents)
+            contents=contents,
+            merchant_authorization="demo_auth",
+            cart_hash=compute_cart_hash(contents),
         )
         await event_queue.enqueue_event(
             Message(
                 message_id=uuid.uuid4().hex,
                 role=Role.agent,
-                parts=[Part(root=DataPart(data={CART_MANDATE_KEY: cart_mandate.dict()}))],
+                parts=[
+                    Part(root=DataPart(data={CART_MANDATE_KEY: cart_mandate.dict()}))
+                ],
                 context_id=context.context_id,
                 task_id=context.task_id,
             )
         )
         await asyncio.sleep(0.1)
-        await event_queue.enqueue_event(new_agent_text_message("🧾 Please complete payment to confirm your order."))
+        await event_queue.enqueue_event(
+            new_agent_text_message("🧾 Please complete payment to confirm your order.")
+        )
 
     def _help_text(self) -> str:
         return (
@@ -334,5 +378,3 @@ class StoreAgentExecutor(AgentExecutor):
             lines.append(f"- {ci.title} ({ci.sku}) = {ci.price:.3f} USDC")
         lines.append("Type 'add <sku> [qty]' to add items.")
         return "\n".join(lines)
-
-

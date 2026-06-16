@@ -4,6 +4,9 @@ All notable changes to this repository are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Fixed security vulnerabilities in Flask frontend, agent timeouts, and exception suppression (PR #137)
+
 ### Added
 - Auto badge workflow [award-contributor-badge.yml](.github/workflows/award-contributor-badge.yml) for merged external contributor PRs; [BADGE_REGISTRY.json](contributors/BADGE_REGISTRY.json) and [profile-badge-sync](contributors/profile-badge-sync/) for GitHub Profile README
 - Maintainer bypass for `review-required` and `stargazer-gate` (Fetch.ai org, repo write access, [.github/MAINTAINERS](.github/MAINTAINERS))

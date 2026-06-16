@@ -48,7 +48,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             if (ctx.storage.has(awaiting_key) or ctx.storage.get(awaiting_key)) and (
                 ctx.storage.has(verified_key) or ctx.storage.get(verified_key)
             ):
-                ctx.logger.info("Consuming prompt post-payment and generating one image")
+                ctx.logger.info(
+                    "Consuming prompt post-payment and generating one image"
+                )
                 ctx.storage.remove(awaiting_key)
                 ctx.storage.remove(verified_key)
                 ctx.storage.set(f"prompt:{sender}:{session_id}", text)
@@ -57,11 +59,21 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 return
 
             if text.lower().startswith(("hello", "hi", "hey")) and len(text) < 20:
-                await ctx.send(sender, create_text_chat("Hello! Please complete a small payment first, then I'll ask for your image prompt."))
+                await ctx.send(
+                    sender,
+                    create_text_chat(
+                        "Hello! Please complete a small payment first, then I'll ask for your image prompt."
+                    ),
+                )
                 await request_payment_from_user(ctx, sender)
                 return
 
-            await ctx.send(sender, create_text_chat("Please complete the payment first. After that, I'll ask for your prompt and generate one image."))
+            await ctx.send(
+                sender,
+                create_text_chat(
+                    "Please complete the payment first. After that, I'll ask for your prompt and generate one image."
+                ),
+            )
             await request_payment_from_user(ctx, sender)
 
 
@@ -70,5 +82,3 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
     ctx.logger.info(
         f"Got an acknowledgement from {sender} for {msg.acknowledged_msg_id}"
     )
-
-

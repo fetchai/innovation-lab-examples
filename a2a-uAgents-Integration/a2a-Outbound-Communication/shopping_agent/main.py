@@ -1,11 +1,13 @@
-import os
 from typing import Dict, List
-from uagents_adapter import SingleA2AAdapter, A2AAgentConfig, a2a_servers 
+from uagents_adapter import SingleA2AAdapter, A2AAgentConfig, a2a_servers
 from shopping_agent import ShoppingAgentExecutor
+
+
 class ShoppingPartnerSystem:
     """
     Manages the setup and execution of the A2A Shopping Partner agent.
     """
+
     def __init__(self):
         self.coordinator = None
         self.agent_configs: List[A2AAgentConfig] = []
@@ -21,18 +23,21 @@ class ShoppingPartnerSystem:
             A2AAgentConfig(
                 name="shopping-partner-specialist",
                 description="AI Agent for product recommendations and shopping assistance.",
-                url="http://localhost:10020", # The URL where the A2A server for this agent will run
-                port=10020, # The port for the A2A server
+                url="http://localhost:10020",  # The URL where the A2A server for this agent will run
+                port=10020,  # The port for the A2A server
                 specialties=[
-                    "product recommendations", "shopping", "e-commerce",
-                    "fashion", "electronics", "home goods", "sports gear"
+                    "product recommendations",
+                    "shopping",
+                    "e-commerce",
+                    "fashion",
+                    "electronics",
+                    "home goods",
+                    "sports gear",
                 ],
-                priority=3 # Priority can be useful in multi-agent setups
+                priority=3,  # Priority can be useful in multi-agent setups
             )
         ]
-        self.executors = {
-            "shopping-partner-specialist": ShoppingAgentExecutor()
-        }
+        self.executors = {"shopping-partner-specialist": ShoppingAgentExecutor()}
         print("✅ Shopping Partner Agent configuration created")
 
     def start_individual_a2a_servers(self):
@@ -48,7 +53,7 @@ class ShoppingPartnerSystem:
         Creates the SingleA2AAdapter (uAgent coordinator) for the shopping partner.
         """
         print("🤖 Creating Shopping Partner Coordinator...")
-        
+
         # Get the executor instance
         shopping_executor = self.executors.get("shopping-partner-specialist")
         if shopping_executor is None:
@@ -58,9 +63,9 @@ class ShoppingPartnerSystem:
             agent_executor=shopping_executor,
             name="shopping-partner-coordinator",
             description="Coordinator for routing shopping-related queries to the Shopping Partner Agent.",
-            port=8200, # The port for the uAgent coordinator
+            port=8200,  # The port for the uAgent coordinator
             mailbox=True,
-            timeout=2000
+            timeout=2000,
         )
         print("✅ Shopping Partner Coordinator created!")
         return self.coordinator
@@ -75,7 +80,9 @@ class ShoppingPartnerSystem:
             self.start_individual_a2a_servers()
             coordinator = self.create_coordinator()
             self.running = True
-            print(f"🎯 Starting Shopping Partner coordinator on port {coordinator.port}...")
+            print(
+                f"🎯 Starting Shopping Partner coordinator on port {coordinator.port}..."
+            )
             coordinator.run()
         except KeyboardInterrupt:
             print("👋 Shutting down Shopping Partner system...")
@@ -83,6 +90,7 @@ class ShoppingPartnerSystem:
         except Exception as e:
             print(f"❌ Error during system startup: {e}")
             self.running = False
+
 
 def main():
     """
@@ -95,6 +103,7 @@ def main():
         print("👋 Shopping Partner system shutdown complete!")
     except Exception as e:
         print(f"❌ An error occurred: {e}")
+
 
 if __name__ == "__main__":
     main()

@@ -58,5 +58,3 @@ Profile:
 Notes:
 - I remember your authenticated email per chat; no hardcoded defaults.
 - You can also include From: you@example.com in any message to switch the active account."""
-
-

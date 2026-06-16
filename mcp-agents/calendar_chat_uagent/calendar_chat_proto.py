@@ -6,14 +6,19 @@ A uAgents chat protocol that lets end-users interact with Google Calendar via
 FastMCP tools defined in `calendar_chat_uagent.server`.
 """
 
-import asyncio, contextvars, json, logging, os, pathlib, sys
-from datetime import datetime, timezone
-from typing import Any, Dict, List
-from uuid import uuid4
+import asyncio  # noqa: E402
+import contextvars  # noqa: E402
+import json  # noqa: E402
+import logging  # noqa: E402
+import os  # noqa: E402
+import pathlib  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
+from typing import Any, Dict, List  # noqa: E402
+from uuid import uuid4  # noqa: E402
 
-import httpx
-from uagents import Context, Protocol
-from uagents_core.contrib.protocols.chat import (
+import httpx  # noqa: E402
+from uagents import Context, Protocol  # noqa: E402
+from uagents_core.contrib.protocols.chat import (  # noqa: E402
     ChatAcknowledgement,
     ChatMessage,
     EndSessionContent,
@@ -21,7 +26,7 @@ from uagents_core.contrib.protocols.chat import (
     TextContent,
     chat_protocol_spec,
 )
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv()
 
@@ -38,11 +43,14 @@ CAL_MCP_URL = os.getenv("CALENDAR_MCP_URL", "https://a6aca4fcb00e.ngrok-free.app
 MAX_HISTORY = int(os.getenv("MAX_CAL_CHAT_HISTORY", "10"))
 
 # Import FastMCP server
-import server as cal_server 
+import server as cal_server  # noqa: E402
+
 cal_mcp = cal_server.mcp
 cal_auth = cal_server.calendar_auth
 
-CURRENT_SESSION_DATA: contextvars.ContextVar[dict] = contextvars.ContextVar("CURRENT_SESSION_DATA")
+CURRENT_SESSION_DATA: contextvars.ContextVar[dict] = contextvars.ContextVar(
+    "CURRENT_SESSION_DATA"
+)
 
 # ---------------------------------------------------------------------------
 # Helper to normalise FastMCP return values (copied from Gmail proto)
@@ -61,6 +69,7 @@ def _unwrap(result: Any) -> str:
         return json.dumps(result)
     return str(result)
 
+
 # ---------------------------------------------------------------------------
 # OpenAI *Responses* streaming helper – executes tool calls when present
 # ---------------------------------------------------------------------------
@@ -69,7 +78,9 @@ def _unwrap(result: Any) -> str:
 async def _call_openai_responses(messages: List[Dict[str, str]]) -> str:
     """Stream /v1/responses events, execute MCP tool calls, and return final text."""
 
-    transcript = "\n".join(f"{m['role'].capitalize()}: {m['content']}" for m in messages)
+    transcript = "\n".join(
+        f"{m['role'].capitalize()}: {m['content']}" for m in messages
+    )
 
     TOOLS_BLOCK = [
         {
@@ -103,7 +114,12 @@ async def _call_openai_responses(messages: List[Dict[str, str]]) -> str:
         follow_payload = dict(payload)
 
         for _hop in range(10):  # limit hops to prevent loops
-            async with client.stream("POST", "https://api.openai.com/v1/responses", json=follow_payload, headers=headers) as stream:
+            async with client.stream(
+                "POST",
+                "https://api.openai.com/v1/responses",
+                json=follow_payload,
+                headers=headers,
+            ) as stream:
                 async for raw in stream.aiter_lines():
                     if not raw.startswith("data:"):
                         continue
@@ -117,7 +133,11 @@ async def _call_openai_responses(messages: List[Dict[str, str]]) -> str:
 
                     kind = event.get("type")
 
-                    if kind in ("content_block_delta", "message_delta", "response.output_text.delta"):
+                    if kind in (
+                        "content_block_delta",
+                        "message_delta",
+                        "response.output_text.delta",
+                    ):
                         delta = event.get("delta", {})
                         if isinstance(delta, dict):
                             assistant_chunks.append(delta.get("text", ""))
@@ -132,7 +152,9 @@ async def _call_openai_responses(messages: List[Dict[str, str]]) -> str:
                             args_json = call["function"].get("arguments") or "{}"
                             args_dict = json.loads(args_json)
                             out = await _run_cal_tool(fn, args_dict)
-                            tool_outputs.append({"tool_call_id": call["id"], "output": out})
+                            tool_outputs.append(
+                                {"tool_call_id": call["id"], "output": out}
+                            )
 
                         follow_payload = {
                             "model": OPENAI_MODEL,
@@ -147,6 +169,7 @@ async def _call_openai_responses(messages: List[Dict[str, str]]) -> str:
                     return "".join(assistant_chunks).strip()
     # Fallback – no response
     return "(no response)"
+
 
 async def _run_cal_tool(fn: str, args: Dict[str, Any]) -> str:
     """Execute *fn* with *args* against Calendar MCP, with retry and temp-token file handling."""
@@ -212,14 +235,15 @@ async def _run_cal_tool(fn: str, args: Dict[str, Any]) -> str:
             pass
     return json.dumps({"success": False, "error": "Unknown tool failure"})
 
+
 _SYSTEM_PROMPT = (
     "You are an AI assistant for Google Calendar and may only operate via the MCP\n"
     "tools provided: setup_oauth, complete_oauth, list_calendars, list_events,\n"
     "create_event, update_event, delete_event, search_events, get_free_busy,\n"
     "get_current_time.\n\n"
     "• list_events is the main tool for a user's agenda. Always call it with\n"
-    "  { calendar_id: \"primary\", date: \"today\"|\"tomorrow\"|\"YYYY-MM-DD\" }.\n"
-    "  If the user doesn't specify a date use \"today\" by default.\n"
+    '  { calendar_id: "primary", date: "today"|"tomorrow"|"YYYY-MM-DD" }.\n'
+    '  If the user doesn\'t specify a date use "today" by default.\n'
     "  When replying, show each meeting's title, time range and its link field so\n"
     "  the user can open the Calendar event.\n"
     "• search_events is only for keyword searches across events.\n"
@@ -242,12 +266,19 @@ def _create_msg(text: str, end: bool = False) -> ChatMessage:
     content: List[Any] = [TextContent(type="text", text=text)]
     if end:
         content.append(EndSessionContent(type="end-session"))
-    return ChatMessage(timestamp=datetime.now(timezone.utc), msg_id=uuid4(), content=content)
+    return ChatMessage(
+        timestamp=datetime.now(timezone.utc), msg_id=uuid4(), content=content
+    )
 
 
 @chat_proto.on_message(ChatMessage)
 async def _handle(ctx: Context, sender: str, msg: ChatMessage):
-    await ctx.send(sender, ChatAcknowledgement(timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id))
+    await ctx.send(
+        sender,
+        ChatAcknowledgement(
+            timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id
+        ),
+    )
     sessions = json.loads(ctx.storage.get(SESSIONS_KEY) or "{}")
     sid = str(ctx.session)
     data = sessions.get(sid, {"messages": []})
@@ -269,7 +300,9 @@ async def _handle(ctx: Context, sender: str, msg: ChatMessage):
     # not already waiting for an OAuth code – prevents sending the auth link
     # right after the session starts.
     if not inbound and not data.get("awaiting_auth_code"):
-        ctx.logger.info("🔕 StartSessionContent only – waiting for user input before responding")
+        ctx.logger.info(
+            "🔕 StartSessionContent only – waiting for user input before responding"
+        )
         sessions[sid] = data
         ctx.storage.set(SESSIONS_KEY, json.dumps(sessions))
         return
@@ -310,10 +343,12 @@ async def _handle(ctx: Context, sender: str, msg: ChatMessage):
         # 1. Handle authentication workflow (setup_oauth / complete_oauth)
         # ------------------------------------------------------------------
 
-        ctx.logger.info("🔍 Auth status: authenticated=%s, awaiting_code=%s, inbound_text=%s", 
-                        data.get("cal_authenticated"), 
-                        data.get("awaiting_auth_code"), 
-                        bool(inbound))
+        ctx.logger.info(
+            "🔍 Auth status: authenticated=%s, awaiting_code=%s, inbound_text=%s",
+            data.get("cal_authenticated"),
+            data.get("awaiting_auth_code"),
+            bool(inbound),
+        )
 
         if not data.get("cal_authenticated"):
             # Guard against duplicate sends
@@ -323,7 +358,12 @@ async def _handle(ctx: Context, sender: str, msg: ChatMessage):
             # If awaiting OAuth completion, gently remind the user
             if data.get("awaiting_auth_code"):
                 if inbound:
-                    await ctx.send(sender, _create_msg("🔄 Still waiting for you to grant access in the browser popup. Once finished, just ask me your question again."))
+                    await ctx.send(
+                        sender,
+                        _create_msg(
+                            "🔄 Still waiting for you to grant access in the browser popup. Once finished, just ask me your question again."
+                        ),
+                    )
                 ctx.logger.debug("Waiting for OAuth completion; inbound=%s", inbound)
                 sessions[sid] = data
                 ctx.storage.set(SESSIONS_KEY, json.dumps(sessions))
@@ -337,7 +377,9 @@ async def _handle(ctx: Context, sender: str, msg: ChatMessage):
 
             if not oauth_data.get("success"):
                 err_msg = oauth_data.get("error", "Unknown error during OAuth setup")
-                await ctx.send(sender, _create_msg(f"❌ Authentication setup failed: {err_msg}"))
+                await ctx.send(
+                    sender, _create_msg(f"❌ Authentication setup failed: {err_msg}")
+                )
                 ctx.logger.error("❌ OAuth setup failed: %s", err_msg)
                 return
 
@@ -345,9 +387,12 @@ async def _handle(ctx: Context, sender: str, msg: ChatMessage):
             data["awaiting_auth_code"] = True
             data["oauth_link_sent"] = True
 
-            await ctx.send(sender, _create_msg(
-                f"Click the **Authorize Calendar** link below.\n\n[Authorize Calendar]({auth_url})\n\nOnce authorised, paste the code here or just ask your question again."
-            ))
+            await ctx.send(
+                sender,
+                _create_msg(
+                    f"Click the **Authorize Calendar** link below.\n\n[Authorize Calendar]({auth_url})\n\nOnce authorised, paste the code here or just ask your question again."
+                ),
+            )
             ctx.logger.info("➡️  Auth link sent: %s", auth_url)
 
             sessions[sid] = data
@@ -357,13 +402,18 @@ async def _handle(ctx: Context, sender: str, msg: ChatMessage):
         # After authentication, remove old OAuth-instruction messages to prevent
         # the model from repeating them.
         if data.get("cal_authenticated") and data.get("messages"):
+
             def _looks_like_oauth_prompt(text: str) -> bool:
                 t = text.lower()
                 return "authorize" in t and "calendar" in t or "authentication" in t
 
             filtered = [
-                m for m in data["messages"]
-                if not (m.get("source") == "assistant" and _looks_like_oauth_prompt(m.get("content", "")))
+                m
+                for m in data["messages"]
+                if not (
+                    m.get("source") == "assistant"
+                    and _looks_like_oauth_prompt(m.get("content", ""))
+                )
             ]
             if len(filtered) != len(data["messages"]):
                 data["messages"] = filtered
@@ -374,12 +424,16 @@ async def _handle(ctx: Context, sender: str, msg: ChatMessage):
         messages: List[Dict[str, str]] = [{"role": "system", "content": _SYSTEM_PROMPT}]
         # Add authenticated note immediately so it has high priority
         if data.get("cal_authenticated"):
-            messages.append({
-                "role": "system",
-                "content": "The user is already authenticated with valid Google Calendar tokens. Use the calendar tools directly; do NOT request OAuth again."})
+            messages.append(
+                {
+                    "role": "system",
+                    "content": "The user is already authenticated with valid Google Calendar tokens. Use the calendar tools directly; do NOT request OAuth again.",
+                }
+            )
 
         messages += [
-            {"role": m.get("source", "assistant"), "content": m.get("content", "")} for m in data.get("messages", [])
+            {"role": m.get("source", "assistant"), "content": m.get("content", "")}
+            for m in data.get("messages", [])
         ]
 
         if inbound:
@@ -394,7 +448,12 @@ async def _handle(ctx: Context, sender: str, msg: ChatMessage):
         answer = await _call_openai_responses(messages)
         data["messages"].append({"source": "assistant", "content": answer})
         await ctx.send(sender, _create_msg(answer))
-        ctx.logger.info(">> session=%s to=%s content=%s", sid, sender, answer[:120].replace("\n", " "))
+        ctx.logger.info(
+            ">> session=%s to=%s content=%s",
+            sid,
+            sender,
+            answer[:120].replace("\n", " "),
+        )
         sessions[sid] = data
         ctx.storage.set(SESSIONS_KEY, json.dumps(sessions))
     finally:
@@ -403,4 +462,4 @@ async def _handle(ctx: Context, sender: str, msg: ChatMessage):
 
 @chat_proto.on_message(ChatAcknowledgement)
 async def _ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
-    pass 
+    pass

@@ -14,7 +14,6 @@ This module:
 from __future__ import annotations
 import re
 from typing import Dict, Any, Optional
-from uuid import uuid4
 from datetime import datetime, timezone
 
 from uagents import Protocol, Context
@@ -48,12 +47,14 @@ KNOWN_PASSENGERS = {
         "gender": "M",
         "email": "abhi.gangani@fetch.ai",
         "phone_number": "+447788998877",
-    }
+    },
 }
+
 
 def _get_known_passenger(sender: str) -> Optional[Dict[str, Any]]:
     """Get pre-filled passenger details for known agent addresses."""
     return KNOWN_PASSENGERS.get(sender)
+
 
 def _format_passenger_confirmation(passenger: Dict[str, Any]) -> str:
     """Format passenger details for user confirmation."""
@@ -66,7 +67,9 @@ def _format_passenger_confirmation(passenger: Dict[str, Any]) -> str:
         lines.append(f"• Date of Birth: {passenger['born_on']}")
     if passenger.get("gender"):
         gender_map = {"M": "Male", "F": "Female", "X": "Other"}
-        lines.append(f"• Gender: {gender_map.get(passenger['gender'], passenger['gender'])}")
+        lines.append(
+            f"• Gender: {gender_map.get(passenger['gender'], passenger['gender'])}"
+        )
     if passenger.get("phone_number"):
         lines.append(f"• Phone: {passenger['phone_number']}")
     if passenger.get("email"):
@@ -75,28 +78,37 @@ def _format_passenger_confirmation(passenger: Dict[str, Any]) -> str:
         lines.append(f"• Passport: {passenger['passport_number']}")
     return "\n".join(lines)
 
+
 def _get_session_key(sender: str, session_id: str) -> str:
     """Generate a unique storage key for sender + session."""
     return f"{sender}::{session_id}"
+
 
 def _get_session_data(ctx: Context, sender: str, session_id: str) -> Dict[str, Any]:
     """Retrieve or initialize session data for this sender + session."""
     key = _get_session_key(sender, session_id)
     session_data = ctx.storage.get(key) or {}
-    session_data.setdefault("state", {
-        "origin": None,
-        "destination": None,
-        "date": None,
-        "passengers": None,
-        "greeted": False,
-    })
+    session_data.setdefault(
+        "state",
+        {
+            "origin": None,
+            "destination": None,
+            "date": None,
+            "passengers": None,
+            "greeted": False,
+        },
+    )
     session_data.setdefault("history", [])
     return session_data
 
-def _save_session_data(ctx: Context, sender: str, session_id: str, session_data: Dict[str, Any]) -> None:
+
+def _save_session_data(
+    ctx: Context, sender: str, session_id: str, session_data: Dict[str, Any]
+) -> None:
     """Save session data for this sender + session."""
     key = _get_session_key(sender, session_id)
     ctx.storage.set(key, session_data)
+
 
 def _extract_text(msg: ChatMessage) -> str:
     parts = []
@@ -105,11 +117,13 @@ def _extract_text(msg: ChatMessage) -> str:
             parts.append(item.text)
     return "\n".join(parts).strip()
 
+
 async def _ack(ctx: Context, sender: str, msg: ChatMessage) -> None:
     try:
         await ctx.send(sender, ChatAcknowledgement(acknowledged_msg_id=msg.msg_id))
     except Exception:
         pass
+
 
 @chat_proto.on_message(ChatMessage)
 async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
@@ -127,7 +141,7 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
     # Get session-specific data
     session_id = str(ctx.session)
     session_data = _get_session_data(ctx, sender, session_id)
-    
+
     state = session_data["state"]
     history = session_data["history"]
 
@@ -136,8 +150,8 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         user_text=text,
         session_state=state,
         history=history,
-        session_id=f"{sender}::{session_id}"
-        )
+        session_id=f"{sender}::{session_id}",
+    )
 
     # result expected to be {"content": <reply_text>, "state": <new_state_dict>, "history": <updated_history>}
     reply_text = result.get("content", "")
@@ -176,7 +190,9 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
                     "total": f"{amt} {cur}" if amt and cur else None,
                 }
                 key_hist = f"booked_offers:{sender}"
-                history_list = ctx.storage.get(key_hist) if ctx.storage.has(key_hist) else []
+                history_list = (
+                    ctx.storage.get(key_hist) if ctx.storage.has(key_hist) else []
+                )
                 if not isinstance(history_list, list):
                     history_list = []
                 history_list.append(entry)
@@ -192,31 +208,35 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
         history_list = ctx.storage.get(key_hist) if ctx.storage.has(key_hist) else []
         if not isinstance(history_list, list):
             history_list = []
-        
+
         # Format orders for display
         if not history_list:
             orders_text = "📋 You have no booked orders yet."
         else:
             lines = ["📋 Your Bookings:\n"]
-            for i, item in enumerate(history_list[-10:], start=1):  # Show last 10 orders
+            for i, item in enumerate(
+                history_list[-10:], start=1
+            ):  # Show last 10 orders
                 order_id = item.get("order_id", "—")
                 booking_ref = item.get("booking_ref", "—")
                 total = item.get("total", "—")
                 timestamp = item.get("timestamp", "")
                 method = item.get("method", "—")
-                
+
                 lines.append(f"{i}. Order: {order_id}")
                 lines.append(f"   PNR: {booking_ref}")
                 lines.append(f"   Total: {total}")
                 lines.append(f"   Paid via: {method}")
                 lines.append(f"   Date: {timestamp[:10] if timestamp else '—'}\n")
-            
-            lines.append("To cancel a booking, say \"cancel ord_xxxxx\"")
+
+            lines.append('To cancel a booking, say "cancel ord_xxxxx"')
             orders_text = "\n".join(lines)
-        
+
         # Send the orders list
-        await ctx.send(sender, ChatMessage(content=[TextContent(type="text", text=orders_text)]))
-        
+        await ctx.send(
+            sender, ChatMessage(content=[TextContent(type="text", text=orders_text)])
+        )
+
         # Clear the flag
         state["list_orders_requested"] = False
         session_data["state"] = state
@@ -252,81 +272,111 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
                     if msg.get("role") == "user":
                         content = msg.get("content", "")
                         # Title
-                        title_match = re.search(r'\b(mr|ms|mrs|miss|dr|mx)\.?\s', content, re.I)
+                        title_match = re.search(
+                            r"\b(mr|ms|mrs|miss|dr|mx)\.?\s", content, re.I
+                        )
                         if title_match:
                             passenger_data["title"] = title_match.group(1).lower()
                         # Names
-                        name_match = re.search(r'\b([A-Z][a-z]+)\s+([A-Z][a-z]+)\b', content)
+                        name_match = re.search(
+                            r"\b([A-Z][a-z]+)\s+([A-Z][a-z]+)\b", content
+                        )
                         if name_match:
                             passenger_data["given_name"] = name_match.group(1)
                             passenger_data["family_name"] = name_match.group(2)
                         # DOB
-                        dob_match = re.search(r'\b(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b', content)
+                        dob_match = re.search(
+                            r"\b(19|20)\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b",
+                            content,
+                        )
                         if dob_match:
                             passenger_data["born_on"] = dob_match.group(0)
                         # Gender
-                        gender_match = re.search(r'\b(male|female|m|f|x)\b', content, re.I)
+                        gender_match = re.search(
+                            r"\b(male|female|m|f|x)\b", content, re.I
+                        )
                         if gender_match:
                             g = gender_match.group(1).upper()[0]
-                            passenger_data["gender"] = g if g in ['M', 'F', 'X'] else 'M'
+                            passenger_data["gender"] = (
+                                g if g in ["M", "F", "X"] else "M"
+                            )
                         # Email
-                        email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', content)
+                        email_match = re.search(
+                            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+                            content,
+                        )
                         if email_match:
                             passenger_data["email"] = email_match.group(0)
                         # Phone (must start with + and have 10+ digits, or be clearly a phone number)
                         # Avoid matching dates like 1997-01-31
-                        phone_match = re.search(r'\+\d{10,}|\+\d[\d\s-]{9,}', content)
+                        phone_match = re.search(r"\+\d{10,}|\+\d[\d\s-]{9,}", content)
                         if phone_match:
-                            phone_raw = phone_match.group(0).replace(' ', '').replace('-', '')
+                            phone_raw = (
+                                phone_match.group(0).replace(" ", "").replace("-", "")
+                            )
                             # Only store if it doesn't look like a date (not in format like 19970131)
-                            if not (len(phone_raw) == 8 and phone_raw.startswith(('19', '20'))):
+                            if not (
+                                len(phone_raw) == 8
+                                and phone_raw.startswith(("19", "20"))
+                            ):
                                 passenger_data["phone_number"] = phone_raw
-            
+
             # Store passenger and offer data using the same keys as payment_proto expects
             if passenger_data:
                 ctx.storage.set(f"passenger_1:{sender}:{session_id}", passenger_data)
                 ctx.logger.info(f"Stored passenger data for payment: {passenger_data}")
-            
+
             # Store selected offer ID if available (check both new_state and merged state)
-            offer_id = new_state.get("selected_offer_id") or state.get("selected_offer_id")
+            offer_id = new_state.get("selected_offer_id") or state.get(
+                "selected_offer_id"
+            )
             if offer_id:
                 ctx.storage.set(f"selected_offer_id:{sender}:{session_id}", offer_id)
                 ctx.logger.info(f"Stored offer ID: {offer_id}")
             else:
-                ctx.logger.warning(f"No offer_id found in state when requesting payment!")
-            
+                ctx.logger.warning(
+                    "No offer_id found in state when requesting payment!"
+                )
+
             # Store offer_passengers (passenger IDs from the offer)
-            offer_passengers = new_state.get("offer_passengers") or state.get("offer_passengers")
+            offer_passengers = new_state.get("offer_passengers") or state.get(
+                "offer_passengers"
+            )
             if offer_passengers:
-                ctx.storage.set(f"offer_passengers:{sender}:{session_id}", offer_passengers)
+                ctx.storage.set(
+                    f"offer_passengers:{sender}:{session_id}", offer_passengers
+                )
                 ctx.logger.info(f"Stored {len(offer_passengers)} offer passenger IDs")
         except Exception as e:
             ctx.logger.error(f"Failed to store passenger/offer data: {e}")
-        
+
         # Import payment protocol function
         try:
             from protocols.payment_proto import request_payment_from_user
-            description = new_state.get("payment_description", "Flight booking — pay to proceed")
+
+            description = new_state.get(
+                "payment_description", "Flight booking — pay to proceed"
+            )
             await request_payment_from_user(ctx, sender, description=description)
             # Clear the flag
             state["payment_requested"] = False
         except Exception as e:
             ctx.logger.error(f"Failed to send payment request: {e}")
-    
+
     # Check if cancellation was confirmed and send email
     if new_state.get("cancellation_confirmed"):
         try:
             from protocols.payment_proto import _send_cancellation_email
-            
+
             order_id = new_state.get("cancelled_order_id")
             refund_amount = new_state.get("cancelled_refund_amount")
             refund_currency = new_state.get("cancelled_refund_currency")
-            
+
             # Get passenger email and booking ref from storage
             email_to = None
             pax_name = None
             booking_ref = None
-            
+
             # Try to get passenger info from session storage
             passenger_key = f"passenger_1:{sender}:{session_id}"
             if ctx.storage.has(passenger_key):
@@ -334,7 +384,7 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
                 if isinstance(pax, dict):
                     email_to = pax.get("email")
                     pax_name = f"{pax.get('given_name', '')} {pax.get('family_name', '')}".strip()
-            
+
             # Try to get booking ref from order history
             history_key = f"booked_offers:{sender}"
             if ctx.storage.has(history_key):
@@ -347,22 +397,24 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
                                 # Try to get email from history if not in passenger storage
                                 pass
                             break
-            
+
             # Send cancellation email
             if email_to and order_id:
                 refund_text = None
                 if refund_amount and refund_currency:
                     refund_text = f"{refund_amount} {refund_currency}"
-                
+
                 _send_cancellation_email(
                     to_email=email_to,
                     passenger_name=pax_name or "Traveler",
                     order_id=order_id,
                     booking_ref=booking_ref,
-                    refund_amount=refund_text
+                    refund_amount=refund_text,
                 )
-                ctx.logger.info(f"Sent cancellation email to {email_to} for order {order_id}")
-            
+                ctx.logger.info(
+                    f"Sent cancellation email to {email_to} for order {order_id}"
+                )
+
             # Clear the flag
             state["cancellation_confirmed"] = False
         except Exception as e:
@@ -370,7 +422,10 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
 
     # Send reply (skip if empty - e.g., after payment request)
     if reply_text and reply_text.strip():
-        await ctx.send(sender, ChatMessage(content=[TextContent(type="text", text=reply_text)]))
+        await ctx.send(
+            sender, ChatMessage(content=[TextContent(type="text", text=reply_text)])
+        )
+
 
 @chat_proto.on_message(ChatAcknowledgement)
 async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> None:

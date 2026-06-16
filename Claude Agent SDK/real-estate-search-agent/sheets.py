@@ -23,7 +23,9 @@ DEVICE_CODE_ENDPOINT = "https://oauth2.googleapis.com/device/code"
 TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 
 TOKEN_STORE_FILE = os.getenv("GOOGLE_OAUTH_TOKEN_STORE_FILE", "google_user_tokens.json")
-DEVICE_STORE_FILE = os.getenv("GOOGLE_OAUTH_DEVICE_STORE_FILE", "google_device_flows.json")
+DEVICE_STORE_FILE = os.getenv(
+    "GOOGLE_OAUTH_DEVICE_STORE_FILE", "google_device_flows.json"
+)
 
 
 class GoogleAuthRequiredError(RuntimeError):
@@ -103,7 +105,9 @@ def _start_device_flow(client_id: str) -> dict[str, Any]:
 
     if "error" in response:
         description = response.get("error_description", "")
-        raise RuntimeError(f"Google device authorization failed: {response['error']} {description}")
+        raise RuntimeError(
+            f"Google device authorization failed: {response['error']} {description}"
+        )
 
     now = int(time.time())
     expires_in = int(response.get("expires_in", 900))
@@ -119,7 +123,9 @@ def _start_device_flow(client_id: str) -> dict[str, Any]:
     }
 
 
-def _poll_device_flow(client_id: str, client_secret: str, device_code: str) -> dict[str, Any]:
+def _poll_device_flow(
+    client_id: str, client_secret: str, device_code: str
+) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "client_id": client_id,
         "device_code": device_code,

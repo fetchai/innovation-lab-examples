@@ -20,6 +20,7 @@ from config import (
 
 def _get_stripe_sdk():
     import stripe
+
     stripe.api_key = STRIPE_SECRET_KEY
     return stripe
 

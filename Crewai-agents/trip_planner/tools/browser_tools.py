@@ -22,8 +22,12 @@ class BrowserTools:
         for _chunk in content:
             agent = Agent(
                 role="Principal Researcher",
-                goal=("Do amazing researches and summaries based on the content you are working with"),
-                backstory=("You're a Principal Researcher at a big company and you need to do a research about a given topic."),
+                goal=(
+                    "Do amazing researches and summaries based on the content you are working with"
+                ),
+                backstory=(
+                    "You're a Principal Researcher at a big company and you need to do a research about a given topic."
+                ),
                 allow_delegation=False,
             )
             task = Task(
