@@ -10,7 +10,13 @@ from uagents_core.contrib.protocols.chat import (
 from google import genai
 from dotenv import load_dotenv
 
-# Load environment variables (ensure GEMINI_API_KEY is in your .env)
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+if not os.getenv("GEMINI_API_KEY"):
+    raise ValueError("GEMINI_API_KEY environment variable is required")
 load_dotenv()
 
 # --- 1. Initialize the Agent ---
