@@ -166,6 +166,67 @@ def _rest_upsert(table: str, row: dict, conflict_col: str) -> bool:
     return True
 
 
+def fetch_uncrawled_events(
+    batch_size: int = 100,
+    offset: int = 0,
+    source_filter: str | None = None,
+) -> list[dict]:
+    """
+    Return events that have an external_url but no external_data yet.
+    Ordered by start_datetime DESC (newest first) so upcoming events
+    get enriched before past ones.
+    """
+    client = get_client()
+    try:
+        q = (
+            client.table("events")
+            .select("id, slug, external_url, external_source, start_datetime, title")
+            .is_("external_data", "null")
+            .not_.is_("external_url", "null")
+            .order("start_datetime", desc=True)
+            .range(offset, offset + batch_size - 1)
+        )
+        if source_filter:
+            q = q.eq("external_source", source_filter)
+        return q.execute().data or []
+    except Exception as e:
+        print(f"  [DB] fetch_uncrawled_events failed: {e}")
+        return []
+
+
+def count_uncrawled_events(source_filter: str | None = None) -> int:
+    """Return count of events with external_url but no external_data."""
+    client = get_client()
+    try:
+        q = (
+            client.table("events")
+            .select("id", count="exact")
+            .is_("external_data", "null")
+            .not_.is_("external_url", "null")
+        )
+        if source_filter:
+            q = q.eq("external_source", source_filter)
+        return q.execute().count or 0
+    except Exception as e:
+        print(f"  [DB] count_uncrawled_events failed: {e}")
+        return 0
+
+
+def update_external_data(slug: str, external_data: dict, error: bool = False) -> bool:
+    """Patch just the external_data (and updated_at) on an existing event row."""
+    client = get_client()
+    payload = {
+        "external_data": json.dumps(external_data),
+        "updated_at": _now_iso(),
+    }
+    try:
+        client.table("events").update(payload).eq("slug", slug).execute()
+        return True
+    except Exception as e:
+        print(f"  [DB] update_external_data failed for {slug}: {e}")
+        return False
+
+
 def _rest_insert(table: str, row: dict) -> None:
     headers = {
         "apikey": SUPABASE_KEY,
