@@ -1,0 +1,9 @@
+.env
+
+# Runtime / local state
+orchestrator-agent/*.log
+orchestrator-agent/*.out.log
+orchestrator-agent/*_data.json
+orchestrator-agent/data/
+orchestrator-agent/__pycache__/
+orchestrator-agent/.venv/

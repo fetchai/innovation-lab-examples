@@ -1,0 +1,4 @@
+uagents
+uagents-core
+google-genai
+python-dotenv

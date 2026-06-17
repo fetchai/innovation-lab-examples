@@ -1,0 +1,114 @@
+name: GSSoC Sync Issue Labels to PR
+
+# When a PR links an issue (e.g. "Closes #123"), copy the GSSoC tracking
+# labels from that issue onto the PR. The GSSoC dashboard reads the program
+# (gssoc26) and level (level1/level2/level3) labels from MERGED PRs to award
+# points, so this keeps a contributor's PR in sync with the triaged issue.
+#
+# Uses pull_request_target so it can label PRs opened from forks. It only ever
+# reads the PR body + linked issue labels and adds a fixed allow-list of
+# labels — it never runs untrusted PR code.
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: write
+  issues: read
+
+concurrency:
+  group: gssoc-label-sync-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  sync-labels:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - name: Sync safe GSSoC labels from linked issues
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+
+            if (pr.user.type === 'Bot') {
+              core.info('Skipping bot PR');
+              return;
+            }
+
+            // Only these labels are ever auto-applied to a PR.
+            const SAFE_LABELS = new Set([
+              'gssoc26',
+              'level1',
+              'level2',
+              'level3',
+              'level:beginner',
+              'level:intermediate',
+              'level:advanced',
+              'level:critical',
+              'bug',
+              'enhancement',
+              'documentation',
+              'good first issue',
+              'help wanted',
+            ]);
+
+            const body = pr.body || '';
+            const matches = body.match(
+              /\b(close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)/gi
+            ) || [];
+
+            const issueNumbers = [...new Set(
+              matches
+                .map((m) => {
+                  const found = m.match(/#(\d+)/);
+                  return found ? parseInt(found[1], 10) : null;
+                })
+                .filter(Boolean)
+            )];
+
+            if (issueNumbers.length === 0) {
+              core.info('No linked issues found');
+              return;
+            }
+
+            const labelsToAdd = new Set();
+            for (const issue_number of issueNumbers) {
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  owner,
+                  repo,
+                  issue_number,
+                });
+                if (issue.pull_request) continue;
+                for (const label of issue.labels || []) {
+                  const name = typeof label === 'string' ? label : label.name;
+                  if (name && SAFE_LABELS.has(name.toLowerCase())) {
+                    labelsToAdd.add(name);
+                  }
+                }
+              } catch (e) {
+                core.info(`Failed fetching issue #${issue_number}: ${e.message}`);
+              }
+            }
+
+            if (labelsToAdd.size === 0) {
+              core.info('No safe labels to sync');
+              return;
+            }
+
+            const labels = Array.from(labelsToAdd);
+            try {
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: pr.number,
+                labels,
+              });
+              core.info(`Synced labels: ${labels.join(', ')}`);
+            } catch (e) {
+              core.warning(`Failed syncing labels: ${e.message}`);
+            }

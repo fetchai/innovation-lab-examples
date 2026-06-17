@@ -102,6 +102,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [asi1-llm-example](asi1-llm-example/) | ASI:One LLM with LangChain integration | Python, LangChain, ASI:One | 🟢 Beginner |
+| [news-card-agent](news-card-agent/) | Live news rendered as ASI:One interactive cards (custom element-tree) with Tavily + ASI1 polish | Python, uAgents, ASI:One, Tavily, Cards | 🟡 Intermediate |
 | [anthropic-quickstart](anthropic-quickstart/) | Claude integration series — basic, vision, functions, MCP, multi-agent | Python, Anthropic SDK, uAgents | 🟢–🔴 Series |
 | [gemini-quickstart](gemini-quickstart/) | Google Gemini series — text, Imagen, Veo, Lyria, TTS, research, film | Python, Google Gemini, uAgents | 🟢–🔴 Series |
 | [openai-agent-sdk](openai-agent-sdk/) | OpenAI Agents SDK examples (scholarship finder) | Python, OpenAI SDK, uAgents | 🟡 Intermediate |
@@ -170,7 +171,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [Composio](Composio/) | Composio agents — Gmail and LinkedIn automation | Python, Composio, uAgents | 🟡 Intermediate |
-| [Browser-based-agents](Browser-based-agents/) | Browser automation agents (Nike product scraper) | Python, Notte, uAgents | 🟡 Intermediate |
+| [Browser-based-agents](Browser-based-agents/) | Browser automation agents (Nike product scraper, job-application agent) | Python, Notte, Playwright, uAgents | 🟡 Intermediate |
 | [frontend-integration](frontend-integration/) | Next.js + uAgents frontend integration | Python, Next.js, uAgents | 🟡 Intermediate |
 
 ---
