@@ -180,11 +180,12 @@ def fetch_uncrawled_events(
     batch_size: int = 100,
     offset: int = 0,
     source_filter: str | None = None,
+    event_source_filter: str | None = None,
 ) -> list[dict]:
     """
     Return events that have an external_url but no external_data yet.
-    Ordered by start_datetime DESC (newest first) so upcoming events
-    get enriched before past ones.
+    source_filter      — filters by external_source (which platform hosts the event)
+    event_source_filter — filters by source (which crawler ingested the event, e.g. 'mlh')
     """
     client = get_client()
     try:
@@ -198,13 +199,18 @@ def fetch_uncrawled_events(
         )
         if source_filter:
             q = q.eq("external_source", source_filter)
+        if event_source_filter:
+            q = q.eq("source", event_source_filter)
         return q.execute().data or []
     except Exception as e:
         print(f"  [DB] fetch_uncrawled_events failed: {e}")
         return []
 
 
-def count_uncrawled_events(source_filter: str | None = None) -> int:
+def count_uncrawled_events(
+    source_filter: str | None = None,
+    event_source_filter: str | None = None,
+) -> int:
     """Return count of events with external_url but no external_data."""
     client = get_client()
     try:
@@ -216,6 +222,8 @@ def count_uncrawled_events(source_filter: str | None = None) -> int:
         )
         if source_filter:
             q = q.eq("external_source", source_filter)
+        if event_source_filter:
+            q = q.eq("source", event_source_filter)
         return q.execute().count or 0
     except Exception as e:
         print(f"  [DB] count_uncrawled_events failed: {e}")

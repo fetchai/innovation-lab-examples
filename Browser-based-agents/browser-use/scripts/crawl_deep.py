@@ -53,6 +53,7 @@ def _handle_sigint(sig, frame):
 
 def run(
     source_filter: str | None = None,
+    event_source_filter: str | None = None,
     delay: float | None = None,
     limit: int | None = None,
 ) -> None:
@@ -60,13 +61,14 @@ def run(
     _stop_requested = False
     signal.signal(signal.SIGINT, _handle_sigint)
 
-    total_remaining = count_uncrawled_events(source_filter)
+    total_remaining = count_uncrawled_events(source_filter, event_source_filter)
     cap = min(limit, total_remaining) if limit else total_remaining
 
     start_time = datetime.now()
     print(f"\n{'='*62}")
     print(f"  Deep Crawl — {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"  Target:    {source_filter or 'all platforms'}")
+    target = event_source_filter or source_filter or 'all platforms'
+    print(f"  Target:    {target}")
     print(f"  Remaining: {total_remaining:,} events to crawl")
     if limit:
         print(f"  Limit:     {limit}")
@@ -81,8 +83,9 @@ def run(
     while not _stop_requested:
         batch = fetch_uncrawled_events(
             batch_size=BATCH_SIZE,
-            offset=0,          # always offset=0: completed rows drop out of result
+            offset=0,
             source_filter=source_filter,
+            event_source_filter=event_source_filter,
         )
         if not batch:
             break
@@ -142,7 +145,7 @@ def run(
             break
 
     elapsed_total = (datetime.now() - start_time).total_seconds()
-    remaining_after = count_uncrawled_events(source_filter)
+    remaining_after = count_uncrawled_events(source_filter, event_source_filter)
 
     print(f"\n{'='*62}")
     print(f"  DEEP CRAWL SUMMARY")
@@ -155,20 +158,25 @@ def run(
     print(f"  Elapsed:    {str(timedelta(seconds=int(elapsed_total)))}")
     print(f"{'='*62}\n")
 
+    resume_flags = ""
+    if event_source_filter:
+        resume_flags += f" --event-source {event_source_filter}"
+    elif source_filter:
+        resume_flags += f" --source {source_filter}"
     if remaining_after > 0 and not (limit and processed >= limit):
-        print(f"  Resume with: python scripts/crawl_deep.py"
-              + (f" --source {source_filter}" if source_filter else ""))
+        print(f"  Resume with: python scripts/crawl_deep.py{resume_flags}")
     elif remaining_after == 0:
         print("  All events fully crawled!")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Deep crawl external event pages")
-    parser.add_argument("--source", help="Only crawl events from this platform (e.g. luma, eventbrite)")
+    parser.add_argument("--source", help="Filter by external_source (e.g. luma, eventbrite)")
+    parser.add_argument("--event-source", dest="event_source", help="Filter by source crawler (e.g. mlh, devpost, ethglobal)")
     parser.add_argument("--delay", type=float, help="Override crawl delay in seconds")
     parser.add_argument("--limit", type=int, help="Stop after this many events")
     args = parser.parse_args()
-    run(source_filter=args.source, delay=args.delay, limit=args.limit)
+    run(source_filter=args.source, event_source_filter=args.event_source, delay=args.delay, limit=args.limit)
 
 
 if __name__ == "__main__":
