@@ -32,6 +32,7 @@ from crawl_listing import fetch_all_events as fetch_cerebralvalley
 from crawl_devpost import fetch_all_events as fetch_devpost
 from crawl_html import fetch_all_events as fetch_html
 from crawl_browser import fetch_all_events as fetch_browser
+from crawl_mlh import fetch_all_events as fetch_mlh
 from crawl_event import crawl_event
 from db import upsert_event, log_crawl
 
@@ -45,6 +46,8 @@ def fetch_events_for_source(source: str) -> list[dict]:
         return fetch_cerebralvalley(source="cerebralvalley")
     elif source == "devpost":
         return fetch_devpost()
+    elif source == "mlh":
+        return fetch_mlh()
     elif crawler_type == "html":
         return fetch_html(source)
     elif crawler_type == "browser":

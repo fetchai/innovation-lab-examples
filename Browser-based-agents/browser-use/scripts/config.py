@@ -40,10 +40,10 @@ SOURCES = {
 
     # ── Tier 2: HTML scraping ────────────────────────────────────────────────
     "mlh": {
-        "url": "https://mlh.io/seasons/2025/events",
-        "crawler": "html",
-        "base_url": "https://mlh.io",
-        "notes": "Static HTML listing, no auth required",
+        "url": "https://www.mlh.com/seasons/2026/events",
+        "crawler": "mlh",
+        "base_url": "https://www.mlh.com",
+        "notes": "Custom parser: extracts 250+ events from external link text + crawls events.mlh.io detail pages",
     },
     "hackerearth": {
         "url": "https://www.hackerearth.com/challenges/hackathon/",
