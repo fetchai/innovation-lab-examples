@@ -3,11 +3,13 @@ Crawl a single hackathon event page and return a structured event dict
 ready to be upserted into Supabase.
 
 Strategy:
-1. Fetch raw HTML via crawl4ai
+1. Fetch raw HTML via crawl4ai (returns full crawl result, not just HTML)
 2. Parse RSC payload
 3. Direct JSON extraction from the RSC payload (most reliable for known fields)
 4. ASI:One LLM pass to fill in any gaps / validate
-5. Merge and return normalised event dict
+5. Detect external registration URLs (Luma, Eventbrite, Devpost, etc.)
+6. If found, crawl the external page and merge its data
+7. Return normalised event dict
 """
 
 import httpx
@@ -20,6 +22,7 @@ from extract import (
     get_event_data_slice,
     llm_extract_event_details,
 )
+from crawl_external import detect_external_url, crawl_external
 
 
 def crawl_event(source: str, slug: str, url: str) -> dict[str, Any] | None:
@@ -28,11 +31,12 @@ def crawl_event(source: str, slug: str, url: str) -> dict[str, Any] | None:
     """
     print(f"  [CRAWL] → {url}")
 
-    html = _fetch_html(url)
-    if not html:
-        print(f"  [CRAWL] no HTML returned for {url}")
+    crawl_result = _fetch_result(url)
+    if not crawl_result:
+        print(f"  [CRAWL] no result returned for {url}")
         return None
 
+    html = crawl_result.get("html", "")
     rsc_text = parse_rsc_payload(html)
 
     # --- Direct JSON extraction (fast, reliable for platform-standard fields) ---
@@ -43,12 +47,28 @@ def crawl_event(source: str, slug: str, url: str) -> dict[str, Any] | None:
     llm_data = llm_extract_event_details(event_slice)
     print(f"  [EXTRACT] ✓ (platform_fields={len(platform_data or {})}, llm_fields={len(llm_data)})")
 
+    # --- External platform crawl (Luma, Eventbrite, Devpost, etc.) ---
+    external_data: dict | None = None
+    external_url: str | None = None
+    external_source: str | None = None
+
+    ext_match = detect_external_url(crawl_result, rsc_text)
+    if ext_match:
+        external_url, external_source = ext_match
+        external_data = crawl_external(external_url, external_source)
+
     # --- Merge: platform data is authoritative, llm fills gaps ---
-    event = _merge_event(source, slug, url, platform_data or {}, llm_data)
+    event = _merge_event(
+        source, slug, url, platform_data or {}, llm_data,
+        external_url=external_url,
+        external_source=external_source,
+        external_data=external_data,
+    )
     return event
 
 
-def _fetch_html(url: str) -> str | None:
+def _fetch_result(url: str) -> dict | None:
+    """POST to crawl4ai and return the full result object (not just HTML)."""
     try:
         resp = httpx.post(
             f"{CRAWL4AI_BASE}/crawl",
@@ -56,11 +76,8 @@ def _fetch_html(url: str) -> str | None:
             timeout=60,
         )
         resp.raise_for_status()
-        data = resp.json()
-        results = data.get("results", [])
-        if not results:
-            return None
-        return results[0].get("html", "")
+        results = resp.json().get("results", [])
+        return results[0] if results else None
     except Exception as e:
         print(f"  [CRAWL] fetch error for {url}: {e}")
         return None
@@ -72,6 +89,9 @@ def _merge_event(
     url: str,
     platform: dict[str, Any],
     llm: dict[str, Any],
+    external_url: str | None = None,
+    external_source: str | None = None,
+    external_data: dict | None = None,
 ) -> dict[str, Any]:
     """
     Build a normalised event row by combining platform JSON and LLM output.
@@ -139,6 +159,11 @@ def _merge_event(
                 "capacity", "image_url",
             }
         },
+
+        # External platform data
+        "external_url": external_url,
+        "external_source": external_source,
+        "external_data": external_data,
 
         # Platform timestamps
         "platform_created_at": platform.get("createdAt"),

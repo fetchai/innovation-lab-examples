@@ -51,7 +51,9 @@ _EVENT_COLUMNS = {
     "show_guest_list_before_approval", "show_location_before_approval",
     "hackathon_public_voting_enabled", "show_hackathon_gallery",
     "hackathon_judging_open", "auto_scoring_enabled", "hosts", "questions",
-    "media", "image_url", "llm_extracted", "platform_created_at",
+    "media", "image_url", "llm_extracted",
+    "external_url", "external_source", "external_data",
+    "platform_created_at",
     "platform_updated_at", "crawled_at", "updated_at",
 }
 
@@ -82,7 +84,7 @@ def _build_event_row(event: dict[str, Any]) -> dict[str, Any]:
         row["llm_extracted"] = existing_llm
 
     # Serialise JSONB fields
-    for col in ("hosts", "questions", "media", "llm_extracted"):
+    for col in ("hosts", "questions", "media", "llm_extracted", "external_data"):
         if col in row and isinstance(row[col], (dict, list)):
             row[col] = json.dumps(row[col])
 
