@@ -45,7 +45,8 @@ def _now_iso() -> str:
 _EVENT_COLUMNS = {
     "id", "source", "slug", "event_url", "title", "description",
     "description_summary", "start_datetime", "end_datetime", "timezone",
-    "city", "city_latitude", "city_longitude", "event_type", "capacity",
+    "city", "city_latitude", "city_longitude", "venue", "event_type", "capacity",
+    "status", "cv_event", "featured_start_time", "featured_end_time",
     "is_platform_hackathon", "searchable", "approval_required",
     "registration_closed", "enable_chat_apply", "hide_guest_list",
     "show_guest_list_before_approval", "show_location_before_approval",

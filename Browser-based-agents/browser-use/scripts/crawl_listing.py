@@ -1,84 +1,160 @@
 """
-Crawl a hackathon listing page and return all event {slug, url} pairs.
+Fetch all events from the Cerebral Valley public API with full pagination.
 
-Strategy:
-- The Cerebral Valley events page loads event cards via client-side JS after
-  the initial RSC shell. We use crawl4ai with a JS delay so the DOM is fully
-  populated, then extract event slugs from the `links.internal` object which
-  crawl4ai populates with all anchor hrefs found in the rendered page.
-- Events appear as links of the form:
-    https://cerebralvalley.ai/events/~/e/<slug>?modalCloseUrl=...
-- We normalise these to canonical URLs: https://cerebralvalley.ai/e/<slug>
+The API at https://api.cerebralvalley.ai/v1/public/event/pull is the real
+source of truth — the HTML listing only shows ~5 upcoming events, while the
+API has 2,700+ events going back to 2024.
+
+Returns a list of raw event dicts ready for upsert. Each dict already contains
+all fields available from the API; the detail-page crawl is only done for
+platform hackathons that have a dedicated /e/<slug> page.
 """
 
-import re
 import httpx
+from datetime import datetime, timezone
 
-from config import CRAWL4AI_BASE, BASE_URLS
+API_BASE = "https://api.cerebralvalley.ai/v1/public/event/pull"
+PAGE_SIZE = 50
+# Fetch everything from this date (far past = all events)
+FETCH_SINCE = "2020-01-01T00:00:00.000Z"
 
-# Seconds to wait after page load for JS-rendered event cards to appear
-JS_RENDER_DELAY = 4
 
-
-def crawl_listing(source: str, listing_url: str) -> list[dict[str, str]]:
+def fetch_all_events(source: str = "cerebralvalley") -> list[dict]:
     """
-    Crawl the listing page and return deduplicated {slug, url} dicts.
+    Paginate through the entire Cerebral Valley API and return all events.
+    Each event is normalised into the DB schema format.
     """
-    base_url = BASE_URLS.get(source, "")
-    print(f"[LISTING] Fetching {listing_url} (waiting {JS_RENDER_DELAY}s for JS render)")
+    all_events: list[dict] = []
+    offset = 0
 
-    result = _fetch_result(listing_url)
-    if not result:
-        print(f"[LISTING] Failed to fetch page")
-        return []
+    print(f"[API] Fetching all events from Cerebral Valley API...")
 
-    # Extract from rendered links object (most reliable after JS execution)
-    internal_links = result.get("links", {}).get("internal", [])
-    events = _extract_from_links(internal_links, base_url)
-    print(f"[LISTING] Found {len(events)} unique events from rendered page")
+    while True:
+        batch = _fetch_page(offset)
+        if not batch:
+            break
 
-    return events
+        for raw in batch:
+            all_events.append(_normalise(raw, source))
 
+        print(f"[API] offset={offset:>5} → {len(batch)} events (total: {len(all_events)})")
 
-def _extract_from_links(internal_links: list, base_url: str) -> list[dict[str, str]]:
-    """Parse event slugs from crawl4ai's links.internal list."""
-    seen: set[str] = set()
-    events: list[dict[str, str]] = []
+        if len(batch) < PAGE_SIZE:
+            break
+        offset += PAGE_SIZE
 
-    for link in internal_links:
-        href = link.get("href", "")
-        m = re.search(r"/e/([a-z0-9][a-z0-9\-]+)", href)
-        if not m:
-            continue
-        slug = m.group(1)
-        if slug in seen:
-            continue
-        seen.add(slug)
-        events.append({
-            "slug": slug,
-            "url": f"{base_url}/e/{slug}",
-            "title": link.get("text", "").strip(),
-        })
-
-    return events
+    print(f"[API] Done. Total events fetched: {len(all_events)}")
+    return all_events
 
 
-def _fetch_result(url: str) -> dict | None:
-    """POST to crawl4ai with JS delay and return the result object."""
+def _fetch_page(offset: int) -> list[dict]:
     try:
-        resp = httpx.post(
-            f"{CRAWL4AI_BASE}/crawl",
-            json={
-                "urls": [url],
-                "crawler_config": {
-                    "delay_before_return_html": JS_RENDER_DELAY,
-                },
+        resp = httpx.get(
+            API_BASE,
+            params={
+                "approved": "true",
+                "startDateTime": FETCH_SINCE,
+                "limit": PAGE_SIZE,
+                "offset": offset,
             },
-            timeout=90,
+            timeout=30,
         )
         resp.raise_for_status()
-        results = resp.json().get("results", [])
-        return results[0] if results else None
+        return resp.json().get("events", [])
     except Exception as e:
-        print(f"  [CRAWL] listing fetch error: {e}")
+        print(f"  [API] fetch error at offset={offset}: {e}")
+        return []
+
+
+def _normalise(raw: dict, source: str) -> dict:
+    """
+    Map a raw API event dict to the DB schema.
+    The API uses different field names from the platform event pages.
+    """
+    event_id = raw.get("id", "")
+    name = raw.get("name", "")
+    external_url = raw.get("url", "")
+
+    # Derive slug from external_url or id
+    slug = _derive_slug(raw)
+
+    # Image URL — API returns without scheme prefix sometimes
+    image_url = raw.get("imageUrl", "") or ""
+    if image_url and not image_url.startswith("http"):
+        image_url = f"https://{image_url.rstrip(';')}"
+
+    return {
+        "id": event_id or f"{source}:{slug}",
+        "source": source,
+        "slug": slug,
+        "event_url": f"https://cerebralvalley.ai/e/{slug}" if slug else None,
+        "title": name,
+        "description": raw.get("description"),
+        "description_summary": raw.get("descriptionSummary"),
+        "start_datetime": raw.get("startDateTime"),
+        "end_datetime": raw.get("endDateTime"),
+        "city": raw.get("location"),
+        "venue": raw.get("venue"),
+        "event_type": raw.get("type"),
+        "status": raw.get("status"),
+        "cv_event": raw.get("CVEvent"),
+        "featured_start_time": raw.get("featuredStartTime"),
+        "featured_end_time": raw.get("featuredEndTime"),
+        "image_url": image_url or None,
+        "external_url": external_url or None,
+        "external_source": _detect_source(external_url),
+        "platform_updated_at": None,
+        "platform_created_at": None,
+        "crawled_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _derive_slug(raw: dict) -> str:
+    """
+    Derive a unique slug for the event. Platform events have a real slug
+    embedded in the API data or derivable from the name. Fallback to the ID.
+    """
+    # Check platformEventData for a slug (platform hackathons)
+    platform_data = raw.get("platformEventData")
+    if isinstance(platform_data, dict) and platform_data.get("slug"):
+        return platform_data["slug"]
+
+    # Derive from name: lowercase, replace spaces/special chars with hyphens
+    name = raw.get("name", "")
+    if name:
+        import re
+        slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+        slug = slug[:80]
+        # Append first 8 chars of ID to ensure uniqueness
+        uid = (raw.get("id") or "")[:8]
+        if uid:
+            return f"{slug}-{uid}"
+        return slug
+
+    return raw.get("id", "unknown")
+
+
+def _detect_source(url: str) -> str | None:
+    """Identify which external platform the URL belongs to."""
+    if not url:
         return None
+    url_lower = url.lower()
+    platform_map = {
+        "lu.ma": "luma",
+        "luma.com": "luma",
+        "eventbrite.com": "eventbrite",
+        "devpost.com": "devpost",
+        "devfolio.co": "devfolio",
+        "dorahacks.io": "dorahacks",
+        "partiful.com": "partiful",
+        "unstop.com": "unstop",
+        "hackerearth.com": "hackerearth",
+        "meetup.com": "meetup",
+        "hopin.com": "hopin",
+        "lablab.ai": "lablab",
+        "konfhub.com": "konfhub",
+    }
+    for domain, name in platform_map.items():
+        if domain in url_lower:
+            return name
+    return "external"

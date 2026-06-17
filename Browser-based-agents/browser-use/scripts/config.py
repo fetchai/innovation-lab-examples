@@ -17,7 +17,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 
 # Sources to crawl: name → listing URL
 SOURCES = {
-    "cerebralvalley": "https://cerebralvalley.ai/events?locations=ALL&type=HACKATHON",
+    "cerebralvalley": "https://cerebralvalley.ai/events?locations=ALL",
 }
 
 BASE_URLS = {
