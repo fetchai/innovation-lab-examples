@@ -27,22 +27,50 @@ from datetime import datetime
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 
-from crawl_listing import fetch_all_events
+from config import SOURCES
+from crawl_listing import fetch_all_events as fetch_cerebralvalley
+from crawl_devpost import fetch_all_events as fetch_devpost
+from crawl_html import fetch_all_events as fetch_html
+from crawl_browser import fetch_all_events as fetch_browser
 from crawl_event import crawl_event
 from db import upsert_event, log_crawl
+
+
+def fetch_events_for_source(source: str) -> list[dict]:
+    """Dispatch to the right crawler based on the source's crawler type."""
+    cfg = SOURCES.get(source, {})
+    crawler_type = cfg.get("crawler", "browser")
+
+    if source == "cerebralvalley":
+        return fetch_cerebralvalley(source="cerebralvalley")
+    elif source == "devpost":
+        return fetch_devpost()
+    elif crawler_type == "html":
+        return fetch_html(source)
+    elif crawler_type == "browser":
+        return fetch_browser(source)
+    else:
+        print(f"[RUNNER] Unknown crawler type '{crawler_type}' for source '{source}'")
+        return []
 
 CRAWL_DELAY = 1.5  # seconds between detail page requests
 
 
-def run(detail: bool = False, single_url: str | None = None) -> None:
+def run(detail: bool = False, single_url: str | None = None, source: str | None = None) -> None:
     start_time = datetime.now()
     print(f"\n{'='*60}")
     print(f"  Cerebral Valley Crawler — {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*60}\n")
 
-    # ── Phase 1: API bulk ingest ──────────────────────────────────
-    print("[ PHASE 1 ] API bulk ingest\n")
-    api_events = fetch_all_events(source="cerebralvalley")
+    # ── Phase 1: ingest all sources (or just the one specified) ──
+    sources_to_run = [source] if source else list(SOURCES.keys())
+    print(f"[ PHASE 1 ] Ingesting sources: {sources_to_run}\n")
+
+    api_events = []
+    for src in sources_to_run:
+        print(f"[SOURCE] {src}")
+        events = fetch_events_for_source(src)
+        api_events.extend(events)
 
     stored = skipped = errors = 0
     for event in api_events:
@@ -138,8 +166,9 @@ def main() -> None:
     parser.add_argument("--detail", action="store_true",
                         help="Also crawl platform event detail pages (Phase 2)")
     parser.add_argument("--url", help="Crawl a single event URL directly")
+    parser.add_argument("--source", help=f"Only crawl this source. Options: {list(SOURCES.keys())}")
     args = parser.parse_args()
-    run(detail=args.detail, single_url=args.url)
+    run(detail=args.detail, single_url=args.url, source=args.source)
 
 
 if __name__ == "__main__":
