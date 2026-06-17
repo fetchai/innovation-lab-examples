@@ -47,9 +47,9 @@ def fetch_all_events() -> list[dict]:
             break
 
         if total_pages is None:
-            total_pages = meta.get("total_pages", "?")
-            total_count = meta.get("total_count", "?")
-            print(f"[DEVPOST] Total: {total_count} hackathons across {total_pages} pages")
+            total_count = int(meta.get("total_count", 0))
+            total_pages = (total_count + PER_PAGE - 1) // PER_PAGE if total_count else None
+            print(f"[DEVPOST] Total: {total_count} hackathons across {total_pages or '?'} pages")
 
         for raw in batch:
             all_events.append(_normalise(raw))

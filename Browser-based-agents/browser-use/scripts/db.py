@@ -84,6 +84,16 @@ def _build_event_row(event: dict[str, Any]) -> dict[str, Any]:
     if existing_llm:
         row["llm_extracted"] = existing_llm
 
+    # Coerce empty strings to None for timestamp columns
+    _TIMESTAMP_COLS = {
+        "start_datetime", "end_datetime", "platform_created_at",
+        "platform_updated_at", "featured_start_time", "featured_end_time",
+        "crawled_at", "updated_at",
+    }
+    for col in _TIMESTAMP_COLS:
+        if col in row and row[col] == "":
+            row[col] = None
+
     # Serialise JSONB fields
     for col in ("hosts", "questions", "media", "llm_extracted", "external_data"):
         if col in row and isinstance(row[col], (dict, list)):

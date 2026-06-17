@@ -17,10 +17,11 @@ from extract import parse_rsc_payload, llm_extract
 SOURCE_CONFIGS: dict[str, dict] = {
     "mlh": {
         "listing_urls": [
-            "https://mlh.io/seasons/2025/events",
-            "https://mlh.io/seasons/2026/events",
+            "https://www.mlh.com/seasons/2025/events",
+            "https://www.mlh.com/seasons/2026/events",
         ],
-        "js_delay": 3,
+        "js_delay": 5,
+        "link_path_prefix": "/events/",
         "extract_instruction": (
             "Extract all hackathon events from this MLH events page. "
             "Return a JSON array of objects: "
@@ -51,13 +52,39 @@ def fetch_all_events(source: str) -> list[dict]:
     all_events: list[dict] = []
     for url in cfg["listing_urls"]:
         print(f"[HTML:{source}] Fetching {url}")
-        html = _fetch_html(url, js_delay=cfg["js_delay"])
-        if not html:
+        result = _fetch_result(url, js_delay=cfg["js_delay"])
+        if not result:
             continue
 
-        # Try RSC payload first, fall back to raw HTML text
+        html = result.get("html", "")
+        link_prefix = cfg.get("link_path_prefix")
+
+        # Strategy 1: extract from links object when a path prefix is configured
+        if link_prefix:
+            from urllib.parse import urlparse
+            base = url.split("/")[2]  # domain
+            internal = result.get("links", {}).get("internal", [])
+            link_events = []
+            for link in internal:
+                href = link.get("href", "")
+                parsed = urlparse(href)
+                if base not in parsed.netloc:
+                    continue
+                if not parsed.path.startswith(link_prefix):
+                    continue
+                if parsed.path.rstrip("/") == link_prefix.rstrip("/"):
+                    continue
+                title = link.get("text", "").strip()
+                slug = _derive_slug(title, href, source)
+                link_events.append(_normalise({"title": title, "url": href}, source))
+            if link_events:
+                all_events.extend(link_events)
+                print(f"  [HTML:{source}] Links extracted {len(link_events)} events from {url}")
+                continue
+
+        # Strategy 2: LLM extraction on page text
         rsc = parse_rsc_payload(html)
-        content = rsc if len(rsc) > 500 else _html_to_text(html)
+        content = (rsc if len(rsc) > 500 else _html_to_text(html))[:6000]
 
         raw_list = llm_extract(content, cfg["extract_instruction"])
         if not isinstance(raw_list, list):
@@ -114,19 +141,16 @@ def _derive_slug(title: str, url: str, source: str) -> str:
     return f"{source}-{path}" if path else f"{source}-unknown"
 
 
-def _fetch_html(url: str, js_delay: int = 3) -> str | None:
+def _fetch_result(url: str, js_delay: int = 3) -> dict | None:
     try:
         resp = httpx.post(
             f"{CRAWL4AI_BASE}/crawl",
-            json={
-                "urls": [url],
-                "crawler_config": {"delay_before_return_html": js_delay},
-            },
+            json={"urls": [url], "crawler_config": {"delay_before_return_html": js_delay}},
             timeout=90,
         )
         resp.raise_for_status()
         results = resp.json().get("results", [])
-        return results[0].get("html", "") if results else None
+        return results[0] if results else None
     except Exception as e:
         print(f"  [HTML] fetch error for {url}: {e}")
         return None
