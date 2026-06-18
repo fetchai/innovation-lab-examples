@@ -64,31 +64,34 @@ def fetch_candidates(prefs: dict) -> list[dict]:
     if sources:
         q = q.in_("source", sources)
 
-    # ── Registration open ─────────────────────────────────────────
-    if prefs.get("registration_open"):
-        q = q.neq("registration_closed", True)
-
-    # ── Hackathon only ────────────────────────────────────────────
-    # Can't do OR in supabase-py easily, so we filter post-fetch
-    # but we can hint with is_platform_hackathon for CV events
-
-    # ── Keyword search ────────────────────────────────────────────
-    # Split into individual terms and search on the most distinctive one
-    # (supabase-py doesn't support AND across ILIKE cleanly, so we use
-    # the first keyword as DB filter and do full multi-term match post-fetch)
     keywords_raw = prefs.get("keywords", "").strip()
     topics = prefs.get("topics", [])
-    all_kw = [k for k in re.split(r"[\s,]+", keywords_raw) if len(k) > 2]
-    all_kw += [t for t in topics if len(t) > 2]
+    all_kw = [k for k in re.split(r"[\s,]+", keywords_raw) if len(k) >= 2]
+    all_kw += [t for t in topics if len(t) >= 2]
 
+    location = (prefs.get("location") or "").strip().lower()
+    online = prefs.get("online") or False
+    reg_open = prefs.get("registration_open") or False
+
+    # ── Single OR block — supabase-py ANDs multiple .or_() calls, so we
+    #    must fit everything into one. We use nested OR groups via the
+    #    PostgREST `or(...)` filter which supports parenthesised groups.
+    # ── Group A: keyword/online signal (at least one must match) ──────────
+    group_a = []
     if all_kw:
-        # Use first keyword for DB-level filter (reduces result set)
         kw = f"%{all_kw[0]}%"
-        q = q.or_(f"title.ilike.{kw},description_summary.ilike.{kw}")
+        group_a += [f"title.ilike.{kw}", f"description_summary.ilike.{kw}"]
+    if online:
+        group_a += [
+            "city.ilike.%worldwide%", "city.ilike.%online%",
+            "city.ilike.%digital%",   "city.ilike.%everywhere%",
+            "city.ilike.%remote%",
+        ]
+    if group_a:
+        q = q.or_(",".join(group_a))
 
-    # ── Location filter ───────────────────────────────────────────
-    location = prefs.get("location", "").strip().lower()
-    online = prefs.get("online", False)
+    # ── Registration: handled post-fetch to avoid AND conflict ────────────
+    # (stored separately in prefs, applied below)
 
     # Order by soonest first, cap results
     q = q.order("start_datetime", desc=False).limit(MAX_CANDIDATES)
@@ -127,6 +130,11 @@ def fetch_candidates(prefs: dict) -> list[dict]:
                     ed = {}
             ext_loc = (ed.get("location") or "").lower()
             if location not in city and location not in title and location not in ext_loc:
+                continue
+
+        # Registration open (NULL = unknown = treat as possibly open)
+        if reg_open:
+            if row.get("registration_closed") is True:
                 continue
 
         # Hackathon-only filter
