@@ -83,23 +83,21 @@ class FetchPolicy:
             return RejectionReason.POLICY_VIOLATION
 
         for step in plan.steps:
-
             if step.action not in self.allowed_actions:
                 logger.warning("Action '%s' not in allowlist", step.action)
                 return RejectionReason.ACTION_NOT_ALLOWED
 
             if step.action == "scan_directory":
-             raw_path = step.params.get("path")
+                raw_path = step.params.get("path")
+                if raw_path:
+                    demo_dir = Path("./demo_projects").resolve()
+                    requested = Path(raw_path).expanduser().resolve()
 
-             if raw_path:
-                 demo_dir = Path("./demo_projects").resolve()
-                 requested = Path(raw_path).expanduser().resolve()
-
-                 try:
-                    requested.relative_to(demo_dir)
-                 except ValueError:
-                    logger.warning("Path '%s' outside demo sandbox", requested)
-                    return RejectionReason.PATH_NOT_ALLOWED
+                    try:
+                        requested.relative_to(demo_dir)
+                    except ValueError:
+                        logger.warning("Path '%s' outside demo sandbox", requested)
+                        return RejectionReason.PATH_NOT_ALLOWED
         return None
 
     def validate(self, user_id: str, plan: TaskPlan) -> RejectionReason | None:
