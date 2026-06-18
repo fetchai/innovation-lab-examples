@@ -1,5 +1,8 @@
-import requests
 import json
+from datetime import datetime, timezone
+from uuid import uuid4
+
+import aiohttp
 from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
     ChatMessage,
@@ -8,24 +11,19 @@ from uagents_core.contrib.protocols.chat import (
     StartSessionContent,
 )
 from uagents import Agent, Context, Protocol
-from datetime import datetime, timezone, timedelta
-from uuid import uuid4
 
 # ASI1 API settings
 ASI1_API_KEY = "your_asi1_api_key"  # Replace with your ASI1 key
 ASI1_BASE_URL = "https://api.asi1.ai/v1"
 ASI1_HEADERS = {
     "Authorization": f"Bearer {ASI1_API_KEY}",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
 }
 
 CANISTER_ID = "uzt4z-lp777-77774-qaabq-cai"
 BASE_URL = "http://127.0.0.1:4943"
 
-HEADERS = {
-    "Host": f"{CANISTER_ID}.localhost",
-    "Content-Type": "application/json"
-}
+HEADERS = {"Host": f"{CANISTER_ID}.localhost", "Content-Type": "application/json"}
 
 # Function definitions for ASI1 function calling
 tools = [
@@ -38,10 +36,10 @@ tools = [
                 "type": "object",
                 "properties": {},
                 "required": [],
-                "additionalProperties": False
+                "additionalProperties": False,
             },
-            "strict": True
-        }
+            "strict": True,
+        },
     },
     {
         "type": "function",
@@ -53,14 +51,14 @@ tools = [
                 "properties": {
                     "address": {
                         "type": "string",
-                        "description": "The Bitcoin address to check."
+                        "description": "The Bitcoin address to check.",
                     }
                 },
                 "required": ["address"],
-                "additionalProperties": False
+                "additionalProperties": False,
             },
-            "strict": True
-        }
+            "strict": True,
+        },
     },
     {
         "type": "function",
@@ -72,14 +70,14 @@ tools = [
                 "properties": {
                     "address": {
                         "type": "string",
-                        "description": "The Bitcoin address to fetch UTXOs for."
+                        "description": "The Bitcoin address to fetch UTXOs for.",
                     }
                 },
                 "required": ["address"],
-                "additionalProperties": False
+                "additionalProperties": False,
             },
-            "strict": True
-        }
+            "strict": True,
+        },
     },
     {
         "type": "function",
@@ -91,60 +89,61 @@ tools = [
                 "properties": {
                     "destinationAddress": {
                         "type": "string",
-                        "description": "The destination Bitcoin address."
+                        "description": "The destination Bitcoin address.",
                     },
                     "amountInSatoshi": {
                         "type": "number",
-                        "description": "Amount to send in satoshis."
-                    }
+                        "description": "Amount to send in satoshis.",
+                    },
                 },
                 "required": ["destinationAddress", "amountInSatoshi"],
-                "additionalProperties": False
+                "additionalProperties": False,
             },
-            "strict": True
-        }
-    }
+            "strict": True,
+        },
+    },
 ]
+
 
 async def call_icp_endpoint(func_name: str, args: dict):
     if func_name == "get_current_fee_percentiles":
         url = f"{BASE_URL}/get-current-fee-percentiles"
-        response = requests.post(url, headers=HEADERS, json={})
+        payload = {}
     elif func_name == "get_balance":
         url = f"{BASE_URL}/get-balance"
-        response = requests.post(url, headers=HEADERS, json={"address": args["address"]})
+        payload = {"address": args["address"]}
     elif func_name == "get_utxos":
         url = f"{BASE_URL}/get-utxos"
-        response = requests.post(url, headers=HEADERS, json={"address": args["address"]})
+        payload = {"address": args["address"]}
     elif func_name == "send":
         url = f"{BASE_URL}/send"
-        response = requests.post(url, headers=HEADERS, json=args)
+        payload = args
     else:
         raise ValueError(f"Unsupported function call: {func_name}")
-    response.raise_for_status()
-    return response.json()
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=HEADERS, json=payload) as response:
+            response.raise_for_status()
+            return await response.json()
+
 
 async def process_query(query: str, ctx: Context) -> str:
     try:
         # Step 1: Initial call to ASI1 with user query and tools
-        initial_message = {
-            "role": "user",
-            "content": query
-        }
+        initial_message = {"role": "user", "content": query}
         payload = {
             "model": "asi1-mini",
             "messages": [initial_message],
             "tools": tools,
             "temperature": 0.7,
-            "max_tokens": 1024
+            "max_tokens": 1024,
         }
-        response = requests.post(
-            f"{ASI1_BASE_URL}/chat/completions",
-            headers=ASI1_HEADERS,
-            json=payload
-        )
-        response.raise_for_status()
-        response_json = response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{ASI1_BASE_URL}/chat/completions", headers=ASI1_HEADERS, json=payload
+            ) as response:
+                response.raise_for_status()
+                response_json = await response.json()
 
         # Step 2: Parse tool calls from response
         tool_calls = response_json["choices"][0]["message"].get("tool_calls", [])
@@ -167,14 +166,14 @@ async def process_query(query: str, ctx: Context) -> str:
             except Exception as e:
                 error_content = {
                     "error": f"Tool execution failed: {str(e)}",
-                    "status": "failed"
+                    "status": "failed",
                 }
                 content_to_send = json.dumps(error_content)
 
             tool_result_message = {
                 "role": "tool",
                 "tool_call_id": tool_call_id,
-                "content": content_to_send
+                "content": content_to_send,
             }
             messages_history.append(tool_result_message)
 
@@ -183,15 +182,16 @@ async def process_query(query: str, ctx: Context) -> str:
             "model": "asi1-mini",
             "messages": messages_history,
             "temperature": 0.7,
-            "max_tokens": 1024
+            "max_tokens": 1024,
         }
-        final_response = requests.post(
-            f"{ASI1_BASE_URL}/chat/completions",
-            headers=ASI1_HEADERS,
-            json=final_payload
-        )
-        final_response.raise_for_status()
-        final_response_json = final_response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{ASI1_BASE_URL}/chat/completions",
+                headers=ASI1_HEADERS,
+                json=final_payload,
+            ) as final_response:
+                final_response.raise_for_status()
+                final_response_json = await final_response.json()
 
         # Step 5: Return the model's final answer
         return final_response_json["choices"][0]["message"]["content"]
@@ -200,19 +200,16 @@ async def process_query(query: str, ctx: Context) -> str:
         ctx.logger.error(f"Error processing query: {str(e)}")
         return f"An error occurred while processing your request: {str(e)}"
 
-agent = Agent(
-    name='test-ICP-agent',
-    port=8001,
-    mailbox=True
-)
+
+agent = Agent(name="test-ICP-agent", port=8001, mailbox=True)
 chat_proto = Protocol(spec=chat_protocol_spec)
+
 
 @chat_proto.on_message(model=ChatMessage)
 async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
     try:
         ack = ChatAcknowledgement(
-            timestamp=datetime.now(timezone.utc),
-            acknowledged_msg_id=msg.msg_id
+            timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id
         )
         await ctx.send(sender, ack)
 
@@ -227,7 +224,7 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
                 response = ChatMessage(
                     timestamp=datetime.now(timezone.utc),
                     msg_id=uuid4(),
-                    content=[TextContent(type="text", text=response_text)]
+                    content=[TextContent(type="text", text=response_text)],
                 )
                 await ctx.send(sender, response)
             else:
@@ -237,15 +234,21 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
         error_response = ChatMessage(
             timestamp=datetime.now(timezone.utc),
             msg_id=uuid4(),
-            content=[TextContent(type="text", text=f"An error occurred: {str(e)}")]
+            content=[TextContent(type="text", text=f"An error occurred: {str(e)}")],
         )
         await ctx.send(sender, error_response)
 
+
 @chat_proto.on_message(model=ChatAcknowledgement)
-async def handle_chat_acknowledgement(ctx: Context, sender: str, msg: ChatAcknowledgement):
-    ctx.logger.info(f"Received acknowledgement from {sender} for message {msg.acknowledged_msg_id}")
+async def handle_chat_acknowledgement(
+    ctx: Context, sender: str, msg: ChatAcknowledgement
+):
+    ctx.logger.info(
+        f"Received acknowledgement from {sender} for message {msg.acknowledged_msg_id}"
+    )
     if msg.metadata:
         ctx.logger.info(f"Metadata: {msg.metadata}")
+
 
 agent.include(chat_proto)
 

@@ -1,12 +1,13 @@
 import os
 from uuid import uuid4
+
+import aiohttp
 from uagents import Context, Protocol
 from uagents_core.contrib.protocols.payment import (
     Funds,
     RequestPayment,
     RejectPayment,
     CommitPayment,
-    CancelPayment,
     CompletePayment,
     payment_protocol_spec,
 )
@@ -61,7 +62,9 @@ async def handle_commit_payment(ctx: Context, sender: str, msg: CommitPayment):
 
     if msg.funds.payment_method == "skyfire" and msg.funds.currency == "USDC":
         try:
-            payment_verified = await verify_and_charge(msg.transaction_id, "0.001", ctx.logger)
+            payment_verified = await verify_and_charge(
+                msg.transaction_id, "0.001", ctx.logger
+            )
         except Exception as e:
             ctx.logger.error(f"Skyfire verify/charge error: {e}")
             payment_verified = False
@@ -75,7 +78,12 @@ async def handle_commit_payment(ctx: Context, sender: str, msg: CommitPayment):
         ctx.storage.set(f"{sender}:{session_id}:awaiting_prompt", True)
         ctx.storage.set(f"{sender}:{session_id}:verified_payment", True)
         await ctx.send(sender, CompletePayment(transaction_id=msg.transaction_id))
-        await ctx.send(sender, create_text_chat("Please send your image prompt (one image will be generated)."))
+        await ctx.send(
+            sender,
+            create_text_chat(
+                "Please send your image prompt (one image will be generated)."
+            ),
+        )
     else:
         ctx.logger.error(f"Payment verification failed from {sender}")
         await ctx.send(sender, RejectPayment(reason="Payment verification failed"))
@@ -85,7 +93,9 @@ async def generate_image_after_payment(ctx: Context, user_address: str):
     from chat_proto import create_text_chat
 
     session_id = str(ctx.session)
-    prompt = ctx.storage.get(f"prompt:{user_address}:{session_id}") or ctx.storage.get("current_prompt")
+    prompt = ctx.storage.get(f"prompt:{user_address}:{session_id}") or ctx.storage.get(
+        "current_prompt"
+    )
     if not prompt:
         ctx.logger.error("No prompt found in storage")
         await ctx.send(user_address, create_text_chat("Error: No prompt found"))
@@ -102,6 +112,7 @@ async def generate_image_after_payment(ctx: Context, user_address: str):
                 p = p.split("<knowledge_graph>")[0]
             # Remove any XML/HTML-like tags
             import re as _re
+
             p = _re.sub(r"<[^>]+>", " ", p)
             # Collapse whitespace and trim
             p = " ".join(p.split())
@@ -116,15 +127,22 @@ async def generate_image_after_payment(ctx: Context, user_address: str):
     ctx.logger.info(f"Generating image via Pollinations for prompt: {clean_prompt}")
 
     try:
-        import requests as _r
         pollinations_url = f"https://image.pollinations.ai/prompt/{quote(clean_prompt)}?width=512&height=512"
-        resp = _r.get(pollinations_url, timeout=90)
-        ctype = resp.headers.get("Content-Type", "")
-        if resp.status_code != 200 or not resp.content or not ctype.startswith("image/"):
-            await ctx.send(user_address, create_text_chat("Image generation failed"))
-            return
+        timeout = aiohttp.ClientTimeout(total=90)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(pollinations_url) as resp:
+                ctype = resp.headers.get("Content-Type", "")
+                image_bytes = await resp.read()
+                if (
+                    resp.status != 200
+                    or not image_bytes
+                    or not ctype.startswith("image/")
+                ):
+                    await ctx.send(
+                        user_address, create_text_chat("Image generation failed")
+                    )
+                    return
 
-        image_bytes: bytes = resp.content
         mime_type: str = ctype or "image/png"
 
         # Upload to Agentverse External Storage and send as resource
@@ -133,7 +151,12 @@ async def generate_image_after_payment(ctx: Context, user_address: str):
         storage_url = f"{base_url}/v1/storage"
 
         if not api_key:
-            await ctx.send(user_address, create_text_chat("Storage not configured. Please set AGENTVERSE_API_KEY to deliver the image."))
+            await ctx.send(
+                user_address,
+                create_text_chat(
+                    "Storage not configured. Please set AGENTVERSE_API_KEY to deliver the image."
+                ),
+            )
             return
 
         from uagents_core.storage import ExternalStorage
@@ -143,21 +166,32 @@ async def generate_image_after_payment(ctx: Context, user_address: str):
         from uagents_core.contrib.protocols.chat import ChatMessage as AvChatMessage
 
         storage = ExternalStorage(api_token=api_key, storage_url=storage_url)
-        asset_id = storage.create_asset(name=str(ctx.session), content=image_bytes, mime_type=mime_type)
+        asset_id = storage.create_asset(
+            name=str(ctx.session), content=image_bytes, mime_type=mime_type
+        )
         storage.set_permissions(asset_id=asset_id, agent_address=user_address)
         asset_uri = f"agent-storage://{storage.storage_url}/{asset_id}"
 
-        await ctx.send(user_address, AvChatMessage(
-            timestamp=datetime.now(timezone.utc),
-            msg_id=uuid4(),
-            content=[
-                ResourceContent(
-                    type="resource",
-                    resource_id=asset_id,
-                    resource=Resource(uri=asset_uri, metadata={"mime_type": mime_type, "role": "generated-image"}),
-                )
-            ],
-        ))
+        await ctx.send(
+            user_address,
+            AvChatMessage(
+                timestamp=datetime.now(timezone.utc),
+                msg_id=uuid4(),
+                content=[
+                    ResourceContent(
+                        type="resource",
+                        resource_id=asset_id,
+                        resource=Resource(
+                            uri=asset_uri,
+                            metadata={
+                                "mime_type": mime_type,
+                                "role": "generated-image",
+                            },
+                        ),
+                    )
+                ],
+            ),
+        )
     except Exception as e:
         ctx.logger.error(f"Image generation error: {e}")
         await ctx.send(user_address, create_text_chat(f"Error generating image: {e}"))
@@ -172,4 +206,3 @@ async def handle_reject_payment(ctx: Context, sender: str, msg: RejectPayment):
             "You rejected the payment. If you'd like to continue, reply and I'll send a new payment request."
         ),
     )
-
