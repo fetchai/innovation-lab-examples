@@ -33,4 +33,3 @@ def build_chat_proto(on_chat: ChatHandler) -> Protocol:
         return
 
     return proto
-

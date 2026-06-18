@@ -7,7 +7,7 @@ import os
 import random
 import signal
 import sys
-import urllib.request
+import requests
 from uuid import uuid4
 
 # ── agent key → address lookup ──────────────────────────────────────
@@ -36,18 +36,19 @@ def resolve_name(name: str) -> str | None:
             "limit": 1,
         }
     ).encode()
-    req = urllib.request.Request(
-        "https://agentverse.ai/v1/search/agents",
-        data=body,
-        headers={
-            "Content-Type": "application/json",
-            "User-Agent": "OpenClaw-FetchAgents/1.0",
-            "Accept": "application/json",
-        },
-    )
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read())
+        resp = requests.post(
+            "https://agentverse.ai/v1/search/agents",
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "User-Agent": "OpenClaw-FetchAgents/1.0",
+                "Accept": "application/json",
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
         agents = data.get("agents", [])
         if agents:
             hit = agents[0]
@@ -148,20 +149,20 @@ async def register_mailbox_delayed(port: int, ctx, done_event: asyncio.Event) ->
             "agent_type": "mailbox",
         }
     ).encode()
-    req = urllib.request.Request(
-        f"http://localhost:{port}/connect",
-        data=payload,
-        headers={"Content-Type": "application/json"},
-    )
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            body = resp.read().decode()
-            if resp.status == 200:
-                ctx.logger.info("Mailbox registered with Agentverse")
-            else:
-                ctx.logger.warning(
-                    f"Mailbox registration returned {resp.status}: {body}"
-                )
+        resp = requests.post(
+            f"http://localhost:{port}/connect",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=30,
+        )
+        body = resp.text
+        if resp.status_code == 200:
+            ctx.logger.info("Mailbox registered with Agentverse")
+        else:
+            ctx.logger.warning(
+                f"Mailbox registration returned {resp.status_code}: {body}"
+            )
     except Exception:
         ctx.logger.info(
             "Mailbox registration in progress (handler will complete async)"

@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class MultiAgentOrchestrator:
     def __init__(self):
         self.coordinator = None
@@ -24,7 +25,7 @@ class MultiAgentOrchestrator:
                 url="http://localhost:10020",
                 port=10020,
                 specialties=["research", "analysis", "fact-finding", "summarization"],
-                priority=3
+                priority=3,
             ),
             A2AAgentConfig(
                 name="coding_specialist",
@@ -32,7 +33,7 @@ class MultiAgentOrchestrator:
                 url="http://localhost:10022",
                 port=10022,
                 specialties=["coding", "debugging", "programming"],
-                priority=3
+                priority=3,
             ),
             A2AAgentConfig(
                 name="analysis_specialist",
@@ -40,13 +41,13 @@ class MultiAgentOrchestrator:
                 url="http://localhost:10023",
                 port=10023,
                 specialties=["data analysis", "insights", "forecasting"],
-                priority=2
-            )
+                priority=2,
+            ),
         ]
         self.executors = {
             "research_specialist": ResearchAgentExecutor(),
             "coding_specialist": CodingAgentExecutor(),
-            "analysis_specialist": AnalysisAgentExecutor()
+            "analysis_specialist": AnalysisAgentExecutor(),
         }
         print("✅ Agent configurations created")
 
@@ -60,13 +61,13 @@ class MultiAgentOrchestrator:
         self.coordinator = MultiA2AAdapter(
             name="coordinator----",
             description="Routes queries to AI specialists",
-            llm_api_key= os.getenv("ASI1_API_KEY"),
-            model= os.getenv("MODEL", "asi1-mini"),
-            base_url= os.getenv("BASE_URL", "https://api.asi1.ai/v1/chat/completions"),
+            llm_api_key=os.getenv("ASI1_API_KEY"),
+            model=os.getenv("MODEL", "asi1-mini"),
+            base_url=os.getenv("BASE_URL", "https://api.asi1.ai/v1/chat/completions"),
             port=8200,
             mailbox=True,
             agent_configs=self.agent_configs,
-            routing_strategy="llm"  # Changed from "keyword_match" to "llm"
+            routing_strategy="llm",  # Changed from "keyword_match" to "llm"
         )
         print("✅ Coordinator created!")
         return self.coordinator
@@ -87,6 +88,7 @@ class MultiAgentOrchestrator:
             print(f"❌ Error: {e}")
             self.running = False
 
+
 def main():
     try:
         system = MultiAgentOrchestrator()
@@ -95,6 +97,7 @@ def main():
         print("👋 Shutdown complete!")
     except Exception as e:
         print(f"❌ Error: {e}")
+
 
 if __name__ == "__main__":
     main()

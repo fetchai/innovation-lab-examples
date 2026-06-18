@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import os
-from typing import Any, Optional
+from typing import Any, Optional  # noqa: F401
 
 import requests
 from dotenv import load_dotenv
@@ -59,19 +59,19 @@ async def call_asi_one_api(
             "Authorization": f"Bearer {ASI_ONE_API_KEY}",
             "Content-Type": "application/json",
         }
-        
+
         response = requests.post(url, json=payload, headers=headers, timeout=60)
         if not response.ok:
             return {
                 "error": f"{response.status_code} Error from ASI image API: {response.text}",
                 "status": "failed",
             }
-        
+
         response_data = response.json()
-        
+
         # Follow the exact logic from the example
         image_url = response_data.get("image_url") or response_data.get("url")
-        
+
         if not image_url:
             data_items = response_data.get("data", [])
             if data_items and isinstance(data_items, list):
@@ -81,24 +81,29 @@ async def call_asi_one_api(
                     # Decode base64 and upload to tmpfiles
                     try:
                         image_bytes = base64.b64decode(first_item["b64_json"])
-                        image_url = await asyncio.to_thread(upload_to_tmpfiles, image_bytes)
+                        image_url = await asyncio.to_thread(
+                            upload_to_tmpfiles, image_bytes
+                        )
                     except Exception as e:
                         return {
                             "error": f"Failed to process base64 image: {str(e)}",
                             "status": "failed",
                         }
-        
+
         if not image_url:
             return {
                 "error": f"ASI image API returned no image URL: {response_data}",
                 "status": "failed",
             }
-        
+
         return {
             "image_url": image_url,
             "status": "success",
         }
     except requests.RequestException as e:
-        return {"error": f"Image generation request failed: {str(e)}", "status": "failed"}
+        return {
+            "error": f"Image generation request failed: {str(e)}",
+            "status": "failed",
+        }
     except Exception as e:
         return {"error": str(e), "status": "failed"}

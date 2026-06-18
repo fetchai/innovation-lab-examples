@@ -11,6 +11,9 @@ if not (STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY):
 
 STRIPE_AMOUNT_CENTS = int(os.getenv("STRIPE_AMOUNT_CENTS", "100"))  # $1.00
 STRIPE_CURRENCY = (os.getenv("STRIPE_CURRENCY", "usd") or "usd").strip().lower()
-STRIPE_PRODUCT_NAME = (os.getenv("STRIPE_PRODUCT_NAME", "Daily horoscope") or "Daily horoscope").strip()
-STRIPE_SUCCESS_URL = (os.getenv("STRIPE_SUCCESS_URL", "https://agentverse.ai/payment-success") or "").strip()
-
+STRIPE_PRODUCT_NAME = (
+    os.getenv("STRIPE_PRODUCT_NAME", "Daily horoscope") or "Daily horoscope"
+).strip()
+STRIPE_SUCCESS_URL = (
+    os.getenv("STRIPE_SUCCESS_URL", "https://agentverse.ai/payment-success") or ""
+).strip()

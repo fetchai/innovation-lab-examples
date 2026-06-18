@@ -25,4 +25,3 @@ def build_payment_proto(on_commit: CommitHandler, on_reject: RejectHandler) -> P
         await on_reject(ctx, sender, msg)
 
     return proto
-

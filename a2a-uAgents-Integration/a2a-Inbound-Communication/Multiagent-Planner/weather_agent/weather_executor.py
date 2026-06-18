@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 # Constants
-DEFAULT_USER_ID = 'self'
+DEFAULT_USER_ID = "self"
 
 
 class WeatherExecutor(AgentExecutor):
@@ -67,30 +67,24 @@ class WeatherExecutor(AgentExecutor):
                         for part in event.content.parts
                         if (part.text or part.file_data or part.inline_data)
                     ]
-                    logger.debug('Yielding final response: %s', parts)
+                    logger.debug("Yielding final response: %s", parts)
                     await task_updater.add_artifact(parts)
-                    await task_updater.update_status(
-                        TaskState.completed, final=True
-                    )
+                    await task_updater.update_status(TaskState.completed, final=True)
                     break
                 if not event.get_function_calls():
-                    logger.debug('Yielding update response')
+                    logger.debug("Yielding update response")
                     await task_updater.update_status(
                         TaskState.working,
                         message=task_updater.new_agent_message(
                             [
                                 convert_genai_part_to_a2a(part)
                                 for part in event.content.parts
-                                if (
-                                    part.text
-                                    or part.file_data
-                                    or part.inline_data
-                                )
+                                if (part.text or part.file_data or part.inline_data)
                             ],
                         ),
                     )
                 else:
-                    logger.debug('Skipping event')
+                    logger.debug("Skipping event")
         finally:
             # Remove from active sessions when done
             self._active_sessions.discard(session_id)
@@ -109,14 +103,13 @@ class WeatherExecutor(AgentExecutor):
         await self._process_request(
             types.UserContent(
                 parts=[
-                    convert_a2a_part_to_genai(part)
-                    for part in context.message.parts
+                    convert_a2a_part_to_genai(part) for part in context.message.parts
                 ],
             ),
             context.context_id,
             updater,
         )
-        logger.debug('[weather] execute exiting')
+        logger.debug("[weather] execute exiting")
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue):
         """Cancel the execution for the given context.
@@ -127,18 +120,18 @@ class WeatherExecutor(AgentExecutor):
         session_id = context.context_id
         if session_id in self._active_sessions:
             logger.info(
-                f'Cancellation requested for active weather session: {session_id}'
+                f"Cancellation requested for active weather session: {session_id}"
             )
             # TODO: Implement proper cancellation when ADK supports it
             self._active_sessions.discard(session_id)
         else:
             logger.debug(
-                f'Cancellation requested for inactive weather session: {session_id}'
+                f"Cancellation requested for inactive weather session: {session_id}"
             )
 
         raise ServerError(error=UnsupportedOperationError())
 
-    async def _upsert_session(self, session_id: str) -> 'Session':
+    async def _upsert_session(self, session_id: str) -> "Session":
         """Retrieves a session if it exists, otherwise creates a new one.
 
         Ensures that async session service methods are properly awaited.
@@ -185,8 +178,8 @@ def convert_a2a_part_to_genai(part: Part) -> types.Part:
                     data=part.file.bytes, mime_type=part.file.mime_type
                 )
             )
-        raise ValueError(f'Unsupported file type: {type(part.file)}')
-    raise ValueError(f'Unsupported part type: {type(part)}')
+        raise ValueError(f"Unsupported file type: {type(part.file)}")
+    raise ValueError(f"Unsupported part type: {type(part)}")
 
 
 def convert_genai_part_to_a2a(part: types.Part) -> Part:
@@ -219,4 +212,4 @@ def convert_genai_part_to_a2a(part: types.Part) -> Part:
                 )
             )
         )
-    raise ValueError(f'Unsupported part type: {part}')
+    raise ValueError(f"Unsupported part type: {part}")

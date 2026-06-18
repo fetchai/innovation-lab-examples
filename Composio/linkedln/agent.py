@@ -31,6 +31,7 @@ agent = Agent(
 )
 protocol = Protocol(spec=chat_protocol_spec)
 
+
 class LinkedInAgent:
     def __init__(self, user_id: str, auth_config_id: str):
         self.user_id = user_id
@@ -48,8 +49,7 @@ class LinkedInAgent:
             print(f"🔐 Initiating LinkedIn auth for {self.user_id}...")
             # Use the correct method signature according to Composio documentation
             self.connection_request = self.composio.connected_accounts.initiate(
-                user_id=self.user_id,
-                auth_config_id=self.auth_config_id
+                user_id=self.user_id, auth_config_id=self.auth_config_id
             )
             return f"Please visit this URL to authenticate LinkedIn: {self.connection_request.redirect_url}\nAfter completing, send 'Auth complete' or your next query."
         except Exception as e:
@@ -61,8 +61,12 @@ class LinkedInAgent:
             return False
         try:
             print("⏳ Checking for authentication completion...")
-            self.connected_account = self.connection_request.wait_for_connection(timeout=5)
-            self.tools = self.composio.tools.get(user_id=self.user_id, toolkits=["LINKEDIN"])
+            self.connected_account = self.connection_request.wait_for_connection(
+                timeout=5
+            )
+            self.tools = self.composio.tools.get(
+                user_id=self.user_id, toolkits=["LINKEDIN"]
+            )
             print("✅ LinkedIn authentication successful!")
             return True
         except Exception as e:
@@ -77,19 +81,24 @@ class LinkedInAgent:
         """Get LinkedIn author ID"""
         if self.author_id:
             return self.author_id
-        
+
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 tools=self.tools,
                 messages=[
-                    {"role": "system", "content": "Use LINKEDIN_GET_MY_INFO to get profile info."},
-                    {"role": "user", "content": "Get my LinkedIn profile"}
+                    {
+                        "role": "system",
+                        "content": "Use LINKEDIN_GET_MY_INFO to get profile info.",
+                    },
+                    {"role": "user", "content": "Get my LinkedIn profile"},
                 ],
             )
-            
-            result = self.composio.provider.handle_tool_calls(response=response, user_id=self.user_id)
-            
+
+            result = self.composio.provider.handle_tool_calls(
+                response=response, user_id=self.user_id
+            )
+
             if result and len(result) > 0:
                 item = result[0]
                 if item.get("successful", False):
@@ -99,7 +108,7 @@ class LinkedInAgent:
                     if author_id:
                         self.author_id = author_id
                         return author_id
-            
+
             return None
         except Exception as e:
             print(f"Error getting author ID: {e}")
@@ -107,8 +116,10 @@ class LinkedInAgent:
 
     def process_query(self, user_query: str) -> Dict[str, Any]:
         """Process user query and execute LinkedIn actions"""
-        cleaned_query = re.sub(r'^@composio\s+agent\s+', '', user_query, flags=re.IGNORECASE).strip()
-        
+        cleaned_query = re.sub(
+            r"^@composio\s+agent\s+", "", user_query, flags=re.IGNORECASE
+        ).strip()
+
         # Simple intent detection
         if "create" in cleaned_query.lower() and "post" in cleaned_query.lower():
             intent = "CREATE_POST"
@@ -116,7 +127,10 @@ class LinkedInAgent:
             intent = "DELETE_POST"
         elif "info" in cleaned_query.lower() or "profile" in cleaned_query.lower():
             intent = "GET_INFO"
-        elif "connect" in cleaned_query.lower() or "authenticate" in cleaned_query.lower():
+        elif (
+            "connect" in cleaned_query.lower()
+            or "authenticate" in cleaned_query.lower()
+        ):
             intent = "AUTH"
         else:
             intent = "UNKNOWN"
@@ -128,7 +142,10 @@ class LinkedInAgent:
             return {"success": True, "result": auth_url}
 
         if not self.is_authenticated():
-            return {"success": False, "error": "LinkedIn not authenticated. Send 'Authenticate LinkedIn' to start auth."}
+            return {
+                "success": False,
+                "error": "LinkedIn not authenticated. Send 'Authenticate LinkedIn' to start auth.",
+            }
 
         try:
             if intent == "CREATE_POST":
@@ -138,7 +155,10 @@ class LinkedInAgent:
             elif intent == "GET_INFO":
                 return self._get_info()
             else:
-                return {"success": False, "error": "Unknown command. Try: create post, delete post, or get info"}
+                return {
+                    "success": False,
+                    "error": "Unknown command. Try: create post, delete post, or get info",
+                }
         except Exception as e:
             return {"success": False, "error": f"Error: {str(e)}"}
 
@@ -150,63 +170,77 @@ class LinkedInAgent:
 
         # Generate professional blog-style content
         content = self._generate_blog_content(query)
-        
+
         try:
             # Prepare post parameters
             post_params = f"author={author_id}, commentary='{content}', visibility='PUBLIC', lifecycleState='PUBLISHED'"
-            
+
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 tools=self.tools,
                 messages=[
-                    {"role": "system", "content": "Use LINKEDIN_CREATE_LINKED_IN_POST to create a post. Use the exact parameters provided."},
-                    {"role": "user", "content": f"Create a LinkedIn post with {post_params}"}
+                    {
+                        "role": "system",
+                        "content": "Use LINKEDIN_CREATE_LINKED_IN_POST to create a post. Use the exact parameters provided.",
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Create a LinkedIn post with {post_params}",
+                    },
                 ],
             )
-            
-            result = self.composio.provider.handle_tool_calls(response=response, user_id=self.user_id)
-            
+
+            result = self.composio.provider.handle_tool_calls(
+                response=response, user_id=self.user_id
+            )
+
             print(f"🔍 Create post result: {json.dumps(result, indent=2)}")
-            
+
             if result and len(result) > 0:
                 item = result[0]
                 if item.get("successful", False):
                     data = item.get("data", {})
                     response_data = data.get("response_data", {})
-                    
+
                     # Try different possible keys for share ID
-                    share_id = (response_data.get("id") or 
-                               response_data.get("shareId") or 
-                               response_data.get("share_id"))
-                    
+                    share_id = (
+                        response_data.get("id")
+                        or response_data.get("shareId")
+                        or response_data.get("share_id")
+                    )
+
                     if share_id:
                         # Convert share ID to activity ID for correct URL format
-                        if 'urn:li:share:' in share_id:
-                            activity_id = share_id.replace('urn:li:share:', 'urn:li:activity:')
-                            post_url = f"https://www.linkedin.com/feed/update/{activity_id}/"
+                        if "urn:li:share:" in share_id:
+                            activity_id = share_id.replace(
+                                "urn:li:share:", "urn:li:activity:"
+                            )
+                            post_url = (
+                                f"https://www.linkedin.com/feed/update/{activity_id}/"
+                            )
                         else:
-                            post_url = f"https://www.linkedin.com/feed/update/{share_id}/"
-                        
+                            post_url = (
+                                f"https://www.linkedin.com/feed/update/{share_id}/"
+                            )
+
                         # Format content with proper line breaks for chat interface
-                        formatted_content = content.replace('\n', '\\n').replace('\r', '')
-                        
+                        formatted_content = content.replace("\n", "\\n").replace(
+                            "\r", ""
+                        )
+
                         result_text = f"✅ **LinkedIn Post Created Successfully!**\\n\\n📝 **Share ID:** `{share_id}`\\n🔗 **Post URL:** {post_url}\\n\\n📄 **Post Content:**\\n\\n{formatted_content}"
-                        
-                        return {
-                            "success": True,
-                            "result": result_text
-                        }
+
+                        return {"success": True, "result": result_text}
                     else:
                         # Format content with proper line breaks for chat interface
-                        formatted_content = content.replace('\n', '\\n').replace('\r', '')
-                        
+                        formatted_content = content.replace("\n", "\\n").replace(
+                            "\r", ""
+                        )
+
                         result_text = f"✅ **LinkedIn Post Created Successfully!**\\n\\n📄 **Post Content:**\\n\\n{formatted_content}"
-                        
-                        return {
-                            "success": True,
-                            "result": result_text
-                        }
-            
+
+                        return {"success": True, "result": result_text}
+
             return {"success": False, "error": "Failed to create post"}
         except Exception as e:
             return {"success": False, "error": f"Error creating post: {str(e)}"}
@@ -214,29 +248,43 @@ class LinkedInAgent:
     def _delete_post(self, query: str) -> Dict[str, Any]:
         """Delete a LinkedIn post"""
         # Extract share ID from query
-        share_id_match = re.search(r'(\d+)', query)
+        share_id_match = re.search(r"(\d+)", query)
         if not share_id_match:
-            return {"success": False, "error": "Please provide share ID. Example: delete post 7371239374954356736"}
-        
+            return {
+                "success": False,
+                "error": "Please provide share ID. Example: delete post 7371239374954356736",
+            }
+
         share_id = share_id_match.group(1)
-        
+
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 tools=self.tools,
                 messages=[
-                    {"role": "system", "content": "Use LINKEDIN_DELETE_LINKED_IN_POST to delete a post."},
-                    {"role": "user", "content": f"Delete LinkedIn post with share ID: {share_id}"}
+                    {
+                        "role": "system",
+                        "content": "Use LINKEDIN_DELETE_LINKED_IN_POST to delete a post.",
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Delete LinkedIn post with share ID: {share_id}",
+                    },
                 ],
             )
-            
-            result = self.composio.provider.handle_tool_calls(response=response, user_id=self.user_id)
-            
+
+            result = self.composio.provider.handle_tool_calls(
+                response=response, user_id=self.user_id
+            )
+
             if result and len(result) > 0:
                 item = result[0]
                 if item.get("successful", False):
-                    return {"success": True, "result": "✅ LinkedIn post deleted successfully!"}
-            
+                    return {
+                        "success": True,
+                        "result": "✅ LinkedIn post deleted successfully!",
+                    }
+
             return {"success": False, "error": "Failed to delete post"}
         except Exception as e:
             return {"success": False, "error": f"Error deleting post: {str(e)}"}
@@ -248,21 +296,26 @@ class LinkedInAgent:
                 model="gpt-4o-mini",
                 tools=self.tools,
                 messages=[
-                    {"role": "system", "content": "Use LINKEDIN_GET_MY_INFO to get profile info."},
-                    {"role": "user", "content": "Get my LinkedIn profile information"}
+                    {
+                        "role": "system",
+                        "content": "Use LINKEDIN_GET_MY_INFO to get profile info.",
+                    },
+                    {"role": "user", "content": "Get my LinkedIn profile information"},
                 ],
             )
-            
-            result = self.composio.provider.handle_tool_calls(response=response, user_id=self.user_id)
-            
+
+            result = self.composio.provider.handle_tool_calls(
+                response=response, user_id=self.user_id
+            )
+
             print(f"🔍 Profile result: {json.dumps(result, indent=2)}")
-            
+
             if result and len(result) > 0:
                 item = result[0]
                 if item.get("successful", False):
                     data = item.get("data", {})
                     response_data = data.get("response_dict", {})
-                    
+
                     name = response_data.get("name", "Unknown")
                     given_name = response_data.get("given_name", "")
                     family_name = response_data.get("family_name", "")
@@ -272,9 +325,17 @@ class LinkedInAgent:
                     sub_id = response_data.get("sub", "Not available")
                     picture_url = response_data.get("picture", "Not available")
                     locale = response_data.get("locale", {})
-                    country = locale.get("country", "Not specified") if isinstance(locale, dict) else "Not specified"
-                    language = locale.get("language", "Not specified") if isinstance(locale, dict) else "Not specified"
-                    
+                    country = (
+                        locale.get("country", "Not specified")
+                        if isinstance(locale, dict)
+                        else "Not specified"
+                    )
+                    language = (
+                        locale.get("language", "Not specified")
+                        if isinstance(locale, dict)
+                        else "Not specified"
+                    )
+
                     return {
                         "success": True,
                         "result": f"""👤 **LinkedIn Profile Information**
@@ -283,7 +344,7 @@ class LinkedInAgent:
 **Given Name:** {given_name}
 **Family Name:** {family_name}
 **Email:** {email}
-**Email Verified:** {'Yes' if email_verified else 'No'}
+**Email Verified:** {"Yes" if email_verified else "No"}
 **Country:** {country}
 **Language:** {language}
 **Author ID:** {author_id}
@@ -291,9 +352,9 @@ class LinkedInAgent:
 
 **Profile Picture:**
 ![Profile Picture]({picture_url})
-                                 """
+                                 """,
                     }
-            
+
             return {"success": False, "error": "Failed to get profile info"}
         except Exception as e:
             return {"success": False, "error": f"Error getting profile: {str(e)}"}
@@ -303,12 +364,14 @@ class LinkedInAgent:
         try:
             # Extract topic from query
             topic = self._extract_topic(query)
-            
+
             # Generate comprehensive blog content within LinkedIn's 3000 character limit
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": """You are a professional LinkedIn content writer. Create comprehensive, detailed blog posts that:
+                    {
+                        "role": "system",
+                        "content": """You are a professional LinkedIn content writer. Create comprehensive, detailed blog posts that:
                     - Are 6-8 sentences long (detailed but concise)
                     - Use professional but engaging tone
                     - Include relevant emojis (2-3 max)
@@ -321,23 +384,31 @@ class LinkedInAgent:
                     - Provide substantial value to the LinkedIn professional community
                     - Include specific examples or statistics when relevant
                     - IMPORTANT: Keep total content under 2800 characters to stay within LinkedIn's 3000 character limit
-                    - Make it feel like a comprehensive article but concise enough for LinkedIn"""},
-                    {"role": "user", "content": f"Create a comprehensive LinkedIn blog post about: {topic}. Make it detailed and insightful but keep it under 2800 characters total."}
+                    - Make it feel like a comprehensive article but concise enough for LinkedIn""",
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Create a comprehensive LinkedIn blog post about: {topic}. Make it detailed and insightful but keep it under 2800 characters total.",
+                    },
                 ],
                 max_tokens=800,
-                temperature=0.7
+                temperature=0.7,
             )
-            
+
             generated_content = response.choices[0].message.content.strip()
-            
+
             # Ensure content is within LinkedIn's 3000 character limit
             if len(generated_content) > 2800:
-                print(f"⚠️ Content too long ({len(generated_content)} chars), truncating...")
+                print(
+                    f"⚠️ Content too long ({len(generated_content)} chars), truncating..."
+                )
                 generated_content = generated_content[:2800] + "..."
-            
-            print(f"📝 Generated content ({len(generated_content)} chars): {generated_content}")
+
+            print(
+                f"📝 Generated content ({len(generated_content)} chars): {generated_content}"
+            )
             return generated_content
-            
+
         except Exception as e:
             print(f"Error generating content: {e}")
             # Fallback content
@@ -351,7 +422,7 @@ class LinkedInAgent:
             parts = query.lower().split("about")
             if len(parts) > 1:
                 return parts[1].strip()
-        
+
         # Extract text after "post"
         if "post" in query.lower():
             parts = query.lower().split("post")
@@ -360,7 +431,7 @@ class LinkedInAgent:
                 if topic.startswith("about"):
                     topic = topic.replace("about", "").strip()
                 return topic
-        
+
         # Default topic
         return "my latest update"
 
@@ -436,37 +507,37 @@ class LinkedInAgent:
 
 Each post will automatically generate professional content and a relevant image! 🖼️"""
 
+
 # Initialize LinkedInAgent
 linkedin_agent = LinkedInAgent(
-    user_id="",
-    auth_config_id=os.getenv("LINKEDIN_AUTH_CONFIG_ID")
+    user_id="", auth_config_id=os.getenv("LINKEDIN_AUTH_CONFIG_ID")
 )
+
 
 def extract_user_id_from_query(text: str) -> str:
     """Extract LinkedIn username from query"""
-    patterns = [
-        r'linkedin\s+(\w+)',
-        r'(\w+)\s+linkedin',
-        r'(\w+)$'
-    ]
-    
+    patterns = [r"linkedin\s+(\w+)", r"(\w+)\s+linkedin", r"(\w+)$"]
+
     for pattern in patterns:
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             username = match.group(1).strip()
             if username.isalnum() and len(username) >= 3:
                 return username
-    
+
     return ""
+
 
 @protocol.on_message(ChatMessage)
 async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     """Handle incoming messages"""
     await ctx.send(
         sender,
-        ChatAcknowledgement(timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id),
+        ChatAcknowledgement(
+            timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id
+        ),
     )
-    
+
     text = ""
     for item in msg.content:
         if isinstance(item, TextContent):
@@ -475,7 +546,13 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     print(f"📥 Received query: {text}")
 
     # Check if this is a help request
-    if text.lower().strip() in ["help", "what can i do", "available operations", "permissions", "scopes"]:
+    if text.lower().strip() in [
+        "help",
+        "what can i do",
+        "available operations",
+        "permissions",
+        "scopes",
+    ]:
         response = linkedin_agent.get_available_operations()
     elif text.lower().strip() in ["blog examples", "examples", "blog post examples"]:
         response = linkedin_agent.get_blog_examples()
@@ -511,14 +588,16 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         ChatMessage(
             timestamp=datetime.now(timezone.utc),
             msg_id=uuid4(),
-            content=[TextContent(type="text", text=response)]
-        )
+            content=[TextContent(type="text", text=response)],
+        ),
     )
+
 
 @protocol.on_message(ChatAcknowledgement)
 async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
     """Handle acknowledgment"""
     pass
+
 
 agent.include(protocol, publish_manifest=True)
 

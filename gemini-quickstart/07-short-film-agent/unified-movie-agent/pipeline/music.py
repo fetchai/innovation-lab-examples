@@ -16,8 +16,12 @@ from google import genai
 from google.genai import types
 
 from config import (
-    LYRIA_MODEL, LYRIA_SAMPLE_RATE, LYRIA_CHANNELS,
-    SCENE_DURATION_SECONDS, key_for_scene, API_KEYS,
+    LYRIA_MODEL,
+    LYRIA_SAMPLE_RATE,
+    LYRIA_CHANNELS,
+    SCENE_DURATION_SECONDS,
+    key_for_scene,
+    API_KEYS,
 )
 from utils.gcs import upload_to_storage
 
@@ -56,6 +60,7 @@ def _save_wav(pcm: bytes, path: str) -> None:
 
 # ── Public API ──────────────────────────────────────────────────
 
+
 async def generate_music(
     scene_index: int,
     prompt: str,
@@ -69,7 +74,9 @@ async def generate_music(
     api_key = key_for_scene(scene_index)
     client = _clients[api_key]
 
-    log.info("Music scene %d — prompt='%s', dur=%ds", scene_index, prompt[:60], duration)
+    log.info(
+        "Music scene %d — prompt='%s', dur=%ds", scene_index, prompt[:60], duration
+    )
 
     audio_chunks: list[bytes] = []
     is_collecting = True

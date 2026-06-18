@@ -5,6 +5,7 @@ from uagents_adapter.a2a_outbound import SingleA2AAdapter
 # Load env if available
 try:
     from dotenv import load_dotenv
+
     # Load from examples root if present, then local folder as fallback
     ROOT = Path(__file__).resolve().parents[1]
     load_dotenv(ROOT / ".env", override=True)
@@ -37,5 +38,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

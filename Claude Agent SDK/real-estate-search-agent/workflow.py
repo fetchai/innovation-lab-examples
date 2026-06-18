@@ -14,10 +14,10 @@ Architecture:
 import asyncio
 import json
 import re
-import os
+import os  # noqa: F401
 import time
-from datetime import datetime
-from dataclasses import dataclass, field
+from datetime import datetime  # noqa: F401
+from dataclasses import dataclass, field  # noqa: F401
 from typing import Optional
 
 import anthropic
@@ -40,6 +40,7 @@ SEARCH_COOLDOWN_SECONDS = 8
 # Data models
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class WorkflowInput:
     user_request: str
@@ -53,7 +54,7 @@ class WorkflowResult:
     num_results: int
     session_id: Optional[str] = None
     # Set when sheet creation is deferred pending payment
-    pending_df: Optional[object] = None      # pandas DataFrame
+    pending_df: Optional[object] = None  # pandas DataFrame
     pending_search: Optional["SearchInput"] = None
 
 
@@ -71,19 +72,31 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "location":      {"type": "string",  "description": "City, State or zip code"},
-                "listing_type":  {"type": "string",  "enum": ["for_sale", "for_rent", "sold"]},
-                "min_price":     {"type": "integer", "description": "Minimum price in USD"},
-                "max_price":     {"type": "integer", "description": "Maximum price in USD"},
-                "min_beds":      {"type": "integer"},
-                "max_beds":      {"type": "integer"},
-                "min_sqft":      {"type": "integer"},
-                "max_sqft":      {"type": "integer"},
+                "location": {
+                    "type": "string",
+                    "description": "City, State or zip code",
+                },
+                "listing_type": {
+                    "type": "string",
+                    "enum": ["for_sale", "for_rent", "sold"],
+                },
+                "min_price": {"type": "integer", "description": "Minimum price in USD"},
+                "max_price": {"type": "integer", "description": "Maximum price in USD"},
+                "min_beds": {"type": "integer"},
+                "max_beds": {"type": "integer"},
+                "min_sqft": {"type": "integer"},
+                "max_sqft": {"type": "integer"},
                 "property_type": {
                     "type": "array",
-                    "items": {"type": "string", "enum": ["single_family", "condo", "townhouse", "multi_family"]},
+                    "items": {
+                        "type": "string",
+                        "enum": ["single_family", "condo", "townhouse", "multi_family"],
+                    },
                 },
-                "past_days":     {"type": "integer", "description": "Listings from last N days (default 30)"},
+                "past_days": {
+                    "type": "integer",
+                    "description": "Listings from last N days (default 30)",
+                },
             },
             "required": ["location", "listing_type"],
         },
@@ -120,6 +133,7 @@ Rules:
 # ─────────────────────────────────────────────────────────────────────────────
 # Step 1 — Parse natural language → structured SearchInput
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 async def parse_search_intent(user_request: str) -> SearchInput:
     client = anthropic.Anthropic()
@@ -176,12 +190,13 @@ Return only the JSON, no explanation."""
 # Tool execution — called when Claude requests a tool
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 # Shared state within a single workflow run
 @dataclass
 class _RunState:
     search: Optional[SearchInput] = None
     user_id: str = "default"
-    df: object = None          # pandas DataFrame or None
+    df: object = None  # pandas DataFrame or None
     sheet_url: str = ""
     num_results: int = 0
     last_error: str = ""
@@ -198,16 +213,20 @@ async def _execute_tool(tool_name: str, tool_input: dict, state: _RunState) -> s
         elapsed = now - _last_search_time
         if _last_search_time > 0 and elapsed < SEARCH_COOLDOWN_SECONDS:
             wait = round(SEARCH_COOLDOWN_SECONDS - elapsed, 1)
-            return json.dumps({
-                "status": "rate_limited",
-                "message": f"Please wait {wait}s before searching again.",
-            })
+            return json.dumps(
+                {
+                    "status": "rate_limited",
+                    "message": f"Please wait {wait}s before searching again.",
+                }
+            )
 
         _last_search_time = time.time()
 
         # Build SearchInput from Claude's tool_input
         search = SearchInput(
-            location=tool_input.get("location", state.search.location if state.search else ""),
+            location=tool_input.get(
+                "location", state.search.location if state.search else ""
+            ),
             listing_type=tool_input.get("listing_type", "for_sale"),
             min_price=tool_input.get("min_price"),
             max_price=tool_input.get("max_price"),
@@ -228,24 +247,40 @@ async def _execute_tool(tool_name: str, tool_input: dict, state: _RunState) -> s
             state.last_error = ""
 
             if df is None or df.empty:
-                return json.dumps({
-                    "status": "no_results",
-                    "message": f"No listings found in {search.location} with the given filters.",
-                    "num_results": 0,
-                    "location": search.location,
-                })
+                return json.dumps(
+                    {
+                        "status": "no_results",
+                        "message": f"No listings found in {search.location} with the given filters.",
+                        "num_results": 0,
+                        "location": search.location,
+                    }
+                )
 
             preview = json.loads(df.head(5).to_json(orient="records"))
-            return json.dumps({
-                "status": "success",
-                "num_results": len(df),
-                "location": search.location,
-                "listing_type": search.listing_type,
-                "price_min": (lambda v: None if v != v else int(v))(df["Price ($)"].min()) if "Price ($)" in df.columns else None,
-                "price_max": (lambda v: None if v != v else int(v))(df["Price ($)"].max()) if "Price ($)" in df.columns else None,
-                "price_avg": (lambda v: None if v != v else int(v))(df["Price ($)"].mean()) if "Price ($)" in df.columns else None,
-                "sample_listings": preview,
-            })
+            return json.dumps(
+                {
+                    "status": "success",
+                    "num_results": len(df),
+                    "location": search.location,
+                    "listing_type": search.listing_type,
+                    "price_min": (lambda v: None if v != v else int(v))(
+                        df["Price ($)"].min()
+                    )
+                    if "Price ($)" in df.columns
+                    else None,
+                    "price_max": (lambda v: None if v != v else int(v))(
+                        df["Price ($)"].max()
+                    )
+                    if "Price ($)" in df.columns
+                    else None,
+                    "price_avg": (lambda v: None if v != v else int(v))(
+                        df["Price ($)"].mean()
+                    )
+                    if "Price ($)" in df.columns
+                    else None,
+                    "sample_listings": preview,
+                }
+            )
 
         except Exception as e:
             print(f"[Tool] search_listings error: {e}")
@@ -257,7 +292,12 @@ async def _execute_tool(tool_name: str, tool_input: dict, state: _RunState) -> s
     # ── create_sheet ─────────────────────────────────────────────────────────
     elif tool_name == "create_sheet":
         if state.df is None or (hasattr(state.df, "empty") and state.df.empty):
-            return json.dumps({"status": "error", "error": "No listings data — run search_listings first."})
+            return json.dumps(
+                {
+                    "status": "error",
+                    "error": "No listings data — run search_listings first.",
+                }
+            )
 
         print("[Tool] create_sheet → writing to Google Sheets...")
         try:
@@ -271,7 +311,9 @@ async def _execute_tool(tool_name: str, tool_input: dict, state: _RunState) -> s
             state.sheet_url = sheet_url
             state.last_error = ""
             print(f"[Tool] Sheet created: {sheet_url}")
-            return json.dumps({"status": "success", "sheet_url": sheet_url, "num_rows": len(state.df)})
+            return json.dumps(
+                {"status": "success", "sheet_url": sheet_url, "num_rows": len(state.df)}
+            )
 
         except GoogleAuthRequiredError as e:
             state.last_error = str(e)
@@ -361,11 +403,13 @@ async def run_agent_loop(
                 if block.type == "tool_use":
                     print(f"[Agent] Claude calling: {block.name}")
                     result_str = await _execute_tool(block.name, block.input, state)
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": result_str,
-                    })
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": result_str,
+                        }
+                    )
 
             # Feed all results back to Claude in one user turn
             messages.append({"role": "user", "content": tool_results})
@@ -390,7 +434,9 @@ async def run_agent_loop(
                 f"{state.last_error}"
             )
         else:
-            final_summary = f"No listings found in {search.location} matching your criteria."
+            final_summary = (
+                f"No listings found in {search.location} matching your criteria."
+            )
 
     return WorkflowResult(
         sheet_url=state.sheet_url,
@@ -407,15 +453,18 @@ async def run_agent_loop(
 # Public entry points
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 async def run_workflow(input_data: WorkflowInput) -> WorkflowResult:
     """Start a fresh search. Clears any saved session for this user_id."""
     print(f"\n🏠 New search — user: {input_data.user_id}")
-    print(f"   Request: \"{input_data.user_request}\"")
+    print(f'   Request: "{input_data.user_request}"')
 
     search = await parse_search_intent(input_data.user_request)
-    print(f"   Parsed: {search.location} | {search.listing_type} | "
-          f"${search.min_price or 0:,}–{'∞' if not search.max_price else f'${search.max_price:,}'} | "
-          f"{search.min_beds or 'any'}+ beds")
+    print(
+        f"   Parsed: {search.location} | {search.listing_type} | "
+        f"${search.min_price or 0:,}–{'∞' if not search.max_price else f'${search.max_price:,}'} | "
+        f"{search.min_beds or 'any'}+ beds"
+    )
 
     if not search.location:
         return WorkflowResult(
@@ -440,7 +489,9 @@ async def resume_workflow(input_data: WorkflowInput) -> WorkflowResult:
     if prior_messages:
         print(f"\n🔄 Resuming session for user: {input_data.user_id}")
         search = await parse_search_intent(input_data.user_request)
-        return await run_agent_loop(search, user_id=input_data.user_id, prior_messages=prior_messages)
+        return await run_agent_loop(
+            search, user_id=input_data.user_id, prior_messages=prior_messages
+        )
     else:
         print(f"\n⚠️  No session for '{input_data.user_id}' — starting fresh")
         return await run_workflow(input_data)
@@ -453,7 +504,7 @@ async def run_search_only(input_data: WorkflowInput) -> WorkflowResult:
     and result.pending_search, creates the sheet after CommitPayment is received.
     """
     print(f"\n🔍 Search-only (payment-gated) — user: {input_data.user_id}")
-    print(f"   Request: \"{input_data.user_request}\"")
+    print(f'   Request: "{input_data.user_request}"')
 
     search = await parse_search_intent(input_data.user_request)
     if not search.location:

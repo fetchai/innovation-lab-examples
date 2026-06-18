@@ -4,6 +4,7 @@ Receipt / Expense Calculator agent for ASI-One and Agentverse.
 - Or add items manually. Then poll (who brought what) and show fair split.
 - Optional Stripe payment after listing items (same flow as stripe-horoscope-agent).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -27,6 +28,7 @@ from uagents_core.contrib.protocols.chat import (
     TextContent,
     chat_protocol_spec,
 )
+
 # Payment protocol exists only in uagents-core >= 0.4.0
 try:
     from uagents_core.contrib.protocols.payment import (
@@ -36,6 +38,7 @@ try:
         RejectPayment,
         RequestPayment,
     )
+
     _PAYMENT_PROTOCOL_AVAILABLE = True
 except ModuleNotFoundError:
     CommitPayment = CompletePayment = Funds = RejectPayment = RequestPayment = None  # type: ignore
@@ -45,36 +48,52 @@ from uagents_core.storage import ExternalStorage
 from dotenv import load_dotenv
 
 load_dotenv()  # Load .env before config so STRIPE_* keys are available
-from config import STRIPE_AMOUNT_CENTS, STRIPE_ENABLED
-from expense_logic import (
+from config import STRIPE_AMOUNT_CENTS, STRIPE_ENABLED  # noqa: E402
+from expense_logic import (  # noqa: E402
     Receipt,
     ReceiptItem,
     parse_item_selection,
     format_split_result,
-    format_split_summary,
+    format_split_summary,  # noqa: F401
     format_split_summary_table,
     format_split_full_table,
 )
-from receipt_vision import extract_items_from_receipt_image
+from receipt_vision import extract_items_from_receipt_image  # noqa: E402
 
 if _PAYMENT_PROTOCOL_AVAILABLE:
-    from stripe_payments import create_embedded_checkout_session, verify_checkout_session_paid
+    from stripe_payments import (
+        create_embedded_checkout_session,
+        verify_checkout_session_paid,
+    )
     from payment_proto import build_payment_proto
 else:
-    create_embedded_checkout_session = verify_checkout_session_paid = build_payment_proto = None  # type: ignore
+    create_embedded_checkout_session = verify_checkout_session_paid = (
+        build_payment_proto
+    ) = None  # type: ignore
 
 # #region debug log
 _debug_log_path = "/Users/rutujanemane/Documents/fetchai/cohort 2/.cursor/debug.log"
+
+
 def _debug_log(msg: str, data: dict | None = None, hypothesis_id: str = ""):
-    payload = {"message": msg, "timestamp": __import__("datetime").datetime.now(timezone.utc).isoformat(), "hypothesisId": hypothesis_id}
+    payload = {
+        "message": msg,
+        "timestamp": __import__("datetime").datetime.now(timezone.utc).isoformat(),
+        "hypothesisId": hypothesis_id,
+    }
     if data is not None:
-        payload["data"] = {k: (v if not isinstance(v, bytes) else f"<bytes len={len(v)}>") for k, v in data.items()}
+        payload["data"] = {
+            k: (v if not isinstance(v, bytes) else f"<bytes len={len(v)}>")
+            for k, v in data.items()
+        }
     try:
         os.makedirs(os.path.dirname(_debug_log_path), exist_ok=True)
         with open(_debug_log_path, "a") as f:
             f.write(json.dumps(payload) + "\n")
     except Exception:
         pass
+
+
 # #endregion
 
 # Storage keys
@@ -82,9 +101,15 @@ RECEIPT_STATE = "expense_receipt_state"
 RECEIPT_ITEMS = "expense_receipt_items"
 RECEIPT_SELECTIONS = "expense_receipt_selections"
 RECEIPT_NAMES = "expense_receipt_names"
-RECEIPT_NAMES_USER_SET = "expense_receipt_names_user_set"  # senders who said "I'm X" (override profile)
-RECEIPT_PARTICIPANTS = "expense_receipt_participants"  # senders seen in current polling round
-RECEIPT_EXPECTED_COUNT = "expense_receipt_expected_count"  # optional total participants in group
+RECEIPT_NAMES_USER_SET = (
+    "expense_receipt_names_user_set"  # senders who said "I'm X" (override profile)
+)
+RECEIPT_PARTICIPANTS = (
+    "expense_receipt_participants"  # senders seen in current polling round
+)
+RECEIPT_EXPECTED_COUNT = (
+    "expense_receipt_expected_count"  # optional total participants in group
+)
 RECEIPT_PAYER_SENDER = "expense_receipt_payer_sender"
 RECEIPT_PAYER_NAME = "expense_receipt_payer_name"
 # Per-sender Stripe payment state (awaiting_payment, pending_stripe checkout dict)
@@ -116,6 +141,7 @@ def _save_payment_state(ctx: Context, sender: str, data: dict) -> None:
 
 def _clear_payment_state(ctx: Context, sender: str) -> None:
     ctx.storage.set(_payment_state_key(sender), "{}")
+
 
 agent = Agent(
     name="ReceiptCalculator",
@@ -238,9 +264,13 @@ def _download_image_bytes(
         ctx.logger.warning("Downloaded content too small or empty to be a valid image")
         return None
     # Basic image check
-    if content_bytes.startswith(b"\xff\xd8\xff") or content_bytes.startswith(b"\x89PNG"):
+    if content_bytes.startswith(b"\xff\xd8\xff") or content_bytes.startswith(
+        b"\x89PNG"
+    ):
         return content_bytes
-    if content_bytes.startswith(b"GIF") or (content_bytes.startswith(b"RIFF") and b"WEBP" in content_bytes[:12]):
+    if content_bytes.startswith(b"GIF") or (
+        content_bytes.startswith(b"RIFF") and b"WEBP" in content_bytes[:12]
+    ):
         return content_bytes
     # Allow unknown as image (e.g. heic or other)
     return content_bytes
@@ -259,16 +289,23 @@ def _load_receipt(ctx: Context) -> tuple[str, Receipt, dict[str, list[int]]]:
     receipt = Receipt()
     for d in items_data:
         receipt.items.append(
-            ReceiptItem(index=d["index"], name=d["name"], price=Decimal(str(d["price"])))
+            ReceiptItem(
+                index=d["index"], name=d["name"], price=Decimal(str(d["price"]))
+            )
         )
     return state, receipt, selections
 
 
-def _save_receipt(ctx: Context, state: str, receipt: Receipt, selections: dict[str, list[int]]) -> None:
+def _save_receipt(
+    ctx: Context, state: str, receipt: Receipt, selections: dict[str, list[int]]
+) -> None:
     ctx.storage.set(RECEIPT_STATE, state)
     ctx.storage.set(
         RECEIPT_ITEMS,
-        [{"index": i.index, "name": i.name, "price": str(i.price)} for i in receipt.items],
+        [
+            {"index": i.index, "name": i.name, "price": str(i.price)}
+            for i in receipt.items
+        ],
     )
     ctx.storage.set(RECEIPT_SELECTIONS, selections)
 
@@ -295,7 +332,9 @@ def _display_name_from_metadata(meta: dict) -> str | None:
     return None
 
 
-def _parse_named_selection(raw_text: str, max_idx: int) -> tuple[str, str, list[int], list[int]] | None:
+def _parse_named_selection(
+    raw_text: str, max_idx: int
+) -> tuple[str, str, list[int], list[int]] | None:
     """
     Parse user input containing both name and item indices.
     Supported formats:
@@ -368,7 +407,9 @@ def _parse_named_selection(raw_text: str, max_idx: int) -> tuple[str, str, list[
     return None
 
 
-def _parse_indices_with_validation(text: str, max_idx: int) -> tuple[list[int], list[int]]:
+def _parse_indices_with_validation(
+    text: str, max_idx: int
+) -> tuple[list[int], list[int]]:
     """Returns (valid_indices, invalid_numbers_out_of_range)."""
     indices = parse_item_selection(text, max_idx)
     raw_numbers = sorted({int(x) for x in re.findall(r"\d+", text)})
@@ -421,7 +462,12 @@ def _looks_like_non_selection_command(text: str) -> bool:
         return True
     if _extract_group_size_flexible(t) is not None:
         return True
-    if _intent_is_pending(t) or _intent_is_start_poll(t) or _intent_is_new_receipt(t) or _intent_is_help(t):
+    if (
+        _intent_is_pending(t)
+        or _intent_is_start_poll(t)
+        or _intent_is_new_receipt(t)
+        or _intent_is_help(t)
+    ):
         return True
     return bool(
         re.match(
@@ -434,27 +480,37 @@ def _looks_like_non_selection_command(text: str) -> bool:
 
 def _intent_is_help(text: str) -> bool:
     t = text.lower()
-    return any(k in t for k in ("help", "how to", "instructions", "guide", "what can you do")) or t in ("hi", "hello", "hey", "start")
+    return any(
+        k in t for k in ("help", "how to", "instructions", "guide", "what can you do")
+    ) or t in ("hi", "hello", "hey", "start")
 
 
 def _intent_is_new_receipt(text: str) -> bool:
     t = text.lower().strip()
-    return t in ("new receipt", "new", "start receipt", "reset") or bool(re.search(r"\b(start|create)\s+(a\s+)?new\s+receipt\b", t))
+    return t in ("new receipt", "new", "start receipt", "reset") or bool(
+        re.search(r"\b(start|create)\s+(a\s+)?new\s+receipt\b", t)
+    )
 
 
 def _intent_is_start_poll(text: str) -> bool:
     t = text.lower()
-    return t in ("done", "start poll", "poll", "lock") or bool(re.search(r"\b(start|begin)\s+(the\s+)?poll\b", t))
+    return t in ("done", "start poll", "poll", "lock") or bool(
+        re.search(r"\b(start|begin)\s+(the\s+)?poll\b", t)
+    )
 
 
 def _intent_is_pending(text: str) -> bool:
     t = text.lower()
-    return t in ("pending", "status", "who is left", "who left") or bool(re.search(r"\b(who|what)\s+(is\s+)?left\b", t))
+    return t in ("pending", "status", "who is left", "who left") or bool(
+        re.search(r"\b(who|what)\s+(is\s+)?left\b", t)
+    )
 
 
 def _intent_is_show_items(text: str) -> bool:
     t = text.lower()
-    return t in ("items", "list", "show items", "receipt") or bool(re.search(r"\b(show|list)\s+(the\s+)?items\b", t))
+    return t in ("items", "list", "show items", "receipt") or bool(
+        re.search(r"\b(show|list)\s+(the\s+)?items\b", t)
+    )
 
 
 def _extract_group_size_flexible(text: str) -> int | None:
@@ -476,7 +532,13 @@ def _extract_group_size_flexible(text: str) -> int | None:
 def _extract_calculate_mode(text: str) -> str | None:
     """Return one of: summary, detailed, table, readable."""
     t = text.lower()
-    if "calculate" not in t and "split" not in t and "summary" not in t and "detailed" not in t and "table" not in t:
+    if (
+        "calculate" not in t
+        and "split" not in t
+        and "summary" not in t
+        and "detailed" not in t
+        and "table" not in t
+    ):
         return None
     if "summary" in t:
         return "summary"
@@ -549,7 +611,11 @@ def _pending_status_text(
     def label(sid: str, idx: int) -> str:
         return names.get(sid) or f"Friend {idx}"
 
-    total_expected = expected_count if isinstance(expected_count, int) and expected_count > 0 else len(participants)
+    total_expected = (
+        expected_count
+        if isinstance(expected_count, int) and expected_count > 0
+        else len(participants)
+    )
 
     lines = ["**Polling status**", ""]
     lines.append(f"Responded: {len(responded)} / {total_expected}")
@@ -565,9 +631,13 @@ def _pending_status_text(
         lines.append("")
         remaining_unknown = max(total_expected - len(responded), 0)
         if remaining_unknown > 0:
-            lines.append(f"Waiting for {remaining_unknown} more participant(s) to reply.")
+            lines.append(
+                f"Waiting for {remaining_unknown} more participant(s) to reply."
+            )
         else:
-            lines.append("Everyone has responded. You can run **calculate summary** or **calculate detailed**.")
+            lines.append(
+                "Everyone has responded. You can run **calculate summary** or **calculate detailed**."
+            )
     return "\n".join(lines)
 
 
@@ -589,9 +659,7 @@ def _build_poll_text(receipt: Receipt) -> str:
 def _next_step_message(state: str, has_items: bool) -> str:
     """Return context-aware next-step hint instead of generic 'send a photo'."""
     if not has_items:
-        return (
-            "No receipt items yet. You can: (1) **Send a receipt photo** (I’ll extract items from it) or add items manually: **add &lt;name&gt; &lt;price&gt;** (e.g. `add Coffee 3.50`). Type **help** for all commands."
-        )
+        return "No receipt items yet. You can: (1) **Send a receipt photo** (I’ll extract items from it) or add items manually: **add &lt;name&gt; &lt;price&gt;** (e.g. `add Coffee 3.50`). Type **help** for all commands."
     if state == "draft":
         return (
             "Next: say **done** to start the poll, or add more items with **add &lt;name&gt; &lt;price&gt;**.\n"
@@ -645,7 +713,11 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     # If Stripe payment is pending for this sender, re-send RequestPayment unless user wants to cancel/skip/start over.
     if _PAYMENT_PROTOCOL_AVAILABLE and STRIPE_ENABLED:
         payment_state = _load_payment_state(ctx, sender)
-        pending_stripe = payment_state.get("pending_stripe") if isinstance(payment_state.get("pending_stripe"), dict) else None
+        pending_stripe = (
+            payment_state.get("pending_stripe")
+            if isinstance(payment_state.get("pending_stripe"), dict)
+            else None
+        )
         if pending_stripe:
             # Get user text early to allow "cancel" / "new receipt" / "skip" to clear pending and unstick the flow.
             early_text = ""
@@ -653,23 +725,43 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                 if isinstance(c, TextContent):
                     early_text = (c.text or "").strip().lower()
                     break
-            cancel_phrases = ("new receipt", "cancel", "skip payment", "skip", "start over", "help", "no payment", "without payment")
+            cancel_phrases = (
+                "new receipt",
+                "cancel",
+                "skip payment",
+                "skip",
+                "start over",
+                "help",
+                "no payment",
+                "without payment",
+            )
             if any(p in early_text for p in cancel_phrases):
                 _clear_payment_state(ctx, sender)
                 # Fall through so "new receipt" / "help" / "cancel" are handled below (e.g. new receipt → "✅ New receipt started...")
             else:
                 req = RequestPayment(
-                    accepted_funds=[Funds(currency="USD", amount=f"{STRIPE_AMOUNT_CENTS / 100:.2f}", payment_method="stripe")],
+                    accepted_funds=[
+                        Funds(
+                            currency="USD",
+                            amount=f"{STRIPE_AMOUNT_CENTS / 100:.2f}",
+                            payment_method="stripe",
+                        )
+                    ],
                     recipient=str(ctx.agent.address),
                     deadline_seconds=300,
                     reference=str(ctx.session),
                     description="Pay to unlock receipt split (expense calculator).",
-                    metadata={"stripe": pending_stripe, "service": "expense_calculator"},
+                    metadata={
+                        "stripe": pending_stripe,
+                        "service": "expense_calculator",
+                    },
                 )
                 await ctx.send(sender, req)
                 await ctx.send(
                     sender,
-                    text_msg("Payment is still pending. Please complete the Stripe checkout above. Once paid, you can say **done** to start the poll."),
+                    text_msg(
+                        "Payment is still pending. Please complete the Stripe checkout above. Once paid, you can say **done** to start the poll."
+                    ),
                 )
                 return
 
@@ -687,7 +779,9 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             display_name_from_metadata = top_level_name
 
     content_list = getattr(msg, "content", None) or []
-    session_start_pending = False  # Defer so RequestPayment can be first when we have receipt+payment
+    session_start_pending = (
+        False  # Defer so RequestPayment can be first when we have receipt+payment
+    )
     for item in content_list:
         if isinstance(item, MetadataContent):
             meta = item.metadata or {}
@@ -711,10 +805,23 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             # Be flexible and treat any dict that looks like it has a resource
             # identifier, URI, or inline image data.
             has_image_keys = any(
-                key in item for key in ("resource_id", "resourceId", "resource", "uri", "url", "image_url", "data", "contents")
+                key in item
+                for key in (
+                    "resource_id",
+                    "resourceId",
+                    "resource",
+                    "uri",
+                    "url",
+                    "image_url",
+                    "data",
+                    "contents",
+                )
             )
             suspected_type = (item.get("type") or "").lower()
-            if suspected_type in ("resource", "image", "attachment", "file") or has_image_keys:
+            if (
+                suspected_type in ("resource", "image", "attachment", "file")
+                or has_image_keys
+            ):
                 saw_attachment = True
                 rid = item.get("resource_id") or item.get("resourceId")
                 res = item.get("resource")
@@ -726,7 +833,11 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                         ctx.logger.info(f"Received resource (dict): {rid}")
                         data = _download_image_bytes(ctx, str(rid), resources_list)
                     else:
-                        data = _download_image_bytes(ctx, "", resources_list) if resources_list else None
+                        data = (
+                            _download_image_bytes(ctx, "", resources_list)
+                            if resources_list
+                            else None
+                        )
                     if data:
                         image_bytes = data
                 if not image_bytes:
@@ -775,7 +886,9 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             names = ctx.storage.get(RECEIPT_NAMES) or {}
             names[sender] = display_name_from_metadata
             ctx.storage.set(RECEIPT_NAMES, names)
-            ctx.logger.info(f"Display name from profile for {sender[:12]}…: {display_name_from_metadata[:20]}")
+            ctx.logger.info(
+                f"Display name from profile for {sender[:12]}…: {display_name_from_metadata[:20]}"
+            )
 
     async def _send_session_start_if_pending() -> None:
         nonlocal session_start_pending
@@ -792,7 +905,9 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             ChatMessage(
                 timestamp=datetime.now(timezone.utc),
                 msg_id=uuid4(),
-                content=[MetadataContent(type="metadata", metadata={"attachments": "true"})],
+                content=[
+                    MetadataContent(type="metadata", metadata={"attachments": "true"})
+                ],
             ),
         )
         await ctx.send(sender, text_msg(WELCOME))
@@ -809,7 +924,9 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             ctx.logger.exception("Vision extraction failed")
             await ctx.send(
                 sender,
-                text_msg(f"Could not read the receipt image. Make sure OPENAI_API_KEY is set. Error: {e}. You can add items manually with **add &lt;name&gt; &lt;price&gt;**."),
+                text_msg(
+                    f"Could not read the receipt image. Make sure OPENAI_API_KEY is set. Error: {e}. You can add items manually with **add &lt;name&gt; &lt;price&gt;**."
+                ),
             )
             items_found = []
         if items_found:
@@ -858,11 +975,21 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
 
             # If user said done/start poll in same first message, skip to polling immediately
             start_poll_now = _intent_is_start_poll(text)
-            _debug_log("receipt from image", {"items_found": len(items_found), "start_poll_now": start_poll_now, "skips_payment_block": start_poll_now}, "H3")
+            _debug_log(
+                "receipt from image",
+                {
+                    "items_found": len(items_found),
+                    "start_poll_now": start_poll_now,
+                    "skips_payment_block": start_poll_now,
+                },
+                "H3",
+            )
             if start_poll_now:
                 _save_receipt(ctx, "polling", receipt, {})
                 status_line = ", ".join(received_parts)
-                poll_intro = f"📷 **Read your receipt.**\n\n✅ Received: {status_line}\n\n"
+                poll_intro = (
+                    f"📷 **Read your receipt.**\n\n✅ Received: {status_line}\n\n"
+                )
                 await ctx.send(sender, text_msg(poll_intro + _build_poll_text(receipt)))
                 await _send_session_start_if_pending()
                 return
@@ -891,15 +1018,20 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                     "(for example: `Rutuja paid this bill` or `I paid`)."
                 )
             if not group_set:
-                lines.append("- Optional: set group size for pending accuracy: `group size 3`")
-            lines.append("- Say **done** to start the poll, or add/edit items if needed")
+                lines.append(
+                    "- Optional: set group size for pending accuracy: `group size 3`"
+                )
+            lines.append(
+                "- Say **done** to start the poll, or add/edit items if needed"
+            )
             # Match stripe-horoscope-agent: send RequestPayment *first* so the client shows embedded Stripe UI, then the receipt list.
             _debug_log(
                 "after receipt list: payment check",
                 {
                     "payment_protocol_available": _PAYMENT_PROTOCOL_AVAILABLE,
                     "stripe_enabled": STRIPE_ENABLED,
-                    "will_request_payment": _PAYMENT_PROTOCOL_AVAILABLE and STRIPE_ENABLED,
+                    "will_request_payment": _PAYMENT_PROTOCOL_AVAILABLE
+                    and STRIPE_ENABLED,
                     "items_count": len(receipt.items),
                 },
                 "H1_H2_H4",
@@ -927,7 +1059,13 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                 )
                 _save_payment_state(ctx, sender, {"pending_stripe": checkout})
                 req = RequestPayment(
-                    accepted_funds=[Funds(currency="USD", amount=f"{STRIPE_AMOUNT_CENTS / 100:.2f}", payment_method="stripe")],
+                    accepted_funds=[
+                        Funds(
+                            currency="USD",
+                            amount=f"{STRIPE_AMOUNT_CENTS / 100:.2f}",
+                            payment_method="stripe",
+                        )
+                    ],
                     recipient=str(ctx.agent.address),
                     deadline_seconds=300,
                     reference=str(ctx.session),
@@ -946,26 +1084,44 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                     ]
                 except Exception:
                     accepted_funds_snapshot = []
-                stripe_meta = req.metadata.get("stripe") if isinstance(req.metadata, dict) else None
+                stripe_meta = (
+                    req.metadata.get("stripe")
+                    if isinstance(req.metadata, dict)
+                    else None
+                )
                 _debug_log(
                     "about_to_send_RequestPayment",
                     {
                         "accepted_funds": accepted_funds_snapshot,
-                        "metadata_keys": sorted(list(req.metadata.keys())) if isinstance(req.metadata, dict) else [],
-                        "stripe_meta_keys": sorted(list(stripe_meta.keys())) if isinstance(stripe_meta, dict) else [],
-                        "service": req.metadata.get("service") if isinstance(req.metadata, dict) else None,
+                        "metadata_keys": sorted(list(req.metadata.keys()))
+                        if isinstance(req.metadata, dict)
+                        else [],
+                        "stripe_meta_keys": sorted(list(stripe_meta.keys()))
+                        if isinstance(stripe_meta, dict)
+                        else [],
+                        "service": req.metadata.get("service")
+                        if isinstance(req.metadata, dict)
+                        else None,
                     },
                     "H5_FORMAT",
                 )
                 await ctx.send(sender, req)
-                await ctx.send(sender, text_msg("\n".join(lines) + "\n\nPlease complete payment above. Once paid, you can say **done** to start the poll."))
+                await ctx.send(
+                    sender,
+                    text_msg(
+                        "\n".join(lines)
+                        + "\n\nPlease complete payment above. Once paid, you can say **done** to start the poll."
+                    ),
+                )
             else:
                 await ctx.send(sender, text_msg("\n".join(lines)))
             await _send_session_start_if_pending()
         else:
             await ctx.send(
                 sender,
-                text_msg("I couldn’t find any line items in that image. Try a clearer photo or add items manually: **add &lt;name&gt; &lt;price&gt;**."),
+                text_msg(
+                    "I couldn’t find any line items in that image. Try a clearer photo or add items manually: **add &lt;name&gt; &lt;price&gt;**."
+                ),
             )
             await _send_session_start_if_pending()
         return
@@ -983,7 +1139,9 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             )
         else:
             state, receipt, _ = _load_receipt(ctx)
-            await ctx.send(sender, text_msg(_next_step_message(state, bool(receipt.items))))
+            await ctx.send(
+                sender, text_msg(_next_step_message(state, bool(receipt.items)))
+            )
         return
 
     state, receipt, selections = _load_receipt(ctx)
@@ -998,7 +1156,12 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         ctx.storage.set(RECEIPT_EXPECTED_COUNT, None)
         ctx.storage.set(RECEIPT_PAYER_SENDER, None)
         ctx.storage.set(RECEIPT_PAYER_NAME, None)
-        await ctx.send(sender, text_msg("✅ New receipt started. Add items with **add &lt;name&gt; &lt;price&gt;** or send a receipt photo."))
+        await ctx.send(
+            sender,
+            text_msg(
+                "✅ New receipt started. Add items with **add &lt;name&gt; &lt;price&gt;** or send a receipt photo."
+            ),
+        )
         return
 
     # Payer and/or group size in one message (e.g. "Rutuja paid" or "2 people" or "Rutuja paid 2 people")
@@ -1017,7 +1180,12 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                     if (nm or "").strip().lower() == payer_name_from_text.lower():
                         payer_sender_val = sid
                         break
-                if not payer_sender_val and names.get(sender) and (names.get(sender) or "").strip().lower() == payer_name_from_text.lower():
+                if (
+                    not payer_sender_val
+                    and names.get(sender)
+                    and (names.get(sender) or "").strip().lower()
+                    == payer_name_from_text.lower()
+                ):
                     payer_sender_val = sender
 
         if expected is not None or payer_name_from_text is not None:
@@ -1027,7 +1195,10 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                     await ctx.send(sender, text_msg("Group size must be at least 1."))
                     return
                 if expected > 50:
-                    await ctx.send(sender, text_msg("Group size is too large. Use a value up to 50."))
+                    await ctx.send(
+                        sender,
+                        text_msg("Group size is too large. Use a value up to 50."),
+                    )
                     return
                 ctx.storage.set(RECEIPT_EXPECTED_COUNT, expected)
                 lines.append(f"✅ Expected participants set to **{expected}**.")
@@ -1076,15 +1247,27 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                     ),
                 )
         except Exception as e:
-            await ctx.send(sender, text_msg(f"Use: **add ItemName 12.50** (e.g. add Pizza 12). Error: {e}"))
+            await ctx.send(
+                sender,
+                text_msg(
+                    f"Use: **add ItemName 12.50** (e.g. add Pizza 12). Error: {e}"
+                ),
+            )
         return
 
     # Edit/remove item commands
-    remove_match = re.match(r"(?:remove|delete|del)\s+(?:item\s+)?(\d+)\s*$", text, re.I)
+    remove_match = re.match(
+        r"(?:remove|delete|del)\s+(?:item\s+)?(\d+)\s*$", text, re.I
+    )
     if remove_match:
         idx = int(remove_match.group(1))
         if idx < 1 or idx > len(receipt.items):
-            await ctx.send(sender, text_msg(f"Item {idx} does not exist. Valid range is 1-{len(receipt.items)}."))
+            await ctx.send(
+                sender,
+                text_msg(
+                    f"Item {idx} does not exist. Valid range is 1-{len(receipt.items)}."
+                ),
+            )
             return
         removed = receipt.items.pop(idx - 1)
         for i, it in enumerate(receipt.items, 1):
@@ -1119,7 +1302,12 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         idx = int(edit_match.group(1))
         new_price = Decimal(edit_match.group(2))
         if idx < 1 or idx > len(receipt.items):
-            await ctx.send(sender, text_msg(f"Item {idx} does not exist. Valid range is 1-{len(receipt.items)}."))
+            await ctx.send(
+                sender,
+                text_msg(
+                    f"Item {idx} does not exist. Valid range is 1-{len(receipt.items)}."
+                ),
+            )
             return
         if new_price <= 0:
             await ctx.send(sender, text_msg("Price must be positive."))
@@ -1204,10 +1392,18 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
 
     if _intent_is_start_poll(text):
         if state != "draft":
-            await ctx.send(sender, text_msg("Poll already started. Reply with your item numbers (e.g. 1,2,3) or **calculate** to see the split."))
+            await ctx.send(
+                sender,
+                text_msg(
+                    "Poll already started. Reply with your item numbers (e.g. 1,2,3) or **calculate** to see the split."
+                ),
+            )
             return
         if not receipt.items:
-            await ctx.send(sender, text_msg("Add at least one item first, or send a receipt photo."))
+            await ctx.send(
+                sender,
+                text_msg("Add at least one item first, or send a receipt photo."),
+            )
             return
         _save_receipt(ctx, "polling", receipt, selections)
         # Start with empty participant list; add people when they actually submit item selections.
@@ -1223,7 +1419,14 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
 
         # Polling status command
         if _intent_is_pending(text):
-            await ctx.send(sender, text_msg(_pending_status_text(names, participants, selections, expected_count)))
+            await ctx.send(
+                sender,
+                text_msg(
+                    _pending_status_text(
+                        names, participants, selections, expected_count
+                    )
+                ),
+            )
             return
 
         # Do not parse command-like messages as selections.
@@ -1310,7 +1513,9 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                     ),
                 )
             else:
-                await ctx.send(sender, text_msg("You do not have a saved selection yet."))
+                await ctx.send(
+                    sender, text_msg("You do not have a saved selection yet.")
+                )
             return
         reset_name_match = re.match(r"reset\s+(.+)$", raw_text, re.I)
         if reset_name_match and text not in ("reset me", "reset my selection"):
@@ -1331,19 +1536,31 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                     ),
                 )
             else:
-                await ctx.send(sender, text_msg("Could not find that name in saved selections."))
+                await ctx.send(
+                    sender, text_msg("Could not find that name in saved selections.")
+                )
             return
 
     calc_mode = _extract_calculate_mode(text)
     if calc_mode:
         if state not in ("polling", "done"):
-            await ctx.send(sender, text_msg("Add items (or send a receipt photo), say **done**, then have everyone reply with their item numbers. Then say **calculate**."))
+            await ctx.send(
+                sender,
+                text_msg(
+                    "Add items (or send a receipt photo), say **done**, then have everyone reply with their item numbers. Then say **calculate**."
+                ),
+            )
             return
         if not receipt.items:
             await ctx.send(sender, text_msg("No items on the receipt."))
             return
         if not selections:
-            await ctx.send(sender, text_msg("No one has replied with their items yet. Ask everyone to reply with numbers (e.g. 1,2,3)."))
+            await ctx.send(
+                sender,
+                text_msg(
+                    "No one has replied with their items yet. Ask everyone to reply with numbers (e.g. 1,2,3)."
+                ),
+            )
             return
         expected_count = ctx.storage.get(RECEIPT_EXPECTED_COUNT)
         if isinstance(expected_count, int) and expected_count > len(selections):
@@ -1427,7 +1644,12 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
 
     if _intent_is_show_items(text):
         if not receipt.items:
-            await ctx.send(sender, text_msg("No receipt yet. Send a receipt photo or say **new receipt** then **add &lt;name&gt; &lt;price&gt;**."))
+            await ctx.send(
+                sender,
+                text_msg(
+                    "No receipt yet. Send a receipt photo or say **new receipt** then **add &lt;name&gt; &lt;price&gt;**."
+                ),
+            )
             return
         msg_text = f"**Current receipt ({state}):**\n\n{receipt.format_items()}\n\nTotal: ${receipt.total():.2f}"
         if state == "polling" and selections:
@@ -1444,7 +1666,9 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
         user_set = set(ctx.storage.get(RECEIPT_NAMES_USER_SET) or [])
         user_set.add(sender)
         ctx.storage.set(RECEIPT_NAMES_USER_SET, list(user_set))
-        await ctx.send(sender, text_msg(f"✅ I'll show you as **{names[sender]}** in the split."))
+        await ctx.send(
+            sender, text_msg(f"✅ I'll show you as **{names[sender]}** in the split.")
+        )
         return
 
     if state == "polling":
@@ -1463,35 +1687,56 @@ if _PAYMENT_PROTOCOL_AVAILABLE:
 
     async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
         if msg.funds.payment_method != "stripe" or not msg.transaction_id:
-            await ctx.send(sender, RejectPayment(reason="Unsupported payment method (expected stripe)."))
+            await ctx.send(
+                sender,
+                RejectPayment(reason="Unsupported payment method (expected stripe)."),
+            )
             return
 
         paid = await asyncio.to_thread(verify_checkout_session_paid, msg.transaction_id)
         if not paid:
-            await ctx.send(sender, RejectPayment(reason="Stripe payment not completed yet. Please finish checkout."))
+            await ctx.send(
+                sender,
+                RejectPayment(
+                    reason="Stripe payment not completed yet. Please finish checkout."
+                ),
+            )
             return
 
         _clear_payment_state(ctx, sender)
         await ctx.send(sender, CompletePayment(transaction_id=msg.transaction_id))
         await ctx.send(
             sender,
-            text_msg("Payment received. Say **done** to start the poll, or add/edit items if needed."),
+            text_msg(
+                "Payment received. Say **done** to start the poll, or add/edit items if needed."
+            ),
         )
 
     async def on_reject(ctx: Context, sender: str, msg: RejectPayment):
         _clear_payment_state(ctx, sender)
-        await ctx.send(sender, text_msg(f"Payment was rejected. {msg.reason or ''}".strip()))
+        await ctx.send(
+            sender, text_msg(f"Payment was rejected. {msg.reason or ''}".strip())
+        )
 
 
 agent.include(chat_proto, publish_manifest=True)
 if _PAYMENT_PROTOCOL_AVAILABLE:
     agent.include(build_payment_proto(on_commit, on_reject), publish_manifest=True)
 
-_debug_log("agent loaded", {"payment_protocol_available": _PAYMENT_PROTOCOL_AVAILABLE, "stripe_enabled": STRIPE_ENABLED}, "H1_H2")
+_debug_log(
+    "agent loaded",
+    {
+        "payment_protocol_available": _PAYMENT_PROTOCOL_AVAILABLE,
+        "stripe_enabled": STRIPE_ENABLED,
+    },
+    "H1_H2",
+)
 
 if __name__ == "__main__":
     print("🧾 Receipt / Expense Calculator")
-    print("Runnable on Agentverse + ASI-One. Send a receipt photo or add items manually.")
+    print(
+        "Runnable on Agentverse + ASI-One. Send a receipt photo or add items manually."
+    )
     print("https://asi1.ai  |  https://agentverse.ai")
     print("\nPress Ctrl+C to stop\n")
     agent.run()

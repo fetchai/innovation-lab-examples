@@ -1,4 +1,4 @@
-import os
+import os  # noqa: F401
 from threading import Thread
 from typing import Dict, List
 from uagents_adapter import SingleA2AAdapter, A2AAgentConfig, a2a_servers
@@ -14,10 +14,12 @@ logger = logging.getLogger(__name__)
 # Load environment variables from .env file
 load_dotenv()
 
+
 class BooksRecommenderSystem:
     """
     Manages the setup and execution of the A2A Books Recommender agent.
     """
+
     def __init__(self):
         self.coordinator = None
         self.agent_configs: List[A2AAgentConfig] = []
@@ -36,10 +38,16 @@ class BooksRecommenderSystem:
                 url="http://localhost:10022",
                 port=10022,
                 specialties=[
-                    "book recommendations", "literature", "fiction", "non-fiction",
-                    "genres", "authors", "reading lists", "book reviews"
+                    "book recommendations",
+                    "literature",
+                    "fiction",
+                    "non-fiction",
+                    "genres",
+                    "authors",
+                    "reading lists",
+                    "book reviews",
                 ],
-                priority=3
+                priority=3,
             )
         ]
         self.executors = {
@@ -62,7 +70,9 @@ class BooksRecommenderSystem:
         logger.info("🤖 Creating Books Recommender Coordinator...")
         books_executor = self.executors.get("books_recommender_specialist")
         if books_executor is None:
-            raise ValueError("BooksRecommenderAgentExecutor not found in executors dictionary.")
+            raise ValueError(
+                "BooksRecommenderAgentExecutor not found in executors dictionary."
+            )
 
         self.coordinator = SingleA2AAdapter(
             agent_executor=books_executor,
@@ -70,7 +80,6 @@ class BooksRecommenderSystem:
             description="Coordinator for routing book-related queries to the Books Recommender Agent.",
             port=8033,
             mailbox=True,
-
         )
         logger.info("✅ Books Recommender Coordinator created!")
         return self.coordinator
@@ -85,7 +94,9 @@ class BooksRecommenderSystem:
             self.start_individual_a2a_servers()
             coordinator = self.create_coordinator()
             self.running = True
-            logger.info(f"🎯 Starting Books Recommender coordinator on port {coordinator.port}...")
+            logger.info(
+                f"🎯 Starting Books Recommender coordinator on port {coordinator.port}..."
+            )
             coordinator.run()
         except KeyboardInterrupt:
             logger.info("👋 Shutting down Books Recommender system...")
@@ -93,6 +104,7 @@ class BooksRecommenderSystem:
         except Exception as e:
             logger.error(f"❌ Error during agent system startup: {e}", exc_info=True)
             self.running = False
+
 
 def main():
     """
@@ -110,6 +122,7 @@ def main():
         system.running = False
     finally:
         loop.close()
+
 
 if __name__ == "__main__":
     logger.info("🚀 Starting Books Recommender System...")

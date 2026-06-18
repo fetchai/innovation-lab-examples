@@ -33,8 +33,12 @@ class TripCrew:
             self.interests,
             self.date_range,
         )
-        gather_task = tasks.gather_task(local_expert_agent, self.origin, self.interests, self.date_range)
-        plan_task = tasks.plan_task(travel_concierge_agent, self.origin, self.interests, self.date_range)
+        gather_task = tasks.gather_task(
+            local_expert_agent, self.origin, self.interests, self.date_range
+        )
+        plan_task = tasks.plan_task(
+            travel_concierge_agent, self.origin, self.interests, self.date_range
+        )
 
         crew = Crew(
             agents=[city_selector_agent, local_expert_agent, travel_concierge_agent],
@@ -102,7 +106,7 @@ def main():
             "mailbox": True,
             "query_params": query_params,
             "example_query": "Plan a trip from New York to Paris in June, I'm interested in art and history other than museums.",
-            "ai_agent_address": "agent1q0h70caed8ax769shpemapzkyk65uscw4xwk6dc4t3emvp5jdcvqs9xs32y"
+            "ai_agent_address": "agent1q0h70caed8ax769shpemapzkyk65uscw4xwk6dc4t3emvp5jdcvqs9xs32y",
         }
     )
 

@@ -3,7 +3,7 @@
 
 import os
 from openai import OpenAI
-from typing import Dict, Any
+from typing import Dict, Any  # noqa: F401
 import json
 from crewai import Crew
 from dotenv import load_dotenv
@@ -26,18 +26,18 @@ class MeetingPrepCrew:
         """
         try:
             client = OpenAI()
-            
+
             print(f"Attempting to parse message: {message}")
-            
+
             response = client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {
-                        "role": "system", 
-                        "content": "You are a helpful assistant that extracts structured information from meeting descriptions. Always respond with valid JSON only."
+                        "role": "system",
+                        "content": "You are a helpful assistant that extracts structured information from meeting descriptions. Always respond with valid JSON only.",
                     },
                     {
-                        "role": "user", 
+                        "role": "user",
                         "content": f"""
                         Extract the following information from this meeting description and return as JSON:
                         - participants: array of email addresses found in the text
@@ -52,32 +52,35 @@ class MeetingPrepCrew:
                             "context": "brief meeting context",
                             "objective": "what user wants to achieve"
                         }}
-                        """
-                    }
+                        """,
+                    },
                 ],
                 temperature=0.1,
-                max_tokens=500
+                max_tokens=500,
             )
-            
+
             print(f"Received response from OpenAI: {response}")
-            
+
             result = json.loads(response.choices[0].message.content)
-            
+
             print(f"Parsed result: {result}")
-            
+
             return {
                 "participants": ", ".join(result.get("participants", [])),
                 "context": result.get("context", message),
-                "objective": result.get("objective", "Prepare thoroughly for the meeting and achieve positive outcomes")
+                "objective": result.get(
+                    "objective",
+                    "Prepare thoroughly for the meeting and achieve positive outcomes",
+                ),
             }
-            
+
         except (Exception, json.JSONDecodeError) as e:
             print(f"Error parsing message with OpenAI: {e}")
             # Fallback to using original message as context
             return {
                 "participants": "",
                 "context": message,
-                "objective": "Prepare thoroughly for the meeting and achieve positive outcomes"
+                "objective": "Prepare thoroughly for the meeting and achieve positive outcomes",
             }
 
     def run(self):
@@ -87,40 +90,42 @@ class MeetingPrepCrew:
 
         # Create agents
         researcher_agent = agents.research_agent()
-        industry_analysis_agent = agents.industry_analysis_agent() 
+        industry_analysis_agent = agents.industry_analysis_agent()
         meeting_strategist_agent = agents.meeting_strategy_agent()
         briefing_coordinator_agent = agents.summary_and_briefing_agent()
 
         # Create tasks
         research_task = tasks.research_task(
-            researcher_agent,
-            self.participants,
-            self.context
+            researcher_agent, self.participants, self.context
         )
-        
+
         industry_analysis_task = tasks.industry_analysis_task(
-            industry_analysis_agent,
-            self.participants,
-            self.context
+            industry_analysis_agent, self.participants, self.context
         )
-        
+
         meeting_strategy_task = tasks.meeting_strategy_task(
-            meeting_strategist_agent,
-            self.context,
-            self.objective
+            meeting_strategist_agent, self.context, self.objective
         )
-        
+
         summary_task = tasks.summary_and_briefing_task(
-            briefing_coordinator_agent,
-            self.context,
-            self.objective
+            briefing_coordinator_agent, self.context, self.objective
         )
 
         # Create crew
         crew = Crew(
-            agents=[researcher_agent, industry_analysis_agent, meeting_strategist_agent, briefing_coordinator_agent],
-            tasks=[research_task, industry_analysis_task, meeting_strategy_task, summary_task],
-            verbose=True
+            agents=[
+                researcher_agent,
+                industry_analysis_agent,
+                meeting_strategist_agent,
+                briefing_coordinator_agent,
+            ],
+            tasks=[
+                research_task,
+                industry_analysis_task,
+                meeting_strategy_task,
+                summary_task,
+            ],
+            verbose=True,
         )
 
         result = crew.kickoff()
@@ -136,7 +141,7 @@ class MeetingPrepCrew:
                 # Parse natural language input
                 parsed = self.parse_input_message(inputs)
                 self.participants = parsed["participants"]
-                self.context = parsed["context"] 
+                self.context = parsed["context"]
                 self.objective = parsed["objective"]
             elif isinstance(inputs, dict):
                 # Handle structured input
@@ -155,21 +160,21 @@ class MeetingPrepCrew:
 
 def main():
     """Main function to register Meeting Prep Crew with uAgents."""
-    
+
     # Load environment variables
     load_dotenv()
     api_key = os.getenv("AGENTVERSE_API_KEY")
     openai_api_key = os.getenv("OPENAI_API_KEY")
     exa_api_key = os.getenv("EXA_API_KEY")
-    
+
     if not api_key:
         print("Error: AGENTVERSE_API_KEY not found in environment")
         return
-    
+
     if not openai_api_key:
         print("Error: OPENAI_API_KEY not found in environment")
         return
-        
+
     if not exa_api_key:
         print("Error: EXA_API_KEY not found in environment")
         return
@@ -187,9 +192,9 @@ def main():
     # Define parameters schema - flexible to accept natural language
     query_params = {
         "message": {
-            "type": "str", 
+            "type": "str",
             "required": True,
-            "description": "Natural language message containing meeting details, participant emails, and objectives"
+            "description": "Natural language message containing meeting details, participant emails, and objectives",
         }
     }
 
@@ -209,10 +214,10 @@ def main():
 
     # Print registration result
     print(f"\nMeeting Prep CrewAI agent registration result: {result}")
-    
+
     if isinstance(result, dict) and "address" in result:
         print(f"Agent address: {result['address']}")
-        print(f"You can now interact with this agent through ASI:One LLM!")
+        print(f"You can now interact with this agent through ASI:One LLM!")  # noqa: F541
 
     # Keep the program running
     try:
@@ -220,6 +225,7 @@ def main():
         print("Press Ctrl+C to stop the agent.")
         while True:
             import time
+
             time.sleep(1)
     except KeyboardInterrupt:
         print("\nStopping agent...")

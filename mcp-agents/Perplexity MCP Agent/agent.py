@@ -1,15 +1,15 @@
 import os
 import json
-import asyncio
-import secrets
-import urllib.parse
+import asyncio  # noqa: F401
+import secrets  # noqa: F401
+import urllib.parse  # noqa: F401
 from typing import Dict, Any, Optional
 from contextlib import AsyncExitStack
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet  # noqa: F401
 import time
 import mcp
 from mcp.client.stdio import stdio_client
-from uagents import Agent, Context, Protocol, Model
+from uagents import Agent, Context, Protocol, Model  # noqa: F401
 from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
     ChatMessage,
@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from uuid import uuid4
 from dotenv import load_dotenv
 from anthropic import Anthropic
-import httpx
+import httpx  # noqa: F401
 
 # --- Agent Configuration ---
 
@@ -49,6 +49,7 @@ SESSION_TIMEOUT = 30 * 60
 
 # --- MCP Client Logic ---
 
+
 class PerplexityMCPClient:
     def __init__(self, ctx: Context):
         self._ctx = ctx
@@ -63,11 +64,14 @@ class PerplexityMCPClient:
         try:
             # Perplexity MCP server command with API key
             docker_args = [
-                "run", "-i", "--rm",
-                "-e", f"PERPLEXITY_API_KEY={PERPLEXITY_API_KEY}",
-                "mcp/perplexity-ask"
+                "run",
+                "-i",
+                "--rm",
+                "-e",
+                f"PERPLEXITY_API_KEY={PERPLEXITY_API_KEY}",
+                "mcp/perplexity-ask",
             ]
-            
+
             params = mcp.StdioServerParameters(command="docker", args=docker_args)
             read_stream, write_stream = await self._exit_stack.enter_async_context(
                 stdio_client(params)
@@ -76,12 +80,14 @@ class PerplexityMCPClient:
                 mcp.ClientSession(read_stream, write_stream)
             )
             await self._session.initialize()
-            
+
             # Get available tools from Perplexity MCP server
             tools_result = await self._session.list_tools()
             self.tools = self._convert_mcp_tools_to_anthropic_format(tools_result.tools)
-            
-            self._ctx.logger.info(f"Successfully connected to Perplexity MCP. Available tools: {[t.name for t in tools_result.tools]}")
+
+            self._ctx.logger.info(
+                f"Successfully connected to Perplexity MCP. Available tools: {[t.name for t in tools_result.tools]}"
+            )
         except Exception as e:
             self._ctx.logger.error(f"Failed to connect to Perplexity MCP server: {e}")
             raise
@@ -93,11 +99,8 @@ class PerplexityMCPClient:
             anthropic_tool = {
                 "name": tool.name,
                 "description": tool.description,
-                "input_schema": tool.inputSchema or {
-                    "type": "object",
-                    "properties": {},
-                    "required": []
-                }
+                "input_schema": tool.inputSchema
+                or {"type": "object", "properties": {}, "required": []},
             }
             anthropic_tools.append(anthropic_tool)
         return anthropic_tools
@@ -110,33 +113,45 @@ class PerplexityMCPClient:
             response = self.anthropic.messages.create(
                 model="claude-3-5-sonnet-20240620",
                 max_tokens=4096,
-                messages=[{
-                    "role": "user", 
-                    "content": f"Please search for information about: {query}. Use the perplexity_ask tool to get real-time web information."
-                }],
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"Please search for information about: {query}. Use the perplexity_ask tool to get real-time web information.",
+                    }
+                ],
                 tools=self.tools,
             )
 
-            tool_use = next((content for content in response.content if content.type == 'tool_use'), None)
+            tool_use = next(
+                (content for content in response.content if content.type == "tool_use"),
+                None,
+            )
 
             # If the model wants to use a tool
             if tool_use:
                 tool_name = tool_use.name
                 tool_input = tool_use.input
-                self._ctx.logger.info(f"Claude selected Perplexity tool: {tool_name} with input: {tool_input}")
+                self._ctx.logger.info(
+                    f"Claude selected Perplexity tool: {tool_name} with input: {tool_input}"
+                )
 
                 # Call the selected tool on the Perplexity MCP server
                 mcp_response = await self._session.call_tool(tool_name, tool_input)
-                
+
                 # Debug: Log the raw MCP response
                 self._ctx.logger.info(f"MCP Response type: {type(mcp_response)}")
-                self._ctx.logger.info(f"MCP Response content type: {type(mcp_response.content)}")
-                
+                self._ctx.logger.info(
+                    f"MCP Response content type: {type(mcp_response.content)}"
+                )
+
                 # Format the response for the user
                 return self._format_response_for_user(tool_name, mcp_response.content)
-            
+
             # If the model just wants to chat
-            text_response = next((content for content in response.content if content.type == 'text'), None)
+            text_response = next(
+                (content for content in response.content if content.type == "text"),
+                None,
+            )
             if text_response:
                 return text_response.text
 
@@ -152,7 +167,7 @@ class PerplexityMCPClient:
             # Parse the MCP response content
             if isinstance(content, list) and len(content) > 0:
                 # Handle text content from MCP response
-                if hasattr(content[0], 'text'):
+                if hasattr(content[0], "text"):
                     response_text = content[0].text
                     # Parse JSON if it's a string
                     if isinstance(response_text, str):
@@ -173,35 +188,39 @@ class PerplexityMCPClient:
 
         except Exception as e:
             self._ctx.logger.error(f"Error formatting Perplexity response: {e}")
-            return f"Search completed, but there was an issue formatting the response: {e}"
+            return (
+                f"Search completed, but there was an issue formatting the response: {e}"
+            )
 
     def _format_perplexity_response(self, data: Dict) -> str:
         """Format Perplexity API response for better readability."""
         try:
             # Extract key information from Perplexity response
-            if 'choices' in data and len(data['choices']) > 0:
-                choice = data['choices'][0]
-                if 'message' in choice and 'content' in choice['message']:
-                    content = choice['message']['content']
-                    
+            if "choices" in data and len(data["choices"]) > 0:
+                choice = data["choices"][0]
+                if "message" in choice and "content" in choice["message"]:
+                    content = choice["message"]["content"]
+
                     # Add metadata if available
                     response_parts = [f"🔍 **Search Results:**\n\n{content}"]
-                    
+
                     # Add sources if available
-                    if 'citations' in choice:
+                    if "citations" in choice:
                         response_parts.append("\n\n📚 **Sources:**")
-                        for i, citation in enumerate(choice['citations'][:5], 1):
+                        for i, citation in enumerate(choice["citations"][:5], 1):
                             if isinstance(citation, str):
                                 response_parts.append(f"{i}. {citation}")
-                            elif isinstance(citation, dict) and 'url' in citation:
-                                title = citation.get('title', citation['url'])
-                                response_parts.append(f"{i}. [{title}]({citation['url']})")
-                    
+                            elif isinstance(citation, dict) and "url" in citation:
+                                title = citation.get("title", citation["url"])
+                                response_parts.append(
+                                    f"{i}. [{title}]({citation['url']})"
+                                )
+
                     return "\n".join(response_parts)
-            
+
             # Fallback formatting
             return f"🔍 **Search Results:**\n\n{json.dumps(data, indent=2)}"
-            
+
         except Exception as e:
             self._ctx.logger.error(f"Error in _format_perplexity_response: {e}")
             return f"Search completed: {str(data)}"
@@ -214,6 +233,7 @@ class PerplexityMCPClient:
         except Exception as e:
             self._ctx.logger.error(f"Error during cleanup: {e}")
 
+
 # --- uAgent Setup ---
 
 chat_proto = Protocol(spec=chat_protocol_spec)
@@ -222,33 +242,40 @@ agent = Agent(name=AGENT_NAME, port=AGENT_PORT, mailbox=True)
 # Store MCP clients per session
 session_clients: Dict[str, PerplexityMCPClient] = {}
 
+
 def is_session_valid(session_id: str) -> bool:
     """Check if session is valid and hasn't expired."""
     if session_id not in user_sessions:
         return False
-    
-    last_activity = user_sessions[session_id].get('last_activity', 0)
+
+    last_activity = user_sessions[session_id].get("last_activity", 0)
     if time.time() - last_activity > SESSION_TIMEOUT:
         # Session expired, clean up
         if session_id in user_sessions:
             del user_sessions[session_id]
         return False
-    
+
     return True
 
-async def get_perplexity_client(ctx: Context, session_id: str) -> Optional[PerplexityMCPClient]:
+
+async def get_perplexity_client(
+    ctx: Context, session_id: str
+) -> Optional[PerplexityMCPClient]:
     """Get or create Perplexity MCP client for session."""
     if session_id not in session_clients:
         try:
             client = PerplexityMCPClient(ctx)
             await client.connect()
             session_clients[session_id] = client
-            ctx.logger.info(f"Created new Perplexity MCP client for session {session_id}")
+            ctx.logger.info(
+                f"Created new Perplexity MCP client for session {session_id}"
+            )
         except Exception as e:
             ctx.logger.error(f"Failed to create Perplexity MCP client: {e}")
             return None
-    
+
     return session_clients[session_id]
+
 
 @chat_proto.on_message(model=ChatMessage)
 async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
@@ -256,22 +283,24 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
 
     # Send acknowledgment first
     ack_msg = ChatAcknowledgement(
-        timestamp=datetime.now(timezone.utc),
-        acknowledged_msg_id=msg.msg_id
+        timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id
     )
     await ctx.send(sender, ack_msg)
 
     for item in msg.content:
         if isinstance(item, TextContent):
             ctx.logger.info(f"Received message from {sender}: '{item.text}'")
-            
+
             # Update session activity
             if session_id not in user_sessions:
                 user_sessions[session_id] = {}
-            user_sessions[session_id]['last_activity'] = time.time()
-            
+            user_sessions[session_id]["last_activity"] = time.time()
+
             # Check if this is a help request
-            if any(keyword in item.text.lower() for keyword in ['help', 'what can you do', 'commands']):
+            if any(
+                keyword in item.text.lower()
+                for keyword in ["help", "what can you do", "commands"]
+            ):
                 response_text = """
 🔍 **Perplexity Web Search Agent**
 
@@ -299,14 +328,14 @@ Just ask me anything and I'll search the web for the most current information!
                     response_text = await client.process_query(item.text)
                 else:
                     response_text = "Sorry, I'm having trouble connecting to the search service. Please try again in a moment."
-            
+
             response_msg = ChatMessage(
                 timestamp=datetime.now(timezone.utc),
                 msg_id=str(uuid4()),
-                content=[TextContent(type="text", text=response_text)]
+                content=[TextContent(type="text", text=response_text)],
             )
             await ctx.send(sender, response_msg)
-        
+
         elif isinstance(item, EndSessionContent):
             ctx.logger.info(f"Session ended by {sender}")
             if session_id in session_clients:
@@ -314,28 +343,33 @@ Just ask me anything and I'll search the web for the most current information!
                 del session_clients[session_id]
             if session_id in user_sessions:
                 del user_sessions[session_id]
-        
+
         elif isinstance(item, StartSessionContent):
             ctx.logger.info(f"Session started by {sender}")
             # Send welcome message
             welcome_msg = ChatMessage(
                 timestamp=datetime.now(timezone.utc),
                 msg_id=str(uuid4()),
-                content=[TextContent(
-                    type="text", 
-                    text="🔍 **Welcome to Perplexity Search Agent!**\n\nI can search the web for real-time information on any topic. What would you like to know?"
-                )]
+                content=[
+                    TextContent(
+                        type="text",
+                        text="🔍 **Welcome to Perplexity Search Agent!**\n\nI can search the web for real-time information on any topic. What would you like to know?",
+                    )
+                ],
             )
             await ctx.send(sender, welcome_msg)
+
 
 @chat_proto.on_message(model=ChatAcknowledgement)
 async def handle_chat_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
     pass
 
+
 @agent.on_event("shutdown")
 async def on_shutdown(ctx: Context):
     for client in session_clients.values():
         await client.cleanup()
+
 
 agent.include(chat_proto)
 

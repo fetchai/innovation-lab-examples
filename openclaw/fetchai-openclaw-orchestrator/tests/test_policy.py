@@ -8,6 +8,7 @@ from shared.schemas import (
     TaskPlan,
     TaskStep,
 )
+import tempfile
 
 
 # =========================================================================
@@ -64,7 +65,7 @@ class TestLocalPolicy:
         assert policy.validate_plan(plan) == RejectionReason.ACTION_NOT_ALLOWED
 
     def test_path_outside_sandbox_rejected(self):
-        policy = LocalPolicy(allowed_paths=["/tmp"])
+        policy = LocalPolicy(allowed_paths=[tempfile.gettempdir()])
         plan = TaskPlan(
             steps=[
                 TaskStep(
@@ -77,13 +78,14 @@ class TestLocalPolicy:
         assert policy.validate_plan(plan) == RejectionReason.PATH_NOT_ALLOWED
 
     def test_path_inside_sandbox_passes(self):
-        policy = LocalPolicy(allowed_paths=["/tmp"])
+        policy = LocalPolicy(allowed_paths=[tempfile.gettempdir()])
+        test_path = f"{tempfile.gettempdir()}/mydata"
         plan = TaskPlan(
             steps=[
                 TaskStep(
                     type=StepType.LOCAL,
                     action="scan_directory",
-                    params={"path": "/tmp/mydata"},
+                    params={"path": test_path},
                 )
             ]
         )

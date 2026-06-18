@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone  # noqa: F401
 from uuid import uuid4
-import os
+import os  # noqa: F401
 import re
 from dotenv import load_dotenv
 from uagents import Context, Protocol, Agent
@@ -69,10 +69,13 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
 
     lower_text = text.lower()
 
-    if ("fetch" in lower_text and "inbox" in lower_text) or any(keyword in lower_text for keyword in ["fetch emails", "get inbox", "list emails"]):
+    if ("fetch" in lower_text and "inbox" in lower_text) or any(
+        keyword in lower_text
+        for keyword in ["fetch emails", "get inbox", "list emails"]
+    ):
         try:
             # default: last 10 inbox
-            email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+            email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
             emails = re.findall(email_pattern, text)
             if emails:
                 SENDER_TO_USER_EMAIL[sender] = emails[0]
@@ -85,6 +88,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             else:
                 # parse requested count (e.g., "fetch 10 emails")
                 import re as _re
+
                 count = 10
                 m = _re.search(r"\b(\d{1,3})\b", lower_text)
                 if m:
@@ -95,10 +99,13 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
 
                 # Execute GMAIL_FETCH_EMAILS directly via the tool to avoid LLM context bloat
                 from tools import get_gmail_fetch_tools_for_user
+
                 tools = get_gmail_fetch_tools_for_user(user_email)
                 fetch_tool = tools[0] if tools else None
                 if not fetch_tool:
-                    response = "❌ Fetch tool unavailable. Please try reconnecting your Gmail."
+                    response = (
+                        "❌ Fetch tool unavailable. Please try reconnecting your Gmail."
+                    )
                 else:
                     params = {
                         "ids_only": False,
@@ -114,6 +121,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                     except Exception:
                         # Some tool wrappers accept string input
                         import json as _json
+
                         result = fetch_tool.run(_json.dumps(params))
 
                     # Parse result
@@ -124,6 +132,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         data = result
                         if isinstance(result, str):
                             import ast
+
                             brace_idx = result.find("{")
                             if brace_idx != -1:
                                 data = ast.literal_eval(result[brace_idx:])
@@ -136,17 +145,27 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                     except Exception:
                         pass
 
-                    response = format_fetched_emails_markdown(messages, next_token, estimate)
+                    response = format_fetched_emails_markdown(
+                        messages, next_token, estimate
+                    )
         except Exception as e:
             response = f"❌ Error fetching emails: {str(e)}"
 
-    elif any(keyword in lower_text for keyword in ["move to trash", "trash message", "delete email", "move email to trash"]):
+    elif any(
+        keyword in lower_text
+        for keyword in [
+            "move to trash",
+            "trash message",
+            "delete email",
+            "move email to trash",
+        ]
+    ):
         try:
             # Expect: message id and optional From
             message_id = ""
             sender_email = ""
-            lines = text.split('\n')
-            parts = text.split(',') if ',' in text else lines
+            lines = text.split("\n")
+            parts = text.split(",") if "," in text else lines
             for part in parts:
                 segment = part.strip()
                 lower = segment.lower()
@@ -154,8 +173,11 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                     raw_id = segment.split(":", 1)[1].strip()
                     # Extract clean message id token (avoid trailing text like 'From: ...')
                     import re as _re2
+
                     m_id = _re2.search(r"([0-9A-Za-z]+)", raw_id)
-                    message_id = m_id.group(1) if m_id else raw_id.split()[0].rstrip(",")
+                    message_id = (
+                        m_id.group(1) if m_id else raw_id.split()[0].rstrip(",")
+                    )
                 elif "from:" in lower or "sender:" in lower:
                     sender_email = segment.split(":", 1)[1].strip()
 
@@ -182,6 +204,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         result = tool.invoke(params)
                     except Exception:
                         import json as _json
+
                         result = tool.run(_json.dumps(params))
 
                     msg_id = message_id
@@ -191,6 +214,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         data = result
                         if isinstance(result, str):
                             import ast
+
                             brace_idx = result.find("{")
                             if brace_idx != -1:
                                 data = ast.literal_eval(result[brace_idx:])
@@ -206,11 +230,19 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         except Exception as e:
             response = f"❌ Error moving to trash: {str(e)}"
 
-    elif any(keyword in lower_text for keyword in ["get contacts", "list contacts", "fetch contacts", "my contacts"]):
+    elif any(
+        keyword in lower_text
+        for keyword in [
+            "get contacts",
+            "list contacts",
+            "fetch contacts",
+            "my contacts",
+        ]
+    ):
         try:
             sender_email = ""
-            lines = text.split('\n')
-            parts = text.split(',') if ',' in text else lines
+            lines = text.split("\n")
+            parts = text.split(",") if "," in text else lines
             for part in parts:
                 segment = part.strip()
                 lower = segment.lower()
@@ -231,7 +263,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 tools = get_gmail_contacts_tools_for_user(sender_email)
                 tool = tools[0] if tools else None
                 if not tool:
-                    response = "❌ Contacts tool unavailable. Please reconnect your Gmail."
+                    response = (
+                        "❌ Contacts tool unavailable. Please reconnect your Gmail."
+                    )
                 else:
                     params = {
                         "include_other_contacts": True,
@@ -242,6 +276,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         result = tool.invoke(params)
                     except Exception:
                         import json as _json
+
                         result = tool.run(_json.dumps(params))
 
                     connections = []
@@ -250,6 +285,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         data = result
                         if isinstance(result, str):
                             import ast
+
                             brace_idx = result.find("{")
                             if brace_idx != -1:
                                 data = ast.literal_eval(result[brace_idx:])
@@ -264,7 +300,15 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         except Exception as e:
             response = f"❌ Error fetching contacts: {str(e)}"
 
-    elif any(keyword in lower_text for keyword in ["search contacts", "search people", "find contact", "find people"]):
+    elif any(
+        keyword in lower_text
+        for keyword in [
+            "search contacts",
+            "search people",
+            "find contact",
+            "find people",
+        ]
+    ):
         try:
             # Expect: query; optional other_contacts/pageSize/person_fields; optional From
             sender_email = ""
@@ -272,8 +316,8 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             other_contacts = True
             page_size = 10
             person_fields = "emailAddresses,names,phoneNumbers"
-            lines = text.split('\n')
-            parts = text.split(',') if ',' in text else lines
+            lines = text.split("\n")
+            parts = text.split(",") if "," in text else lines
             for part in parts:
                 segment = part.strip()
                 lower = segment.lower()
@@ -284,7 +328,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                     other_contacts = flag in ["1", "true", "yes"]
                 elif "pagesize:" in lower:
                     try:
-                        page_size = max(1, min(30, int(segment.split(":", 1)[1].strip())))
+                        page_size = max(
+                            1, min(30, int(segment.split(":", 1)[1].strip()))
+                        )
                     except Exception:
                         page_size = 10
                 elif "person_fields:" in lower:
@@ -305,13 +351,17 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             elif not query:
                 # Allow simple language if no explicit Query: provided (e.g., "Search people Rishank Javar")
                 import re as _re3
-                m_q = _re3.search(r"search\s+(people|contacts)\s*[,\s]*(.*)", lower_text)
+
+                m_q = _re3.search(
+                    r"search\s+(people|contacts)\s*[,\s]*(.*)", lower_text
+                )
                 if m_q and m_q.group(2).strip():
                     query = m_q.group(2).strip()
                 else:
                     response = "❌ Please provide a search query. Example: Search people John Doe"
             else:
                 from tools import get_gmail_search_people_tools_for_user
+
                 tools = get_gmail_search_people_tools_for_user(sender_email)
                 tool = tools[0] if tools else None
                 if not tool:
@@ -327,6 +377,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         result = tool.invoke(params)
                     except Exception:
                         import json as _json
+
                         result = tool.run(_json.dumps(params))
 
                     results = []
@@ -335,16 +386,21 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         data = result
                         if isinstance(result, str):
                             import ast
+
                             brace_idx = result.find("{")
                             if brace_idx != -1:
                                 data = ast.literal_eval(result[brace_idx:])
                         if isinstance(data, dict):
                             resp = data.get("data", {}).get("response_data", {})
-                            raw_list = resp.get("results") or resp.get("connections") or []
+                            raw_list = (
+                                resp.get("results") or resp.get("connections") or []
+                            )
                             # Normalize items that may be nested under 'person'
                             normalized = []
                             for item in raw_list:
-                                if isinstance(item, dict) and isinstance(item.get("person"), dict):
+                                if isinstance(item, dict) and isinstance(
+                                    item.get("person"), dict
+                                ):
                                     normalized.append(item["person"])
                                 else:
                                     normalized.append(item)
@@ -354,6 +410,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         pass
 
                     from formatting import format_people_search_markdown
+
                     response = format_people_search_markdown(results, next_token)
 
                     # Fallback: if empty, fetch contacts and filter locally for a best-effort match
@@ -371,35 +428,54 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                                     cres = ctool.invoke(cparams)
                                 except Exception:
                                     import json as _json
+
                                     cres = ctool.run(_json.dumps(cparams))
                                 cdata = cres
                                 if isinstance(cres, str):
                                     import ast
+
                                     brace_idx2 = cres.find("{")
                                     if brace_idx2 != -1:
                                         cdata = ast.literal_eval(cres[brace_idx2:])
                                 connections = []
                                 if isinstance(cdata, dict):
-                                    connections = cdata.get("data", {}).get("response_data", {}).get("connections", [])
+                                    connections = (
+                                        cdata.get("data", {})
+                                        .get("response_data", {})
+                                        .get("connections", [])
+                                    )
                                 q = query.lower()
                                 filtered = []
                                 for person in connections:
-                                    names = [n.get("displayName", "") for n in (person.get("names") or [])]
-                                    emails = [e.get("value", "") for e in (person.get("emailAddresses") or [])]
-                                    if any(q in n.lower() for n in names) or any(q in e.lower() for e in emails):
+                                    names = [
+                                        n.get("displayName", "")
+                                        for n in (person.get("names") or [])
+                                    ]
+                                    emails = [
+                                        e.get("value", "")
+                                        for e in (person.get("emailAddresses") or [])
+                                    ]
+                                    if any(q in n.lower() for n in names) or any(
+                                        q in e.lower() for e in emails
+                                    ):
                                         filtered.append(person)
-                                response = format_people_search_markdown(filtered[:10], None)
+                                response = format_people_search_markdown(
+                                    filtered[:10], None
+                                )
                         except Exception:
                             pass
         except Exception as e:
             response = f"❌ Error searching people: {str(e)}"
 
-    elif any(keyword in lower_text for keyword in ["fetch thread", "get thread messages", "messages in thread"]):
+    elif any(
+        keyword in lower_text
+        for keyword in ["fetch thread", "get thread messages", "messages in thread"]
+    ):
         try:
             # Expect: Thread Id; optional From
             sender_email = ""
             thread_id = ""
-            parts = text.split(',') if ',' in text else text.split('\n')
+            parts = text.split(",") if "," in text else text.split("\n")
             for part in parts:
                 segment = part.strip()
                 lower = segment.lower()
@@ -422,10 +498,13 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 response = "❌ Please provide a Thread Id. Example: Thread Id: 1995..."
             else:
                 from tools import get_gmail_thread_fetch_tools_for_user
+
                 tools = get_gmail_thread_fetch_tools_for_user(sender_email)
                 tool = tools[0] if tools else None
                 if not tool:
-                    response = "❌ Fetch thread tool unavailable. Please reconnect your Gmail."
+                    response = (
+                        "❌ Fetch thread tool unavailable. Please reconnect your Gmail."
+                    )
                 else:
                     params = {
                         "thread_id": thread_id,
@@ -438,15 +517,18 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         result = tool.invoke(params)
                     except Exception:
                         import json as _json
+
                         result = tool.run(_json.dumps(params))
 
                     from formatting import format_thread_messages_markdown
+
                     messages = []
                     next_token = None
                     try:
                         data = result
                         if isinstance(result, str):
                             import ast
+
                             brace_idx = result.find("{")
                             if brace_idx != -1:
                                 data = ast.literal_eval(result[brace_idx:])
@@ -468,11 +550,18 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                                 or resp.get("list")
                                 or []
                             )
-                            if isinstance(raw_messages, dict) and "messages" in raw_messages:
+                            if (
+                                isinstance(raw_messages, dict)
+                                and "messages" in raw_messages
+                            ):
                                 raw_messages = raw_messages.get("messages", [])
-                            if not raw_messages and (resp.get("message") or resp.get("email")):
+                            if not raw_messages and (
+                                resp.get("message") or resp.get("email")
+                            ):
                                 candidate = resp.get("message") or resp.get("email")
-                                raw_messages = [candidate] if isinstance(candidate, dict) else []
+                                raw_messages = (
+                                    [candidate] if isinstance(candidate, dict) else []
+                                )
 
                             # Normalize message fields for formatter
                             normalized = []
@@ -482,29 +571,45 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                                 mm = dict(m)
                                 if "messageId" not in mm and mm.get("id"):
                                     mm["messageId"] = mm.get("id")
-                                if "threadId" not in mm and (mm.get("thread_id") or mm.get("threadId")):
-                                    mm["threadId"] = mm.get("thread_id") or mm.get("threadId")
+                                if "threadId" not in mm and (
+                                    mm.get("thread_id") or mm.get("threadId")
+                                ):
+                                    mm["threadId"] = mm.get("thread_id") or mm.get(
+                                        "threadId"
+                                    )
                                 if "sender" not in mm:
-                                    mm["sender"] = mm.get("from") or mm.get("From") or mm.get("sender")
+                                    mm["sender"] = (
+                                        mm.get("from")
+                                        or mm.get("From")
+                                        or mm.get("sender")
+                                    )
                                 if "to" not in mm:
                                     mm["to"] = mm.get("to") or mm.get("To")
-                                if not mm.get("subject") and (mm.get("Subject") is not None):
+                                if not mm.get("subject") and (
+                                    mm.get("Subject") is not None
+                                ):
                                     mm["subject"] = mm.get("Subject")
                                 if "messageTimestamp" not in mm:
-                                    ts = mm.get("timestamp") or mm.get("date") or mm.get("Date") or mm.get("internalDate")
+                                    ts = (
+                                        mm.get("timestamp")
+                                        or mm.get("date")
+                                        or mm.get("Date")
+                                        or mm.get("internalDate")
+                                    )
                                     if ts:
                                         mm["messageTimestamp"] = ts
                                 if "messageText" not in mm:
-                                    mm["messageText"] = mm.get("text") or mm.get("snippet") or ""
+                                    mm["messageText"] = (
+                                        mm.get("text") or mm.get("snippet") or ""
+                                    )
                                 if "labelIds" not in mm and mm.get("labels"):
                                     mm["labelIds"] = mm.get("labels")
                                 normalized.append(mm)
                             messages = normalized
 
-                            next_token = (
-                                resp.get("nextPageToken")
-                                or data.get("data", {}).get("nextPageToken")
-                            )
+                            next_token = resp.get("nextPageToken") or data.get(
+                                "data", {}
+                            ).get("nextPageToken")
                     except Exception:
                         pass
 
@@ -512,10 +617,13 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         except Exception as e:
             response = f"❌ Error fetching thread messages: {str(e)}"
 
-    elif any(keyword in lower_text for keyword in ["get profile", "my profile", "gmail profile"]):
+    elif any(
+        keyword in lower_text
+        for keyword in ["get profile", "my profile", "gmail profile"]
+    ):
         try:
             sender_email = ""
-            parts = text.split(',') if ',' in text else text.split('\n')
+            parts = text.split(",") if "," in text else text.split("\n")
             for part in parts:
                 segment = part.strip()
                 lower = segment.lower()
@@ -534,16 +642,20 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 )
             else:
                 from tools import get_gmail_profile_tools_for_user
+
                 tools = get_gmail_profile_tools_for_user(sender_email)
                 tool = tools[0] if tools else None
                 if not tool:
-                    response = "❌ Profile tool unavailable. Please reconnect your Gmail."
+                    response = (
+                        "❌ Profile tool unavailable. Please reconnect your Gmail."
+                    )
                 else:
                     params = {"user_id": "me"}
                     try:
                         result = tool.invoke(params)
                     except Exception:
                         import json as _json
+
                         result = tool.run(_json.dumps(params))
 
                     profile = {}
@@ -551,6 +663,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         data = result
                         if isinstance(result, str):
                             import ast
+
                             brace_idx = result.find("{")
                             if brace_idx != -1:
                                 data = ast.literal_eval(result[brace_idx:])
@@ -560,16 +673,18 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         pass
 
                     from formatting import format_profile_markdown
+
                     response = format_profile_markdown(profile)
         except Exception as e:
             response = f"❌ Error fetching profile: {str(e)}"
 
-    
-    elif any(keyword in lower_text for keyword in ["list drafts", "show drafts", "my drafts"]):
+    elif any(
+        keyword in lower_text for keyword in ["list drafts", "show drafts", "my drafts"]
+    ):
         try:
             sender_email = ""
             max_results = 10
-            parts = text.split(',') if ',' in text else text.split('\n')
+            parts = text.split(",") if "," in text else text.split("\n")
             for part in parts:
                 segment = part.strip()
                 lower = segment.lower()
@@ -577,7 +692,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                     sender_email = segment.split(":", 1)[1].strip()
                 elif "max:" in lower or "max results:" in lower:
                     try:
-                        max_results = max(1, min(100, int(segment.split(":", 1)[1].strip())))
+                        max_results = max(
+                            1, min(100, int(segment.split(":", 1)[1].strip()))
+                        )
                     except Exception:
                         max_results = 10
 
@@ -593,10 +710,13 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 )
             else:
                 from tools import get_gmail_list_drafts_tools_for_user
+
                 tools = get_gmail_list_drafts_tools_for_user(sender_email)
                 tool = tools[0] if tools else None
                 if not tool:
-                    response = "❌ List drafts tool unavailable. Please reconnect your Gmail."
+                    response = (
+                        "❌ List drafts tool unavailable. Please reconnect your Gmail."
+                    )
                 else:
                     # Send both snake_case and camelCase to support different wrappers
                     params = {
@@ -610,6 +730,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         result = tool.invoke(params)
                     except Exception:
                         import json as _json
+
                         result = tool.run(_json.dumps(params))
 
                     drafts = []
@@ -618,6 +739,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         data = result
                         if isinstance(result, str):
                             import ast
+
                             brace_idx = result.find("{")
                             if brace_idx != -1:
                                 data = ast.literal_eval(result[brace_idx:])
@@ -672,13 +794,28 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
 
                         for d in drafts if isinstance(drafts, list) else []:
                             nd = {
-                                "id": d.get("id") or d.get("draftId") or d.get("draft_id") or "",
-                                "to": d.get("to") or d.get("recipient") or d.get("toEmail") or "",
-                                "subject": d.get("subject") or d.get("subjectLine") or "",
-                                "messageTimestamp": d.get("messageTimestamp") or d.get("timestamp") or "",
+                                "id": d.get("id")
+                                or d.get("draftId")
+                                or d.get("draft_id")
+                                or "",
+                                "to": d.get("to")
+                                or d.get("recipient")
+                                or d.get("toEmail")
+                                or "",
+                                "subject": d.get("subject")
+                                or d.get("subjectLine")
+                                or "",
+                                "messageTimestamp": d.get("messageTimestamp")
+                                or d.get("timestamp")
+                                or "",
                             }
 
-                            message = d.get("message") or d.get("email") or d.get("messageData") or {}
+                            message = (
+                                d.get("message")
+                                or d.get("email")
+                                or d.get("messageData")
+                                or {}
+                            )
                             if isinstance(message, dict):
                                 payload = message.get("payload") or {}
                                 headers = (
@@ -687,52 +824,80 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                                     or []
                                 )
                                 if not nd["to"]:
-                                    nd["to"] = _find_header_value(headers, "To") or nd["to"] or ""
+                                    nd["to"] = (
+                                        _find_header_value(headers, "To")
+                                        or nd["to"]
+                                        or ""
+                                    )
                                 if not nd["subject"]:
-                                    nd["subject"] = _find_header_value(headers, "Subject") or nd["subject"] or ""
+                                    nd["subject"] = (
+                                        _find_header_value(headers, "Subject")
+                                        or nd["subject"]
+                                        or ""
+                                    )
 
                                 # Time: try internalDate first (ms since epoch), then Date header
                                 if not nd["messageTimestamp"]:
-                                    internal_date = message.get("internalDate") or payload.get("internalDate")
+                                    internal_date = message.get(
+                                        "internalDate"
+                                    ) or payload.get("internalDate")
                                     if internal_date:
                                         try:
                                             ts_ms = int(internal_date)
                                             # If value looks like seconds, upscale to ms
                                             if ts_ms < 10_000_000_000:
                                                 ts_ms *= 1000
-                                            nd["messageTimestamp"] = datetime.utcfromtimestamp(ts_ms / 1000).isoformat()
+                                            nd["messageTimestamp"] = (
+                                                datetime.utcfromtimestamp(
+                                                    ts_ms / 1000
+                                                ).isoformat()
+                                            )
                                         except Exception:
                                             nd["messageTimestamp"] = str(internal_date)
                                     else:
-                                        date_header = _find_header_value(headers, "Date")
+                                        date_header = _find_header_value(
+                                            headers, "Date"
+                                        )
                                         if date_header:
                                             nd["messageTimestamp"] = date_header
 
                             # Final fallbacks
                             if not nd["to"]:
-                                nd["to"] = d.get("to_address") or d.get("recipient_email") or ""
+                                nd["to"] = (
+                                    d.get("to_address")
+                                    or d.get("recipient_email")
+                                    or ""
+                                )
                             if not nd["subject"]:
-                                nd["subject"] = d.get("email_subject") or d.get("title") or ""
+                                nd["subject"] = (
+                                    d.get("email_subject") or d.get("title") or ""
+                                )
 
                             normalized_drafts.append(nd)
                     except Exception:
                         normalized_drafts = drafts if isinstance(drafts, list) else []
 
                     from formatting import format_drafts_list_markdown
-                    response = format_drafts_list_markdown(normalized_drafts, next_token)
+
+                    response = format_drafts_list_markdown(
+                        normalized_drafts, next_token
+                    )
         except Exception as e:
             response = f"❌ Error listing drafts: {str(e)}"
 
-    elif any(keyword in lower_text for keyword in ["create draft", "draft email", "save draft"]):
+    elif any(
+        keyword in lower_text
+        for keyword in ["create draft", "draft email", "save draft"]
+    ):
         try:
             # Expect: To, Subject, Body, optional HTML, optional From
-            lines = text.split('\n')
+            lines = text.split("\n")
             recipient = ""
             subject = ""
             body = ""
             is_html = False
             sender_email = ""
-            parts = text.split(',') if ',' in text else lines
+            parts = text.split(",") if "," in text else lines
             for part in parts:
                 segment = part.strip()
                 lower = segment.lower()
@@ -762,11 +927,15 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 response = "❌ Provide To, Subject, and Body to create a draft."
             else:
                 from tools import get_gmail_draft_tools_for_user
+
                 tools = get_gmail_draft_tools_for_user(sender_email)
                 # First tool should be create draft
                 create_tool = None
                 for t in tools:
-                    if getattr(t, "name", "") == "GMAIL_CREATE_EMAIL_DRAFT" or getattr(t, "slug", "") == "GMAIL_CREATE_EMAIL_DRAFT":
+                    if (
+                        getattr(t, "name", "") == "GMAIL_CREATE_EMAIL_DRAFT"
+                        or getattr(t, "slug", "") == "GMAIL_CREATE_EMAIL_DRAFT"
+                    ):
                         create_tool = t
                         break
                 if not create_tool:
@@ -785,6 +954,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         result = create_tool.invoke(params)
                     except Exception:
                         import json as _json
+
                         result = create_tool.run(_json.dumps(params))
 
                     draft_id = None
@@ -793,6 +963,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         data = result
                         if isinstance(result, str):
                             import ast
+
                             brace_idx = result.find("{")
                             if brace_idx != -1:
                                 data = ast.literal_eval(result[brace_idx:])
@@ -804,7 +975,10 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         pass
 
                     from formatting import format_draft_created_markdown
-                    response = format_draft_created_markdown(draft_id or '(unknown)', thread_id, recipient, subject)
+
+                    response = format_draft_created_markdown(
+                        draft_id or "(unknown)", thread_id, recipient, subject
+                    )
         except Exception as e:
             response = f"❌ Error creating draft: {str(e)}"
 
@@ -813,7 +987,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             # Expect: Draft Id, optional From
             draft_id = ""
             sender_email = ""
-            parts = text.split(',') if ',' in text else text.split('\n')
+            parts = text.split(",") if "," in text else text.split("\n")
             for part in parts:
                 segment = part.strip()
                 lower = segment.lower()
@@ -836,35 +1010,46 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 response = "❌ Please provide a Draft Id. Example: Draft Id: r123..."
             else:
                 from tools import get_gmail_draft_tools_for_user
+
                 tools = get_gmail_draft_tools_for_user(sender_email)
                 send_tool = None
                 for t in tools:
-                    if getattr(t, "name", "") == "GMAIL_SEND_DRAFT" or getattr(t, "slug", "") == "GMAIL_SEND_DRAFT":
+                    if (
+                        getattr(t, "name", "") == "GMAIL_SEND_DRAFT"
+                        or getattr(t, "slug", "") == "GMAIL_SEND_DRAFT"
+                    ):
                         send_tool = t
                         break
                 if not send_tool:
                     send_tool = tools[0] if tools else None
                 if not send_tool:
-                    response = "❌ Send draft tool unavailable. Please reconnect your Gmail."
+                    response = (
+                        "❌ Send draft tool unavailable. Please reconnect your Gmail."
+                    )
                 else:
                     params = {"draft_id": draft_id, "user_id": "me"}
                     try:
                         _ = send_tool.invoke(params)
                     except Exception:
                         import json as _json
+
                         _ = send_tool.run(_json.dumps(params))
 
                     from formatting import format_draft_sent_markdown
+
                     response = format_draft_sent_markdown(draft_id)
         except Exception as e:
             response = f"❌ Error sending draft: {str(e)}"
 
-    elif any(keyword in lower_text for keyword in ["delete draft", "remove draft", "trash draft"]):
+    elif any(
+        keyword in lower_text
+        for keyword in ["delete draft", "remove draft", "trash draft"]
+    ):
         try:
             # Expect: Draft Id, optional From
             draft_id = ""
             sender_email = ""
-            parts = text.split(',') if ',' in text else text.split('\n')
+            parts = text.split(",") if "," in text else text.split("\n")
             for part in parts:
                 segment = part.strip()
                 lower = segment.lower()
@@ -887,32 +1072,42 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 response = "❌ Please provide a Draft Id. Example: Draft Id: r123..."
             else:
                 from tools import get_gmail_draft_tools_for_user
+
                 tools = get_gmail_draft_tools_for_user(sender_email)
                 del_tool = None
                 for t in tools:
-                    if getattr(t, "name", "") == "GMAIL_DELETE_DRAFT" or getattr(t, "slug", "") == "GMAIL_DELETE_DRAFT":
+                    if (
+                        getattr(t, "name", "") == "GMAIL_DELETE_DRAFT"
+                        or getattr(t, "slug", "") == "GMAIL_DELETE_DRAFT"
+                    ):
                         del_tool = t
                         break
                 if not del_tool:
                     del_tool = tools[0] if tools else None
                 if not del_tool:
-                    response = "❌ Delete draft tool unavailable. Please reconnect your Gmail."
+                    response = (
+                        "❌ Delete draft tool unavailable. Please reconnect your Gmail."
+                    )
                 else:
                     params = {"draft_id": draft_id, "user_id": "me"}
                     try:
                         _ = del_tool.invoke(params)
                     except Exception:
                         import json as _json
+
                         _ = del_tool.run(_json.dumps(params))
 
                     from formatting import format_draft_deleted_markdown
+
                     response = format_draft_deleted_markdown(draft_id)
         except Exception as e:
             response = f"❌ Error deleting draft: {str(e)}"
-    elif any(keyword in lower_text for keyword in ["reply", "reply to", "respond", "answer"]):
+    elif any(
+        keyword in lower_text for keyword in ["reply", "reply to", "respond", "answer"]
+    ):
         try:
             # Extract thread id, recipient, body, optional flags
-            lines = text.split('\n')
+            lines = text.split("\n")
             thread_id = ""
             recipient = ""
             body = ""
@@ -965,6 +1160,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         result = reply_tool.invoke(params)
                     except Exception:
                         import json as _json
+
                         result = reply_tool.run(_json.dumps(params))
 
                     # Extract message id if present
@@ -973,6 +1169,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                         data = result
                         if isinstance(result, str):
                             import ast
+
                             brace_idx = result.find("{")
                             if brace_idx != -1:
                                 data = ast.literal_eval(result[brace_idx:])
@@ -982,7 +1179,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                     except Exception:
                         pass
 
-                    response = format_reply_success_markdown(recipient, body, thread_id, message_id)
+                    response = format_reply_success_markdown(
+                        recipient, body, thread_id, message_id
+                    )
             else:
                 response = (
                     "❌ Missing fields. Provide: Thread Id, To/Recipient, Body.\n"
@@ -991,9 +1190,12 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         except Exception as e:
             response = f"❌ Error replying to thread: {str(e)}"
 
-    elif any(keyword in lower_text for keyword in ["send email", "send mail", "email to", "mail to"]):
+    elif any(
+        keyword in lower_text
+        for keyword in ["send email", "send mail", "email to", "mail to"]
+    ):
         try:
-            lines = text.split('\n')
+            lines = text.split("\n")
             recipient = ""
             subject = ""
             body = ""
@@ -1027,7 +1229,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             if not subject:
                 response = "❌ Please provide a subject. Include: Subject: Your subject"
             elif not body:
-                response = "❌ Please provide a message body. Include: Body: Your message"
+                response = (
+                    "❌ Please provide a message body. Include: Body: Your message"
+                )
             if sender_email:
                 SENDER_TO_USER_EMAIL[sender] = sender_email
             else:
@@ -1044,7 +1248,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 email_result = send_gmail_email(recipient, subject, body, sender_email)
                 if email_result.get("success"):
                     result_obj = email_result.get("result") or {}
-                    meta = extract_gmail_response(result_obj.get("intermediate_steps", []))
+                    meta = extract_gmail_response(
+                        result_obj.get("intermediate_steps", [])
+                    )
                     response = format_success_markdown(
                         recipient=recipient,
                         sender_email=sender_email,
@@ -1063,11 +1269,12 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
 
     elif "connect" in text.lower() and "mail" in text.lower():
         try:
-            email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+            email_pattern = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
             emails = re.findall(email_pattern, text)
             email = emails[0] if emails else ""
             if email:
                 from tools import get_gmail_auth_url
+
                 auth_result = get_gmail_auth_url(email)
                 if auth_result["success"]:
                     SENDER_TO_USER_EMAIL[sender] = email
@@ -1091,13 +1298,16 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     elif "help" in text.lower():
         response = DEFAULT_HELP_TEXT
 
-    await ctx.send(sender, ChatMessage(
-        timestamp=datetime.utcnow(),
-        msg_id=uuid4(),
-        content=[
-            TextContent(type="text", text=response),
-        ]
-    ))
+    await ctx.send(
+        sender,
+        ChatMessage(
+            timestamp=datetime.utcnow(),
+            msg_id=uuid4(),
+            content=[
+                TextContent(type="text", text=response),
+            ],
+        ),
+    )
 
 
 @protocol.on_message(ChatAcknowledgement)
@@ -1106,5 +1316,3 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
 
 
 agent.include(protocol, publish_manifest=True)
-
-

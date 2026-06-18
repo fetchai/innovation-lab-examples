@@ -6,6 +6,7 @@ from config import ASI_ONE_API_KEY
 
 client = OpenAI(api_key=ASI_ONE_API_KEY, base_url="https://api.asi1.ai/v1")
 
+
 def _normalize_horoscope_output(text: str) -> str:
     """
     Enforce:
@@ -22,7 +23,7 @@ def _normalize_horoscope_output(text: str) -> str:
     # Strip any disclaimer-like lines.
     cleaned: list[str] = []
     for ln in lines:
-        l = ln.lower()
+        l = ln.lower()  # noqa: E741
         if "for entertainment purposes only" in l:
             continue
         cleaned.append(ln)
@@ -39,13 +40,20 @@ def _normalize_horoscope_output(text: str) -> str:
             lucky_numbers = ln.split(":", 1)[1].strip() if ":" in ln else None
 
     # Handle case where both appear on one line.
-    if (lucky_color is None or lucky_numbers is None) and ("lucky color:" in joined.lower()):
+    if (lucky_color is None or lucky_numbers is None) and (
+        "lucky color:" in joined.lower()
+    ):
         lower = joined.lower()
         try:
             lc_idx = lower.rindex("lucky color:")
             ln_idx = lower.rindex("lucky numbers:")
             if lc_idx < ln_idx:
-                lucky_color = joined[lc_idx:].split(":", 1)[1].split("Lucky numbers:", 1)[0].strip()
+                lucky_color = (
+                    joined[lc_idx:]
+                    .split(":", 1)[1]
+                    .split("Lucky numbers:", 1)[0]
+                    .strip()
+                )
                 lucky_numbers = joined[ln_idx:].split(":", 1)[1].strip()
         except Exception:
             pass
@@ -53,18 +61,26 @@ def _normalize_horoscope_output(text: str) -> str:
     # Remove any existing lucky lines from the main body.
     body_lines = []
     for ln in cleaned:
-        l = ln.lower()
+        l = ln.lower()  # noqa: E741
         if "lucky color:" in l or "lucky numbers:" in l:
             continue
         body_lines.append(ln)
 
     body = "\n".join(body_lines).strip()
 
-    lucky_color_line = f"Lucky color: {lucky_color}" if lucky_color else "Lucky color: Blue"
+    lucky_color_line = (
+        f"Lucky color: {lucky_color}" if lucky_color else "Lucky color: Blue"
+    )
 
     if lucky_numbers:
-        nums = [n.strip() for n in lucky_numbers.replace(";", ",").split(",") if n.strip()]
-        lucky_numbers_line = "Lucky numbers: " + ", ".join(nums[:3]) if nums else "Lucky numbers: 7, 19, 42"
+        nums = [
+            n.strip() for n in lucky_numbers.replace(";", ",").split(",") if n.strip()
+        ]
+        lucky_numbers_line = (
+            "Lucky numbers: " + ", ".join(nums[:3])
+            if nums
+            else "Lucky numbers: 7, 19, 42"
+        )
     else:
         lucky_numbers_line = "Lucky numbers: 7, 19, 42"
 
@@ -94,7 +110,10 @@ async def generate_horoscope(sign: str) -> str:
                     "  Lucky numbers: <3 integers 1-99, comma-separated>"
                 ),
             },
-            {"role": "user", "content": f"My star sign is {sign}. Give me my horoscope of the day."},
+            {
+                "role": "user",
+                "content": f"My star sign is {sign}. Give me my horoscope of the day.",
+            },
         ],
     )
     return _normalize_horoscope_output((r.choices[0].message.content or "").strip())
@@ -123,4 +142,3 @@ async def normal_reply(user_text: str) -> str:
         ],
     )
     return (r.choices[0].message.content or "").strip()
-

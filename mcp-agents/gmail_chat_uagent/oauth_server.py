@@ -24,19 +24,24 @@ load_dotenv()
 AGENTVERSE_API_KEY = os.getenv("AGENTVERSE_API_KEY")
 STORAGE_URL = os.getenv("AGENTVERSE_URL", "https://agentverse.ai") + "/v1/storage"
 
-print(f"🔑 API Key loaded: {AGENTVERSE_API_KEY[:20] if AGENTVERSE_API_KEY else 'None'}...")
+print(
+    f"🔑 API Key loaded: {AGENTVERSE_API_KEY[:20] if AGENTVERSE_API_KEY else 'None'}..."
+)
 print(f"🌐 Storage URL: {STORAGE_URL}")
 
 _storage: ExternalStorage | None = None
 if AGENTVERSE_API_KEY:
     try:
-        _storage = ExternalStorage(api_token=AGENTVERSE_API_KEY, storage_url=STORAGE_URL)
-        print(f"🔐 ExternalStorage initialised successfully")
+        _storage = ExternalStorage(
+            api_token=AGENTVERSE_API_KEY, storage_url=STORAGE_URL
+        )
+        print(f"🔐 ExternalStorage initialised successfully")  # noqa: F541
     except Exception as err:
         print(f"⚠️  ExternalStorage init failed: {err}")
         _storage = None
 else:
     print("❌ No AGENTVERSE_API_KEY found - external storage disabled")
+
 
 def save_oauth_code_to_agent_storage(session_id: str, auth_code: str):
     """Save OAuth code to agent storage JSON file."""
@@ -46,38 +51,41 @@ def save_oauth_code_to_agent_storage(session_id: str, auth_code: str):
         if not storage_files:
             print("⚠️  No agent storage file found")
             return False
-        
+
         storage_file = storage_files[0]  # Use the first one found
-        
+
         # Read current storage
         with open(storage_file, "r") as f:
             storage_data = json.load(f)
-        
+
         # Parse gmail_chat_sessions
         sessions_str = storage_data.get("gmail_chat_sessions", "{}")
-        sessions = json.loads(sessions_str) if isinstance(sessions_str, str) else sessions_str
-        
+        sessions = (
+            json.loads(sessions_str) if isinstance(sessions_str, str) else sessions_str
+        )
+
         # Update the session with the OAuth code
         if session_id in sessions:
             sessions[session_id]["oauth_code"] = auth_code
             sessions[session_id]["code_received"] = True
-            
+
             # Update storage
             storage_data["gmail_chat_sessions"] = json.dumps(sessions)
-            
+
             # Write back to file
             with open(storage_file, "w") as f:
                 json.dump(storage_data, f, indent=4)
-            
+
             print(f"💾 OAuth code saved to agent storage for session {session_id}")
             return True
         else:
             print(f"⚠️  Session {session_id} not found in agent storage")
             return False
-            
+
     except Exception as e:
         print(f"⚠️  Failed to save to agent storage: {e}")
         return False
+
 
 SUCCESS_PAGE_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
@@ -129,18 +137,22 @@ class OAuthCallbackHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             page = SUCCESS_PAGE_TEMPLATE.replace("{AUTH_CODE}", code)
             self.wfile.write(page.encode("utf-8"))
-            print(f"\n🎉 Authorization code received for session {state}: {code[:10]}…\n")
+            print(
+                f"\n🎉 Authorization code received for session {state}: {code[:10]}…\n"
+            )
 
             # Persist to Agentverse so chat agent can pick it up
             stored_externally = False
             if _storage and state:
                 try:
-                    _storage.create_asset(name=state, content=code.encode(), mime_type="text/plain")
+                    _storage.create_asset(
+                        name=state, content=code.encode(), mime_type="text/plain"
+                    )
                     print("💾 Code uploaded to Agentverse asset", state)
                     stored_externally = True
                 except Exception as up_err:
                     print("⚠️  Failed to upload code to Agentverse:", up_err)
- 
+
             # Fallback to agent storage
             if not stored_externally and state:
                 if not save_oauth_code_to_agent_storage(state, code):
@@ -148,15 +160,20 @@ class OAuthCallbackHandler(http.server.SimpleHTTPRequestHandler):
                     try:
                         with open(f"oauth_code_{state}.txt", "w") as f:
                             f.write(code)
-                        print(f"💾 Code saved locally to oauth_code_{state}.txt as final fallback")
+                        print(
+                            f"💾 Code saved locally to oauth_code_{state}.txt as final fallback"
+                        )
                     except Exception as local_err:
                         print("⚠️  Failed to save code locally:", local_err)
 
             # --- Notify chat agent via REST so it can complete OAuth automatically
             try:
-                import requests, json as _json
+                import requests, json as _json  # noqa: E401, F401
+
                 payload = {"session_id": state, "auth_code": code}
-                resp = requests.post("http://localhost:8088/oauth/callback", json=payload, timeout=3)
+                resp = requests.post(
+                    "http://localhost:8088/oauth/callback", json=payload, timeout=3
+                )
                 print("➡️  Posted code to chat agent – status", resp.status_code)
             except Exception as notify_err:
                 print("⚠️  Could not notify chat agent:", notify_err)
@@ -183,4 +200,4 @@ def start_oauth_server():
 
 
 if __name__ == "__main__":
-    start_oauth_server() 
+    start_oauth_server()

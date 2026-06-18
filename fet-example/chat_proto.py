@@ -11,7 +11,7 @@ from payment import (
     request_payment_from_user,
     generate_response_after_payment,
 )
-from shared import create_text_chat
+from shared import create_text_chat  # noqa: F401
 
 
 chat_proto = Protocol(spec=chat_protocol_spec)
@@ -26,9 +26,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id
         ),
     )
-    
+
     # Process text content for payment gating and prompt collection
-    
+
     for item in msg.content:
         if isinstance(item, TextContent):
             text = item.text.strip()
@@ -58,7 +58,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             # Clear any previous recorded marker for this session (new payment request)
             ctx.storage.remove(f"{sender}:{session_id}:request_recorded")
             # Attach the explanation as the description/metadata of the payment request
-            await request_payment_from_user(ctx, sender, description=payment_description)
+            await request_payment_from_user(
+                ctx, sender, description=payment_description
+            )
             return
 
 

@@ -10,14 +10,14 @@ AGENTVERSE_A2A_URI = os.getenv("AGENTVERSE_AGENT_URI", "").strip()
 if AGENTVERSE_A2A_URI:
     agentverse_sdk.init(AGENTVERSE_A2A_URI)
 
-import uvicorn
-from a2a.server.agent_execution import AgentExecutor, RequestContext
-from a2a.server.events import EventQueue
-from a2a.server.request_handlers.default_request_handler import DefaultRequestHandler
-from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
-from a2a.server.apps import A2AStarletteApplication
-from a2a.types import AgentCapabilities, AgentCard, AgentSkill
-from a2a.utils import new_agent_text_message
+import uvicorn  # noqa: E402
+from a2a.server.agent_execution import AgentExecutor, RequestContext  # noqa: E402
+from a2a.server.events import EventQueue  # noqa: E402
+from a2a.server.request_handlers.default_request_handler import DefaultRequestHandler  # noqa: E402
+from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore  # noqa: E402
+from a2a.server.apps import A2AStarletteApplication  # noqa: E402
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill  # noqa: E402
+from a2a.utils import new_agent_text_message  # noqa: E402
 
 
 HOST = os.getenv("HOST", "0.0.0.0")

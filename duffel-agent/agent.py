@@ -22,11 +22,11 @@ except Exception:
     pass
 
 # Protocols
-from protocols.chat_proto import chat_proto
-from protocols.payment_proto import payment_proto, set_agent_wallet
+from protocols.chat_proto import chat_proto  # noqa: E402
+from protocols.payment_proto import payment_proto, set_agent_wallet  # noqa: E402
 
 # Optional: Skyfire helper (for logging / sanity check)
-from tools.skyfire import get_skyfire_service_id
+from tools.skyfire import get_skyfire_service_id  # noqa: E402
 
 # Config
 AGENT_NAME = os.getenv("AGENT_NAME", "DuffelFlightsAgent")
@@ -46,6 +46,7 @@ agent = Agent(
 # Supply wallet to payment protocol for verification
 set_agent_wallet(agent.wallet)
 
+
 @agent.on_event("startup")
 async def on_startup(ctx: Context):
     ctx.logger.info(f"{AGENT_NAME} is up. Wallet address: {agent.wallet.address()}")
@@ -54,6 +55,7 @@ async def on_startup(ctx: Context):
         ctx.logger.info(f"Detected Skyfire service ID: {ssi}")
     else:
         ctx.logger.info("No Skyfire service ID configured (SELLER_SERVICE_ID missing).")
+
 
 # Include protocols and publish their manifests
 agent.include(chat_proto, publish_manifest=True)

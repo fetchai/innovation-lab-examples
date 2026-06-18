@@ -3,9 +3,7 @@
 import json
 import os
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
+import requests
 from datetime import datetime
 from typing import Any
 
@@ -23,7 +21,9 @@ DEVICE_CODE_ENDPOINT = "https://oauth2.googleapis.com/device/code"
 TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
 
 TOKEN_STORE_FILE = os.getenv("GOOGLE_OAUTH_TOKEN_STORE_FILE", "google_user_tokens.json")
-DEVICE_STORE_FILE = os.getenv("GOOGLE_OAUTH_DEVICE_STORE_FILE", "google_device_flows.json")
+DEVICE_STORE_FILE = os.getenv(
+    "GOOGLE_OAUTH_DEVICE_STORE_FILE", "google_device_flows.json"
+)
 
 
 class GoogleAuthRequiredError(RuntimeError):
@@ -43,25 +43,18 @@ def _save_json_file(path: str, payload: dict[str, Any]) -> None:
 
 
 def _post_form(url: str, data: dict[str, Any]) -> dict[str, Any]:
-    encoded = urllib.parse.urlencode(data).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=encoded,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-
     try:
-        with urllib.request.urlopen(req, timeout=20) as response:
-            body = response.read().decode("utf-8")
-        return json.loads(body)
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8") if exc.fp else ""
+        response = requests.post(url, data=data, timeout=20)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as exc:
+        body = exc.response.text
         try:
-            parsed = json.loads(body) if body else {}
-        except json.JSONDecodeError:
+            parsed = exc.response.json()
+        except Exception:
             parsed = {}
         if "error" not in parsed:
-            parsed["error"] = f"http_{exc.code}"
+            parsed["error"] = f"http_{exc.response.status_code}"
         if "error_description" not in parsed and body:
             parsed["error_description"] = body
         return parsed
@@ -103,7 +96,9 @@ def _start_device_flow(client_id: str) -> dict[str, Any]:
 
     if "error" in response:
         description = response.get("error_description", "")
-        raise RuntimeError(f"Google device authorization failed: {response['error']} {description}")
+        raise RuntimeError(
+            f"Google device authorization failed: {response['error']} {description}"
+        )
 
     now = int(time.time())
     expires_in = int(response.get("expires_in", 900))
@@ -119,7 +114,9 @@ def _start_device_flow(client_id: str) -> dict[str, Any]:
     }
 
 
-def _poll_device_flow(client_id: str, client_secret: str, device_code: str) -> dict[str, Any]:
+def _poll_device_flow(
+    client_id: str, client_secret: str, device_code: str
+) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "client_id": client_id,
         "device_code": device_code,

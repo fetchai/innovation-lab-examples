@@ -1,4 +1,5 @@
 """Stripe embedded Checkout: create session and verify payment. Mirrors stripe-horoscope-agent."""
+
 import os
 import time
 
@@ -14,6 +15,7 @@ from config import (
 
 def _get_stripe_sdk():
     import stripe  # type: ignore
+
     stripe.api_key = STRIPE_SECRET_KEY
     return stripe
 
@@ -53,7 +55,10 @@ def create_embedded_checkout_session(
             {
                 "price_data": {
                     "currency": STRIPE_CURRENCY,
-                    "product_data": {"name": STRIPE_PRODUCT_NAME, "description": description},
+                    "product_data": {
+                        "name": STRIPE_PRODUCT_NAME,
+                        "description": description,
+                    },
                     "unit_amount": cents,
                 },
                 "quantity": 1,
