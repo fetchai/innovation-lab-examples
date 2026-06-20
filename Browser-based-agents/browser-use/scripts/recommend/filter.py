@@ -66,8 +66,21 @@ def fetch_candidates(prefs: dict) -> list[dict]:
 
     keywords_raw = prefs.get("keywords", "").strip()
     topics = prefs.get("topics", [])
-    all_kw = [k for k in re.split(r"[\s,]+", keywords_raw) if len(k) >= 2]
-    all_kw += [t for t in topics if len(t) >= 2]
+
+    # Strip generic event-type words that are not useful search terms
+    _STOP_WORDS = {
+        "hackathon", "hackathons", "hack", "event", "events", "find",
+        "show", "get", "upcoming", "next", "looking", "want", "need",
+        "me", "us", "the", "a", "an", "and", "or", "in", "at", "for",
+    }
+    all_kw = [
+        k for k in re.split(r"[\s,]+", keywords_raw)
+        if len(k) >= 2 and k.lower() not in _STOP_WORDS
+    ]
+    all_kw += [
+        t for t in topics
+        if len(t) >= 2 and t.lower() not in _STOP_WORDS
+    ]
 
     location = (prefs.get("location") or "").strip().lower()
     online = prefs.get("online") or False
