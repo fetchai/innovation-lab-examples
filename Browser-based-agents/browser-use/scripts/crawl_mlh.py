@@ -122,18 +122,14 @@ def _parse_event(href: str, text: str, year: int) -> dict | None:
     # Remove the country suffix pattern like ", US" or ", CA" at end
     city = re.sub(r',\s*[A-Z]{2}\s*$', '', location_raw).strip()
 
-    # Determine the event name
-    # For in-person: before often starts with "City, State" then the event name repeats
-    # For digital: before IS the event name
-    if is_in_person and before:
-        # The event name tends to appear again in the "after" section before location
-        # Try to find the name by removing the leading location from before
-        # Heuristic: if before contains a comma followed by a state/country, strip it
-        name_match = re.match(r'^[^A-Z]*([A-Z][^,]+(?:,\s*[^,]+)?)', before)
-        name = name_match.group(1).strip() if name_match else before
-        # Further clean: if name starts with city-like text that repeats in location, trim
-        name = before.strip()
-    else:
+    # Determine the event name.
+    # For in-person events the link text starts with "City, StateEvent Name",
+    # so we strip the city prefix from `before` if it matches the parsed city.
+    name = before.strip()
+    if is_in_person and city and name.startswith(city):
+        name = name[len(city):].strip()
+    # Also strip bare "City, State" prefix patterns (comma-separated location at start)
+    if is_in_person and not name:
         name = before.strip()
 
     if not name:
