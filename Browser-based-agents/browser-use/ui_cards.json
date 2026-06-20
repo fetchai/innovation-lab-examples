@@ -4,7 +4,7 @@
   "welcome": {
     "root": {
       "type": "section",
-      "title": "🏆 Hackathon Discovery Agent",
+      "title": "🔍 Hackrawl",
       "subtitle": "Find, explore, and register for hackathons — powered by ASI:One",
       "children": [
         {

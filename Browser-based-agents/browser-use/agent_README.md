@@ -1,4 +1,4 @@
-# Hackathon Discovery & Registration Agent
+# Hackrawl — Hackathon Discovery & Registration Agent
 
 ## Overview
 
@@ -71,4 +71,5 @@ Your registration profile is stored locally on your machine (`~/.hackathon_profi
 
 ---
 
-**Built with** ASI:One + Fetch.ai uAgents + crawl4ai
+**Built with** ASI:One + Fetch.ai uAgents + crawl4ai  
+**Agent name**: Hackrawl
