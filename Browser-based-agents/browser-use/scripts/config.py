@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load from .llm.env in the project root (one level up from scripts/)
-_env_path = Path(__file__).parent.parent / ".llm.env"
+# Load from .env in the project root (one level up from scripts/)
+_env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(_env_path)
 
 ASI_ONE_API_KEY = os.environ["ASI_ONE_API_KEY"]

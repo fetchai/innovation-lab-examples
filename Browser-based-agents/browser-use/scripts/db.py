@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent / ".llm.env")
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://wnapvpzjwvechlpglrun.supabase.co")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", os.environ.get("SUPABASE_ANON_KEY", ""))

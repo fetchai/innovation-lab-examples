@@ -17,10 +17,8 @@ from uuid import uuid4
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env then .llm.env (non-override so .env wins)
 _root = Path(__file__).parent
 load_dotenv(_root / ".env")
-load_dotenv(_root / ".llm.env", override=False)
 
 sys.path.insert(0, str(_root / "scripts"))
 
