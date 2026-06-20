@@ -87,6 +87,8 @@ class _SafeEvaluator(ast.NodeVisitor):
         raise ValueError(f"Use of name '{node.id}' is not allowed")
 
     def visit_Constant(self, node: ast.Constant) -> Any:
+        if isinstance(node.value, bool):
+            raise ValueError("Boolean constants are not allowed")
         if isinstance(node.value, (int, float)):
             return node.value
         raise ValueError("Only numeric constants are allowed")

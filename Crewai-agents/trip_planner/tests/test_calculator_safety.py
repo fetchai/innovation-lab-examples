@@ -53,6 +53,9 @@ def test_valid_expressions(expr, expected):
         'lambda x: x',
         '[1,2,3]',
         '{"a":1}',
+        'compile("1+1", "", "eval")',
+        'True',
+        'False',
     ],
 )
 def test_malicious_inputs_rejected(expr):

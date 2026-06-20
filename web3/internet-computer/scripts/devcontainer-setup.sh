@@ -5,6 +5,12 @@ set -euo pipefail
 
 echo "🚀 Setting up devcontainer..."
 
+# Validate required tool: git
+if ! command -v git >/dev/null 2>&1; then
+  echo "git is required but not found in PATH. Please install git." >&2
+  exit 1
+fi
+
 # Determine workspace root dynamically and mark it safe for git operations
 if git rev-parse --show-toplevel >/dev/null 2>&1; then
   WORKSPACE_ROOT=$(git rev-parse --show-toplevel)
