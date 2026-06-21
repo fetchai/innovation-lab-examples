@@ -157,6 +157,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [contributors/community_agent](contributors/community_agent/) | AI community growth agent for events and hackathons | Python, uAgents, ASI:One, Tavily | 🟡 Intermediate |
+| [contributors/news-summarizer-agent](contributors/news-summarizer-agent/) | Fetches top headlines for a topic via NewsAPI and summarizes them with ASI:One, via Chat Protocol | Python, uAgents, NewsAPI, ASI:One | 🟡 Intermediate |
 
 ### 🌐 Web3 & Blockchain
 
@@ -170,7 +171,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [Composio](Composio/) | Composio agents — Gmail and LinkedIn automation | Python, Composio, uAgents | 🟡 Intermediate |
-| [Browser-based-agents](Browser-based-agents/) | Browser automation agents (Nike product scraper) | Python, Notte, uAgents | 🟡 Intermediate |
+| [Browser-based-agents](Browser-based-agents/) | Browser automation agents (Nike product scraper, job-application agent) | Python, Notte, Playwright, uAgents | 🟡 Intermediate |
 | [frontend-integration](frontend-integration/) | Next.js + uAgents frontend integration | Python, Next.js, uAgents | 🟡 Intermediate |
 
 ---
