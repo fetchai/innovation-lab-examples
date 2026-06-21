@@ -39,8 +39,7 @@ _DEMO_DIR = os.getenv("DEMO_PROJECTS_DIR", "./demo_projects")
 
 DEFAULT_ALLOWED_PATHS: list[str] = [
     str(Path(_DEMO_DIR).resolve()),
-] # restricted sandbox
-
+]  # restricted sandbox
 
 
 # ---------------------------------------------------------------------------

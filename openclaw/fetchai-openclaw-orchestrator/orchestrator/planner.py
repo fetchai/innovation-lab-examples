@@ -343,7 +343,7 @@ def plan_objective(objective: str) -> TaskPlan:
     """
     # Try LLM first
     plan = _plan_with_llm(objective)
-    
+
     if plan is not None:
 
         for step in plan.steps:

@@ -43,7 +43,7 @@ def scan_directory(params: dict[str, Any]) -> dict[str, Any]:
     raw_path = _DEFAULT_SCAN_PATH
 
     # Sanitise: resolve relative to project root, never expose home dir
-   
+
     root = Path(raw_path).resolve()
 
     if not root.exists():
