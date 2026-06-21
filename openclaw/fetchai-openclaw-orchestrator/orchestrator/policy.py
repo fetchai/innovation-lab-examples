@@ -9,6 +9,7 @@ Enforces planning-time rules *before* a task plan is dispatched:
 """
 
 from __future__ import annotations
+from pathlib import Path
 
 import logging
 import time
@@ -86,6 +87,17 @@ class FetchPolicy:
                 logger.warning("Action '%s' not in allowlist", step.action)
                 return RejectionReason.ACTION_NOT_ALLOWED
 
+            if step.action == "scan_directory":
+                raw_path = step.params.get("path")
+                if raw_path:
+                    demo_dir = Path("./demo_projects").resolve()
+                    requested = Path(raw_path).expanduser().resolve()
+
+                    try:
+                        requested.relative_to(demo_dir)
+                    except ValueError:
+                        logger.warning("Path '%s' outside demo sandbox", requested)
+                        return RejectionReason.PATH_NOT_ALLOWED
         return None
 
     def validate(self, user_id: str, plan: TaskPlan) -> RejectionReason | None:
