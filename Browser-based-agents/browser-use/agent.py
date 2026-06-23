@@ -117,15 +117,18 @@ def text_msg(text: str, end: bool = False) -> ChatMessage:
         content.append(EndSessionContent(type="end-session"))
     return ChatMessage(timestamp=_now(), msg_id=_mid(), content=content)
 
-def card_msg(card: dict, text: str = "") -> ChatMessage:
-    content = []
-    if text:
-        content.append(TextContent(type="text", text=text))
-    content.append(MetadataContent(
-        type="metadata",
-        metadata={"card": json.dumps(card)},
-    ))
-    return ChatMessage(timestamp=_now(), msg_id=_mid(), content=content)
+def card_msg(card: dict) -> ChatMessage:
+    return ChatMessage(timestamp=_now(), msg_id=_mid(), content=[
+        MetadataContent(
+            type="metadata",
+            metadata={
+                "card_protocol_version": "1",
+                "requires_card_interaction": "true",
+                "card_kind": "custom",
+                "card_payload": json.dumps(card),
+            },
+        )
+    ])
 
 def ack(msg_id) -> ChatAcknowledgement:
     return ChatAcknowledgement(timestamp=_now(), acknowledged_msg_id=msg_id)
@@ -153,10 +156,7 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                 timestamp=_now(), msg_id=_mid(),
                 content=[MetadataContent(type="metadata", metadata={"attachments": "false"})],
             ))
-            await ctx.send(sender, card_msg(
-                welcome_card(),
-                "👋 Hi! I'm **Hackrawl** — I search 16,700+ hackathons and help you register. What are you looking for?",
-            ))
+            await ctx.send(sender, card_msg(welcome_card()))
             return
 
         if isinstance(item, TextContent):
@@ -164,6 +164,9 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             if not text:
                 continue
             ctx.logger.info(f"[{sender[:10]}] {text[:80]}")
+            if not sess.get("greeted"):
+                sess["greeted"] = True
+                await ctx.send(sender, card_msg(welcome_card()))
             await _handle_text(ctx, sender, sess, text)
             return
 
@@ -190,10 +193,7 @@ async def _handle_text(ctx: Context, sender: str, sess: dict, text: str):
         ev = lookup_event(parsed.get("event_name", text))
         if ev:
             sess["last_event"] = ev
-            await ctx.send(sender, card_msg(
-                event_detail_card(ev),
-                f"Here are the details for **{ev.get('title','')}**:",
-            ))
+            await ctx.send(sender, card_msg(event_detail_card(ev)))
         else:
             await ctx.send(sender, text_msg(
                 f"Couldn't find an event matching that name. Try a more specific name or ask me to search."
@@ -217,8 +217,7 @@ async def _handle_text(ctx: Context, sender: str, sess: dict, text: str):
             return
 
         subtitle = _subtitle(prefs, len(results))
-        summary  = _summary(results[:3])
-        await ctx.send(sender, card_msg(event_list_card(results, subtitle), summary))
+        await ctx.send(sender, card_msg(event_list_card(results, subtitle)))
 
 
 async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
@@ -233,7 +232,7 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
         ev = _find(sess, slug) or lookup_event(slug)
         if ev:
             sess["last_event"] = ev
-            await ctx.send(sender, card_msg(event_detail_card(ev), f"**{ev.get('title','')}**"))
+            await ctx.send(sender, card_msg(event_detail_card(ev)))
         else:
             await ctx.send(sender, text_msg("Event not found. Try searching again."))
 
@@ -246,10 +245,7 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
         profile   = load_profile()
         questions = _parse_qs(ev.get("questions"))
         answers   = generate_answers(questions, profile, ev.get("title",""), ev.get("description_summary",""))
-        await ctx.send(sender, card_msg(
-            registration_confirm_card(ev, answers),
-            f"Ready to register for **{ev.get('title','')}**. Here's what I'll fill in:",
-        ))
+        await ctx.send(sender, card_msg(registration_confirm_card(ev, answers)))
 
     elif action == "confirm_register":
         ev = sess.get("last_event")
@@ -299,7 +295,7 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
     elif action == "back":
         results = sess.get("last_results", [])
         if results:
-            await ctx.send(sender, card_msg(event_list_card(results), "Back to results:"))
+            await ctx.send(sender, card_msg(event_list_card(results)))
 
     elif action == "open_url":
         url = sel.get("url", "")
