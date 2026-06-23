@@ -55,7 +55,7 @@ _STRIPE_CONFIRM_RE = re.compile(r"^<stripe:payment_id:.+:CONFIRM>$")
 _PAID_WORDS = {"paid", "done", "i've paid", "ive paid", "payment done", "continue"}
 
 
-# Text / selection parsing helpers 
+# Text / selection parsing helpers
 def _extract_text(msg: ChatMessage) -> str:
     """Return the first TextContent block's text, stripped of @mention and file attachments.
 
@@ -190,10 +190,11 @@ def _parse_topic_from_text(text: str, state_data: dict) -> str:
     return weak[0] if weak else "key concepts"
 
 
-# Timer helper 
+# Timer helper
 def _time_remaining_secs(state_data: dict) -> int | None:
     """Return seconds left on the personal countdown, or None if no limit set."""
     import time as _t
+
     limit_mins = state_data.get("time_limit_mins", 0)
     start_ts = state_data.get("quiz_start_ts")
     if not limit_mins or not start_ts:
@@ -202,7 +203,7 @@ def _time_remaining_secs(state_data: dict) -> int | None:
     return max(0, int(remaining))
 
 
-# Background tasks 
+# Background tasks
 async def _index_and_generate(ctx: Context, sender: str, parsed: dict) -> None:
     """Run Haystack indexing + generation, then start the quiz."""
     import time as _time
@@ -307,7 +308,7 @@ async def _regenerate_weak(ctx, sender, state_data, weak_topics):
         )
 
 
-# Chat handler (the state machine) 
+# Chat handler (the state machine)
 @chat_proto.on_message(ChatMessage)
 async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     """Drive the per-sender quiz state machine."""
@@ -318,17 +319,15 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
 
     text = _extract_text(msg)
 
-    # Session-window tracking (hackflow pattern) 
+    # Session-window tracking (hackflow pattern)
     current_window = str(ctx.session)
     stored_window = ctx.storage.get(f"quiz:window:{sender}")
     if stored_window and stored_window != current_window:
-        ctx.logger.info(
-            f"[agent] New chat window for {sender} — full session reset"
-        )
+        ctx.logger.info(f"[agent] New chat window for {sender} — full session reset")
         session.save(ctx, sender, session.default_state())
     ctx.storage.set(f"quiz:window:{sender}", current_window)
 
-    # Stripe confirm signal — check BEFORE all state logic 
+    # Stripe confirm signal — check BEFORE all state logic
     if _STRIPE_CONFIRM_RE.match(text):
         ctx.logger.info(f"[agent] Stripe confirm from {sender}")
         if await confirm_payment_via_text(ctx, sender):
@@ -352,7 +351,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         )
         return
 
-    # UNINITIALIZED 
+    # UNINITIALIZED
     if state_data["state"] == UNINITIALIZED:
         pdf_uris = _extract_pdf_uris(msg, ctx)
         if pdf_uris:
@@ -363,7 +362,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         await request_payment(ctx, sender, state_data)
         return
 
-    # AWAITING_PAYMENT 
+    # AWAITING_PAYMENT
     if state_data["state"] == AWAITING_PAYMENT:
         # "paid" / "done" → verify the stored Stripe session.
         if text.lower() in _PAID_WORDS:
@@ -376,7 +375,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 "form, then type 'paid' again.",
             )
             return
-        # Any other message → re-issue a fresh RequestPayment 
+        # Any other message → re-issue a fresh RequestPayment
         # No text before it — same rule as the initial payment gate.
         await request_payment(ctx, sender, state_data)
         return
@@ -386,7 +385,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         await request_payment(ctx, sender, state_data)
         return
 
-    # CHOOSING_SOURCE_TYPE 
+    # CHOOSING_SOURCE_TYPE
     if state_data["state"] == CHOOSING_SOURCE_TYPE:
         source_type = None
         try:
@@ -433,7 +432,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             )
         return
 
-    # AWAITING_FILE_ATTACH 
+    # AWAITING_FILE_ATTACH
     if state_data["state"] == AWAITING_FILE_ATTACH:
         new_pdf_uris = _extract_pdf_uris(msg, ctx)
         new_urls = _extract_plain_urls(text)
@@ -443,9 +442,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
                 state_data.get("pending_pdf_uris", []) + new_pdf_uris
             )
         if new_urls:
-            state_data["pending_urls"] = (
-                state_data.get("pending_urls", []) + new_urls
-            )
+            state_data["pending_urls"] = state_data.get("pending_urls", []) + new_urls
 
         have_pdf = bool(state_data.get("pending_pdf_uris"))
         have_url = bool(state_data.get("pending_urls"))
@@ -476,7 +473,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         )
         return
 
-    # AWAITING_SOURCES 
+    # AWAITING_SOURCES
     if state_data["state"] == AWAITING_SOURCES:
         parsed = _parse_source_form(text)
         parsed["pdf_uris"] = state_data.get("pending_pdf_uris", [])
@@ -484,7 +481,11 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         # then deduplicate (preserving order) so the same URL isn't indexed twice.
         combined_urls = parsed.get("urls", []) + state_data.get("pending_urls", [])
         parsed["urls"] = list(dict.fromkeys(combined_urls))
-        if not parsed.get("urls") and not parsed.get("pdf_b64") and not parsed.get("pdf_uris"):
+        if (
+            not parsed.get("urls")
+            and not parsed.get("pdf_b64")
+            and not parsed.get("pdf_uris")
+        ):
             url_required = not bool(state_data.get("pending_pdf_uris"))
             await send_card(
                 ctx,
@@ -502,24 +503,24 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
         await send_text(
             ctx,
             sender,
-            f"Quizzes Agent working on your request! Generating {parsed['num_questions']} {parsed['difficulty']} questions."
+            f"Quizzes Agent working on your request! Generating {parsed['num_questions']} {parsed['difficulty']} questions.",
         )
         asyncio.create_task(_index_and_generate(ctx, sender, parsed))
         return
 
-    # INDEXING 
+    # INDEXING
     if state_data["state"] == INDEXING:
         await send_text(
             ctx, sender, "Still indexing and generating questions — hang tight! 🛠️"
         )
         return
 
-    # QUIZZING 
+    # QUIZZING
     if state_data["state"] == QUIZZING:
         await _handle_answer(ctx, sender, state_data, text)
         return
 
-    # COMPLETED 
+    # COMPLETED
     if state_data["state"] == COMPLETED:
         await _handle_completed(ctx, sender, state_data, text)
         return
@@ -580,7 +581,11 @@ async def _handle_answer(ctx, sender, state_data, text):
         session.save(ctx, sender, state_data)
 
         is_last = next_q >= len(questions)
-        narration = "Your Answer is Correct! Here is the explanation:" if is_correct else "Your Answer is Incorrect. Here is the explanation:"
+        narration = (
+            "Your Answer is Correct! Here is the explanation:"
+            if is_correct
+            else "Your Answer is Incorrect. Here is the explanation:"
+        )
         await send_card(
             ctx,
             sender,
@@ -639,10 +644,18 @@ async def _handle_completed(ctx, sender, state_data, text):
 
     elif action == "full_retake":
         # Always retake the original quiz, not a retry mini-quiz.
-        original_qs = list(state_data.get("original_questions") or state_data["questions"])
+        original_qs = list(
+            state_data.get("original_questions") or state_data["questions"]
+        )
         random.shuffle(original_qs)
         state_data.update(
-            {"answers": {}, "score": 0, "current_q": 0, "state": QUIZZING, "questions": original_qs}
+            {
+                "answers": {},
+                "score": 0,
+                "current_q": 0,
+                "state": QUIZZING,
+                "questions": original_qs,
+            }
         )
         session.save(ctx, sender, state_data)
         remaining = _time_remaining_secs(state_data)

@@ -27,7 +27,7 @@ _session = SessionManager()
 _cards = QuizCards()
 
 
-# Stripe helpers 
+# Stripe helpers
 def _cfg() -> dict:
     """Read Stripe config from the environment."""
     return {
@@ -132,7 +132,7 @@ def resolve_checkout_id(transaction_ref: str) -> str:
     return ref
 
 
-# Flow entrypoints 
+# Flow entrypoints
 async def request_payment(ctx: Context, sender: str, state_data: dict) -> None:
     """Create a hosted checkout, store it, send RequestPayment + direct URL."""
     c = _cfg()
@@ -220,7 +220,7 @@ async def confirm_payment_via_text(ctx: Context, sender: str) -> bool:
     return True
 
 
-# Payment protocol handlers 
+# Payment protocol handlers
 @payment_proto.on_message(CommitPayment)
 async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
     """Verify the Stripe payment, complete it, and unlock the quiz setup."""
@@ -228,10 +228,10 @@ async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
     state_data = _session.get(ctx, sender)
     stored = state_data.get("stripe_session_id")
 
-    checkout_id = resolve_checkout_id(msg.transaction_id) or stored
+    checkout_id: str = str(resolve_checkout_id(msg.transaction_id) or stored or "")
     paid = await asyncio.to_thread(verify_paid, checkout_id)
     if not paid and stored:
-        checkout_id = stored
+        checkout_id = str(stored)
         paid = await asyncio.to_thread(verify_paid, checkout_id)
 
     if not paid:

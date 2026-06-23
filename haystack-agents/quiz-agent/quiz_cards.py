@@ -12,6 +12,8 @@ from uagents_core.contrib.protocols.chat import (
 )
 
 CARD_PROTOCOL_VERSION = "1"
+
+
 def _wrap(
     card_kind: str, payload: dict[str, Any], *, is_terminal: bool = False
 ) -> dict[str, str]:
@@ -28,6 +30,7 @@ def _wrap(
 
 class QuizCards:
     """Stateless factory of card metadata dicts."""
+
     def source_type_router_card(self) -> dict[str, str]:
         """``detail`` card: ask whether the user has a URL, a PDF, or both.
 
@@ -52,7 +55,10 @@ class QuizCards:
                 },
                 {
                     "label": "Both",
-                    "selection": {"action": "choose_source_type", "source_type": "both"},
+                    "selection": {
+                        "action": "choose_source_type",
+                        "source_type": "both",
+                    },
                 },
             ],
         }
@@ -165,7 +171,12 @@ class QuizCards:
         return _wrap("detail", payload)
 
     def feedback_card(
-        self, q: dict[str, Any], user_answer: str, is_correct: bool, *, is_last: bool = False
+        self,
+        q: dict[str, Any],
+        user_answer: str,
+        is_correct: bool,
+        *,
+        is_last: bool = False,
     ) -> dict[str, str]:
         """``detail`` card: grades the answer and cites the source passage.
 
@@ -214,13 +225,7 @@ class QuizCards:
         score = state_data["score"]
         total = len(state_data["questions"])
         pct = int((score / total) * 100) if total else 0
-        grade = (
-            "Excellent"
-            if pct >= 90
-            else "Good"
-            if pct >= 70
-            else "Needs Review"
-        )
+        grade = "Excellent" if pct >= 90 else "Good" if pct >= 70 else "Needs Review"
         payload = {
             "title": f"Quiz Complete — {score}/{total} ({pct}%)",
             "summary_rows": [
@@ -228,7 +233,9 @@ class QuizCards:
                 {"label": "Score", "value": f"{score} out of {total}"},
                 {
                     "label": "Topics to review",
-                    "value": ", ".join(weak_topics) if weak_topics else "None — Great job!",
+                    "value": ", ".join(weak_topics)
+                    if weak_topics
+                    else "None — Great job!",
                 },
             ],
             "ctas": [
@@ -261,7 +268,8 @@ class QuizCards:
                 {"label": "Source:", "value": source},
                 {
                     "label": "Key passage:",
-                    "value": text or "No relevant passage found in your source material.",
+                    "value": text
+                    or "No relevant passage found in your source material.",
                 },
             ],
             "ctas": [
@@ -274,7 +282,7 @@ class QuizCards:
         return _wrap("detail", payload, is_terminal=False)
 
 
-# Send helpers (shared by agent.py and payment_handler.py) 
+# Send helpers (shared by agent.py and payment_handler.py)
 async def send_card(
     ctx: Context, sender: str, text_narration: str, card: dict[str, str]
 ) -> None:

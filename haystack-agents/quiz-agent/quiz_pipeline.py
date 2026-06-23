@@ -68,8 +68,13 @@ class QuizPipeline:
     # characters. Normalizing them prevents an LLM from quoting an odd-looking
     # glyph verbatim in a question's explanation.
     _LIGATURE_MAP = {
-        "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl",
-        "ﬅ": "st", "ﬆ": "st",
+        "ﬀ": "ff",
+        "ﬁ": "fi",
+        "ﬂ": "fl",
+        "ﬃ": "ffi",
+        "ﬄ": "ffl",
+        "ﬅ": "st",
+        "ﬆ": "st",
     }
 
     def __init__(self) -> None:
@@ -117,8 +122,7 @@ class QuizPipeline:
                 else ""
             )
             raise RuntimeError(
-                "No readable content was extracted from the provided sources."
-                + detail
+                "No readable content was extracted from the provided sources." + detail
             )
         return self._generate_questions(
             context=context, num_questions=num_questions, difficulty=difficulty
@@ -126,7 +130,21 @@ class QuizPipeline:
 
     # Common stopwords that are too generic to be useful for topic matching.
     _STOPWORDS = frozenset(
-        {"the", "a", "an", "of", "in", "for", "on", "with", "to", "and", "is", "are", "was"}
+        {
+            "the",
+            "a",
+            "an",
+            "of",
+            "in",
+            "for",
+            "on",
+            "with",
+            "to",
+            "and",
+            "is",
+            "are",
+            "was",
+        }
     )
 
     def regenerate_for_topics(
@@ -153,9 +171,11 @@ class QuizPipeline:
         }
         filtered = (
             [
-                q for q in raw
+                q
+                for q in raw
                 if any(
-                    word in q.get("topic", "").lower() or word in q.get("question", "").lower()
+                    word in q.get("topic", "").lower()
+                    or word in q.get("question", "").lower()
                     for word in topic_words
                 )
             ]
@@ -165,7 +185,7 @@ class QuizPipeline:
         # Deduplicate by first 80 chars of question text.
         seen: set[str] = set()
         unique: list[dict[str, Any]] = []
-        for q in (filtered or raw):
+        for q in filtered or raw:
             key = q["question"].lower()[:80]
             if key not in seen:
                 seen.add(key)
@@ -193,7 +213,9 @@ class QuizPipeline:
 
         # Join the top chunks into one passage for richer context.
         combined = " ".join(d.content or "" for d in docs if d.content).strip()
-        source = docs[0].meta.get("source_ref") or docs[0].meta.get("url") or "Your document"
+        source = (
+            docs[0].meta.get("source_ref") or docs[0].meta.get("url") or "Your document"
+        )
         return {"text": combined, "source": source}
 
     def _index(
@@ -300,7 +322,9 @@ class QuizPipeline:
             return []
         import httpx
 
-        wiki_ua = "HaystackQuizAgent/1.0 (https://github.com/fetchai/innovation-lab-examples)"
+        wiki_ua = (
+            "HaystackQuizAgent/1.0 (https://github.com/fetchai/innovation-lab-examples)"
+        )
         docs: list[Document] = []
         for url in urls:
             try:
@@ -325,11 +349,17 @@ class QuizPipeline:
                 page = next(iter(pages.values()))
                 text = (page.get("extract") or "").strip()
                 if text:
-                    docs.append(Document(content=text, meta={"source_ref": url, "url": url}))
+                    docs.append(
+                        Document(content=text, meta={"source_ref": url, "url": url})
+                    )
                 else:
-                    self._last_failures.append(f"Wikipedia article not found or empty: {url}")
+                    self._last_failures.append(
+                        f"Wikipedia article not found or empty: {url}"
+                    )
             except Exception as exc:  # noqa: BLE001
-                self._last_failures.append(f"Could not fetch Wikipedia article {url}: {exc}")
+                self._last_failures.append(
+                    f"Could not fetch Wikipedia article {url}: {exc}"
+                )
         return docs
 
     def _docs_from_pdfs(self, pdf_b64_list: list[str]) -> list[Document]:
@@ -375,11 +405,13 @@ class QuizPipeline:
             uri = uri.rstrip(".,;:!?)>\"'")
 
             if uri.startswith("agent-storage://"):
-                https_url = "https://" + uri[len("agent-storage://"):]
+                https_url = "https://" + uri[len("agent-storage://") :]
             elif uri.startswith("http"):
                 https_url = uri
             else:
-                self._last_failures.append(f"Skipped unrecognized PDF reference: {uri[:60]}")
+                self._last_failures.append(
+                    f"Skipped unrecognized PDF reference: {uri[:60]}"
+                )
                 continue
 
             # Cloudinary and other public CDNs do not need auth; only send the
@@ -406,7 +438,9 @@ class QuizPipeline:
                     doc.meta.setdefault("source_ref", uri)
                 docs.extend(pdf_docs)
             except Exception as exc:  # noqa: BLE001
-                self._last_failures.append(f"Could not download/read PDF from storage: {exc}")
+                self._last_failures.append(
+                    f"Could not download/read PDF from storage: {exc}"
+                )
             finally:
                 if tmp_path:
                     try:

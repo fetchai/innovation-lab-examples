@@ -58,15 +58,15 @@ class SessionManager:
             "stripe_paid": False,
             "sources": {},
             "questions": [],
-            "original_questions": [],    # preserved so Full Retake always uses originals
+            "original_questions": [],  # preserved so Full Retake always uses originals
             "answers": {},
             "current_q": 0,
             "score": 0,
-            "time_limit_mins": 0,        # 0 = no limit; >0 = personal countdown
-            "quiz_start_ts": None,       # unix timestamp when quiz entered QUIZZING
+            "time_limit_mins": 0,  # 0 = no limit; >0 = personal countdown
+            "quiz_start_ts": None,  # unix timestamp when quiz entered QUIZZING
             "doc_store_key": None,
-            "pending_pdf_uris": [],   # Agentverse storage URIs for PDFs
-            "pending_urls": [],       # URLs captured during file-attach step
+            "pending_pdf_uris": [],  # Agentverse storage URIs for PDFs
+            "pending_urls": [],  # URLs captured during file-attach step
             "created_at": time.time(),
         }
 
