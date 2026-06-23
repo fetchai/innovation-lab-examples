@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+*.log
+
+# Per-user test history — personal data, never commit
+data/
+
+# Regenerated chart artifact (charts are produced in-memory at runtime)
+assets/last_test.png
