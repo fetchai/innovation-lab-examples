@@ -9,11 +9,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY ${EXAMPLE}/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
 COPY ${EXAMPLE}/ ./
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    if [ -f requirements.txt ]; then \
+        pip install --no-cache-dir -r requirements.txt; \
+    else \
+        echo "No requirements.txt found for ${EXAMPLE}; skipping dependency install."; \
+    fi
 
 RUN if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env; fi
 
