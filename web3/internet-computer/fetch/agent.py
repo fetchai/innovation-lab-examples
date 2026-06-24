@@ -1,4 +1,4 @@
-import requests
+import aiohttp
 import json
 from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
@@ -107,22 +107,25 @@ tools = [
 ]
 
 async def call_icp_endpoint(func_name: str, args: dict):
-    if func_name == "get_current_fee_percentiles":
-        url = f"{BASE_URL}/get-current-fee-percentiles"
-        response = requests.post(url, headers=HEADERS, json={})
-    elif func_name == "get_balance":
-        url = f"{BASE_URL}/get-balance"
-        response = requests.post(url, headers=HEADERS, json={"address": args["address"]})
-    elif func_name == "get_utxos":
-        url = f"{BASE_URL}/get-utxos"
-        response = requests.post(url, headers=HEADERS, json={"address": args["address"]})
-    elif func_name == "send":
-        url = f"{BASE_URL}/send"
-        response = requests.post(url, headers=HEADERS, json=args)
-    else:
-        raise ValueError(f"Unsupported function call: {func_name}")
-    response.raise_for_status()
-    return response.json()
+    async with aiohttp.ClientSession() as session:
+        if func_name == "get_current_fee_percentiles":
+            url = f"{BASE_URL}/get-current-fee-percentiles"
+            json_data = {}
+        elif func_name == "get_balance":
+            url = f"{BASE_URL}/get-balance"
+            json_data = {"address": args["address"]}
+        elif func_name == "get_utxos":
+            url = f"{BASE_URL}/get-utxos"
+            json_data = {"address": args["address"]}
+        elif func_name == "send":
+            url = f"{BASE_URL}/send"
+            json_data = args
+        else:
+            raise ValueError(f"Unsupported function call: {func_name}")
+
+        async with session.post(url, headers=HEADERS, json=json_data) as response:
+            response.raise_for_status()
+            return await response.json()
 
 async def process_query(query: str, ctx: Context) -> str:
     try:
@@ -138,13 +141,14 @@ async def process_query(query: str, ctx: Context) -> str:
             "temperature": 0.7,
             "max_tokens": 1024
         }
-        response = requests.post(
-            f"{ASI1_BASE_URL}/chat/completions",
-            headers=ASI1_HEADERS,
-            json=payload
-        )
-        response.raise_for_status()
-        response_json = response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{ASI1_BASE_URL}/chat/completions",
+                headers=ASI1_HEADERS,
+                json=payload
+            ) as response:
+                response.raise_for_status()
+                response_json = await response.json()
 
         # Step 2: Parse tool calls from response
         tool_calls = response_json["choices"][0]["message"].get("tool_calls", [])
@@ -185,13 +189,14 @@ async def process_query(query: str, ctx: Context) -> str:
             "temperature": 0.7,
             "max_tokens": 1024
         }
-        final_response = requests.post(
-            f"{ASI1_BASE_URL}/chat/completions",
-            headers=ASI1_HEADERS,
-            json=final_payload
-        )
-        final_response.raise_for_status()
-        final_response_json = final_response.json()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{ASI1_BASE_URL}/chat/completions",
+                headers=ASI1_HEADERS,
+                json=final_payload
+            ) as final_response:
+                final_response.raise_for_status()
+                final_response_json = await final_response.json()
 
         # Step 5: Return the model's final answer
         return final_response_json["choices"][0]["message"]["content"]
