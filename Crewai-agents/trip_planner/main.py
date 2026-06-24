@@ -31,8 +31,12 @@ class TripCrew:
             self.interests,
             self.date_range,
         )
-        gather_task = tasks.gather_task(local_expert_agent, self.origin, self.interests, self.date_range)
-        plan_task = tasks.plan_task(travel_concierge_agent, self.origin, self.interests, self.date_range)
+        gather_task = tasks.gather_task(
+            local_expert_agent, self.origin, self.interests, self.date_range
+        )
+        plan_task = tasks.plan_task(
+            travel_concierge_agent, self.origin, self.interests, self.date_range
+        )
 
         crew = Crew(
             agents=[city_selector_agent, local_expert_agent, travel_concierge_agent],

@@ -110,8 +110,8 @@ def download_thumbnail(url: str):
         resp = requests.get(url, timeout=10)
         if resp.status_code == 200:
             return BytesIO(resp.content)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error downloading thumbnail: {e}")
     return None
 
 
@@ -174,8 +174,8 @@ def _render_cover_page(pdf: "TravelPDF", msg: PDFRequest) -> None:
             try:
                 pdf.image(img_data, x=55, y=thumb_y, w=100)
                 thumb_y += 60
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"Error embedding thumbnail: {e}")
 
     # intro text
     pdf.set_y(thumb_y + 8)

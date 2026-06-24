@@ -33,7 +33,11 @@ from uagents_core.contrib.protocols.payment import (
     payment_protocol_spec,
 )
 
-from sheets import GoogleAuthRequiredError, create_listings_sheet, get_google_auth_message
+from sheets import (
+    GoogleAuthRequiredError,
+    create_listings_sheet,
+    get_google_auth_message,
+)
 from stripe_payments import (
     STRIPE_AMOUNT_CENTS,
     create_checkout_session,
@@ -48,6 +52,7 @@ load_dotenv()
 # ─────────────────────────────────────────────────────────────────────────────
 # Message models
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class SearchRequest(Model):
     query: str
@@ -71,26 +76,29 @@ class SearchResponse(Model):
 # Pending-payment state
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class _PendingPayment:
     user_id: str
-    sender: str               # agent address to reply to after payment
-    df: object                # pandas DataFrame with search results
-    search: object            # SearchInput (location, listing_type, …)
+    sender: str  # agent address to reply to after payment
+    df: object  # pandas DataFrame with search results
+    search: object  # SearchInput (location, listing_type, …)
     checkout_session_id: str
-    is_chat: bool = False     # True when the request came via chat protocol
+    is_chat: bool = False  # True when the request came via chat protocol
     created_at: float = field(default_factory=time.time)
 
 
 _pending_payments: dict[str, _PendingPayment] = {}  # keyed by checkout_session_id
-_pending_by_user: dict[str, str] = {}               # user_id → checkout_session_id
+_pending_by_user: dict[str, str] = {}  # user_id → checkout_session_id
 
 _PAYMENT_EXPIRY = 3600  # seconds — expire pending sessions after 1 hour
 
 
 def _cleanup_expired() -> None:
     now = time.time()
-    expired = [k for k, v in _pending_payments.items() if now - v.created_at > _PAYMENT_EXPIRY]
+    expired = [
+        k for k, v in _pending_payments.items() if now - v.created_at > _PAYMENT_EXPIRY
+    ]
     for k in expired:
         p = _pending_payments.pop(k, None)
         if p:
@@ -114,6 +122,7 @@ def _amount_str() -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 # Agent setup
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _require_env(name: str) -> str:
     value = os.getenv(name, "").strip()
@@ -178,7 +187,9 @@ def _patch_mailbox_bearer(api_key: str) -> None:
                     ) as resp:
                         if resp.status == 200:
                             for item in await resp.json():
-                                await self._handle_envelope(StoredEnvelope.model_validate(item))
+                                await self._handle_envelope(
+                                    StoredEnvelope.model_validate(item)
+                                )
                         elif resp.status == 404:
                             if not self._missing_mailbox_warning_logged:
                                 self._logger.warning(
@@ -268,19 +279,29 @@ async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
     # Secondary lookup: transaction_id might be a PaymentIntent ID (pi_...).
     # Scan pending payments by the sender's agent address.
     if not pending and transaction_id.startswith("pi_"):
-        pending = next((p for p in _pending_payments.values() if p.sender == sender), None)
+        pending = next(
+            (p for p in _pending_payments.values() if p.sender == sender), None
+        )
         if pending:
-            ctx.logger.info(f"Resolved PI {transaction_id} → checkout session {pending.checkout_session_id}")
+            ctx.logger.info(
+                f"Resolved PI {transaction_id} → checkout session {pending.checkout_session_id}"
+            )
 
     if not pending:
-        ctx.logger.warning(f"CommitPayment for unknown/expired session: {transaction_id}")
-        await ctx.send(sender, RejectPayment(reason="Payment session not found or expired."))
+        ctx.logger.warning(
+            f"CommitPayment for unknown/expired session: {transaction_id}"
+        )
+        await ctx.send(
+            sender, RejectPayment(reason="Payment session not found or expired.")
+        )
         return
 
     if msg.funds.payment_method != "stripe":
         await ctx.send(
             sender,
-            RejectPayment(reason=f"Unsupported payment method: {msg.funds.payment_method}"),
+            RejectPayment(
+                reason=f"Unsupported payment method: {msg.funds.payment_method}"
+            ),
         )
         return
 
@@ -289,7 +310,9 @@ async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
         paid = verify_payment(transaction_id)
     except Exception as exc:
         ctx.logger.exception("Stripe verification error")
-        await ctx.send(sender, RejectPayment(reason=f"Payment verification failed: {exc}"))
+        await ctx.send(
+            sender, RejectPayment(reason=f"Payment verification failed: {exc}")
+        )
         return
 
     if not paid:
@@ -307,7 +330,9 @@ async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
     if not paid:
         await ctx.send(
             sender,
-            RejectPayment(reason="Payment not completed. Please finish the Stripe checkout first."),
+            RejectPayment(
+                reason="Payment not completed. Please finish the Stripe checkout first."
+            ),
         )
         return
 
@@ -316,7 +341,9 @@ async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
         sheet_url = await _create_sheet_for_pending(pending)
     except GoogleAuthRequiredError as exc:
         ctx.logger.error(f"Google auth required — {exc}")
-        await ctx.send(sender, RejectPayment(reason=f"Google authorization required: {exc}"))
+        await ctx.send(
+            sender, RejectPayment(reason=f"Google authorization required: {exc}")
+        )
         return
     except Exception as exc:
         ctx.logger.exception("Sheet creation failed after payment")
@@ -329,7 +356,9 @@ async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
     _pending_by_user.pop(pending.user_id, None)
 
     try:
-        await ctx.send(sender, CompletePayment(transaction_id=pending.checkout_session_id))
+        await ctx.send(
+            sender, CompletePayment(transaction_id=pending.checkout_session_id)
+        )
     except Exception as exc:
         ctx.logger.warning(f"CompletePayment send failed: {exc}")
 
@@ -340,12 +369,14 @@ async def on_commit(ctx: Context, sender: str, msg: CommitPayment):
             await ctx.send(
                 pending.sender,
                 ChatMessage(
-                    content=[TextContent(
-                        text=(
-                            f"Payment confirmed! Your Google Sheet is ready:\n{sheet_url}\n\n"
-                            f"({num_results} listings in {pending.search.location})"
+                    content=[
+                        TextContent(
+                            text=(
+                                f"Payment confirmed! Your Google Sheet is ready:\n{sheet_url}\n\n"
+                                f"({num_results} listings in {pending.search.location})"
+                            )
                         )
-                    )]
+                    ]
                 ),
             )
         else:
@@ -378,6 +409,7 @@ agent.include(_payment_proto, publish_manifest=True)
 # Shared helper: run search → optionally request payment → return
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 async def _search_and_request_payment(
     ctx: Context,
     sender: str,
@@ -405,7 +437,10 @@ async def _search_and_request_payment(
             await ctx.send(sender, ChatMessage(content=[TextContent(text=reply)]))
         else:
             error = ""
-            if not result.sheet_url and "Google authorization required" in result.summary:
+            if (
+                not result.sheet_url
+                and "Google authorization required" in result.summary
+            ):
                 error = result.summary
             await ctx.send(
                 sender,
@@ -425,7 +460,9 @@ async def _search_and_request_payment(
         if is_chat:
             await ctx.send(
                 sender,
-                ChatMessage(content=[TextContent(text=result.summary or "No listings found.")]),
+                ChatMessage(
+                    content=[TextContent(text=result.summary or "No listings found.")]
+                ),
             )
         else:
             await ctx.send(
@@ -439,7 +476,9 @@ async def _search_and_request_payment(
         return
 
     try:
-        description = f"{result.num_results} listings in {result.pending_search.location}"
+        description = (
+            f"{result.num_results} listings in {result.pending_search.location}"
+        )
         chat_session_id = str(ctx.session) if hasattr(ctx, "session") else user_id
         checkout = create_checkout_session(user_id, chat_session_id, description)
     except Exception as exc:
@@ -465,7 +504,9 @@ async def _search_and_request_payment(
     await ctx.send(
         sender,
         RequestPayment(
-            accepted_funds=[Funds(currency="USD", amount=amount, payment_method="stripe")],
+            accepted_funds=[
+                Funds(currency="USD", amount=amount, payment_method="stripe")
+            ],
             recipient=str(ctx.agent.address),
             deadline_seconds=_PAYMENT_EXPIRY,
             reference=chat_session_id,
@@ -507,13 +548,19 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage):
     """Handle messages from ASI:One and other chat-protocol clients."""
     await ctx.send(sender, ChatAcknowledgement(acknowledged_msg_id=msg.msg_id))
 
-    query = next((item.text for item in msg.content if isinstance(item, TextContent)), "").strip()
+    query = next(
+        (item.text for item in msg.content if isinstance(item, TextContent)), ""
+    ).strip()
     if not query:
         await ctx.send(
             sender,
-            ChatMessage(content=[TextContent(
-                text="Please send a search query, e.g. '3 bed house for sale in Austin TX under $400k'"
-            )]),
+            ChatMessage(
+                content=[
+                    TextContent(
+                        text="Please send a search query, e.g. '3 bed house for sale in Austin TX under $400k'"
+                    )
+                ]
+            ),
         )
         return
 
@@ -525,7 +572,9 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage):
         ctx.logger.exception("Chat handler failed")
         await ctx.send(
             sender,
-            ChatMessage(content=[TextContent(text=f"Sorry, something went wrong: {exc}")]),
+            ChatMessage(
+                content=[TextContent(text=f"Sorry, something went wrong: {exc}")]
+            ),
         )
 
 
@@ -541,6 +590,7 @@ agent.include(_chat_proto, publish_manifest=True)
 # SearchRequest / FollowUpRequest protocol
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @agent.on_message(model=SearchRequest)
 async def handle_search(ctx: Context, sender: str, msg: SearchRequest):
     user_id = _resolve_user_id(msg.user_id, sender)
@@ -554,7 +604,9 @@ async def handle_search(ctx: Context, sender: str, msg: SearchRequest):
             SearchResponse(
                 summary=instructions,
                 session_id=user_id,
-                error="" if instructions.startswith("Google is already connected") else instructions,
+                error=""
+                if instructions.startswith("Google is already connected")
+                else instructions,
             ),
         )
         return
@@ -575,7 +627,9 @@ async def handle_followup(ctx: Context, sender: str, msg: FollowUpRequest):
 
     if not stripe_configured():
         try:
-            result = await resume_workflow(WorkflowInput(user_request=msg.query, user_id=user_id))
+            result = await resume_workflow(
+                WorkflowInput(user_request=msg.query, user_id=user_id)
+            )
             await ctx.send(
                 sender,
                 SearchResponse(

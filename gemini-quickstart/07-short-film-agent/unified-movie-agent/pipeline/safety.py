@@ -54,7 +54,11 @@ async def check_prompt_safety(prompt: str) -> tuple[bool, str]:
         result = response.text.strip()
 
         if result.upper().startswith("UNSAFE"):
-            reason = result.split(":", 1)[1].strip() if ":" in result else "Content policy violation"
+            reason = (
+                result.split(":", 1)[1].strip()
+                if ":" in result
+                else "Content policy violation"
+            )
             return False, reason
         elif result.upper().startswith("SAFE"):
             return True, ""

@@ -32,8 +32,10 @@ import httpx
 try:
     from langchain_core.tools import tool as _tool
 except Exception:  # pragma: no cover
+
     def _tool(f):
         return f
+
 
 # -----------------------------
 # Environment / constants
@@ -59,10 +61,12 @@ def _headers() -> Dict[str, str]:
         "Content-Type": "application/json",
     }
 
+
 def _fmt_time(ts: str | None) -> str:
     """Show up to minutes: 'YYYY-MM-DD HH:MM' (Duffel returns ISO8601)."""
     s = (ts or "").replace("T", " ").replace("Z", "")
     return re.sub(r"(\d{2}:\d{2}):\d{2}$", r"\1", s)
+
 
 def _get_usd_per(cur: str) -> Optional[float]:
     if not cur:
@@ -149,13 +153,19 @@ def _apply_conversions(summary: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _smtp_enabled() -> bool:
-    return bool(os.getenv("SMTP_HOST") and os.getenv("SMTP_USER") and os.getenv("SMTP_PASS"))
+    return bool(
+        os.getenv("SMTP_HOST") and os.getenv("SMTP_USER") and os.getenv("SMTP_PASS")
+    )
 
 
-def _send_email(to_addr: str, subject: str, body: str, html: Optional[str] = None) -> bool:
+def _send_email(
+    to_addr: str, subject: str, body: str, html: Optional[str] = None
+) -> bool:
     if not _smtp_enabled():
         try:
-            logging.getLogger(__name__).info("[email] SMTP not configured; set SMTP_HOST, SMTP_USER, SMTP_PASS to enable emails")
+            logging.getLogger(__name__).info(
+                "[email] SMTP not configured; set SMTP_HOST, SMTP_USER, SMTP_PASS to enable emails"
+            )
         except Exception:
             pass
         return False
@@ -269,28 +279,41 @@ def duffel_search_offers(
         body["max_connections"] = max_connections
     if preferred_airlines:
         body["allowed_carriers"] = preferred_airlines
-    
+
     # Log the request body for debugging
     import logging
+
     logger = logging.getLogger(__name__)
     if preferred_airlines:
-        logger.info(f"Sending to Duffel API - allowed_carriers: {body.get('allowed_carriers')}")
+        logger.info(
+            f"Sending to Duffel API - allowed_carriers: {body.get('allowed_carriers')}"
+        )
         logger.info(f"Full request body: {body}")
 
     try:
         with httpx.Client(timeout=_TIMEOUT) as client:
-            r = client.post(f"{_DUFFEL_BASE}/air/offer_requests", headers=_headers(), json={"data": body})
+            r = client.post(
+                f"{_DUFFEL_BASE}/air/offer_requests",
+                headers=_headers(),
+                json={"data": body},
+            )
         if r.status_code >= 400:
-            return {"error": f"Duffel {r.status_code}: {r.text[:300]}", "code": "HTTP_ERROR"}
+            return {
+                "error": f"Duffel {r.status_code}: {r.text[:300]}",
+                "code": "HTTP_ERROR",
+            }
 
         data = r.json() or {}
         raw_offers = (data.get("data") or {}).get("offers") or []
-        
+
         # Log airline filter info
         import logging
+
         logger = logging.getLogger(__name__)
         if preferred_airlines:
-            logger.info(f"Filtered search for airlines: {preferred_airlines}, got {len(raw_offers)} raw results from Duffel")
+            logger.info(
+                f"Filtered search for airlines: {preferred_airlines}, got {len(raw_offers)} raw results from Duffel"
+            )
 
         offers: List[Dict[str, Any]] = []
         airlines_found = set()
@@ -298,13 +321,13 @@ def duffel_search_offers(
             owner = o.get("owner") or {}
             airline_name = owner.get("name") or ""
             airline_iata = owner.get("iata_code") or ""
-            
+
             # If filtering by airline, skip offers that don't match
             if preferred_airlines:
                 # Check if this offer's airline IATA code matches any in the filter
                 if airline_iata not in preferred_airlines:
                     continue  # Skip this offer
-            
+
             airlines_found.add(airline_name or airline_iata)
             total_amount = o.get("total_amount")
             total_currency = o.get("total_currency")
@@ -328,10 +351,12 @@ def duffel_search_offers(
                 return 1e18
 
         offers.sort(key=_sort_key)
-        
+
         # Log what airlines we actually got
         if preferred_airlines:
-            logger.info(f"After processing, found airlines: {airlines_found}, total offers: {len(offers)}")
+            logger.info(
+                f"After processing, found airlines: {airlines_found}, total offers: {len(offers)}"
+            )
 
         # Pagination
         page_size = max(1, min(10, int(page_size)))
@@ -348,7 +373,10 @@ def duffel_search_offers(
         }
 
     except Exception as e:
-        return {"error": f"duffel_search_offers failed: {type(e).__name__}: {e}", "code": "UNKNOWN"}
+        return {
+            "error": f"duffel_search_offers failed: {type(e).__name__}: {e}",
+            "code": "UNKNOWN",
+        }
 
 
 @_tool
@@ -368,7 +396,10 @@ def duffel_get_offer_with_services(offer_id: str) -> Dict[str, Any]:
                 params={"return_available_services": "true"},
             )
         if r.status_code >= 400:
-            return {"error": f"Duffel {r.status_code}: {r.text[:300]}", "code": "HTTP_ERROR"}
+            return {
+                "error": f"Duffel {r.status_code}: {r.text[:300]}",
+                "code": "HTTP_ERROR",
+            }
 
         d = (r.json() or {}).get("data") or {}
         owner = d.get("owner") or {}
@@ -379,7 +410,9 @@ def duffel_get_offer_with_services(offer_id: str) -> Dict[str, Any]:
         offer_passengers: List[Dict[str, Any]] = []
         for p in offer_pax:
             if isinstance(p, dict) and p.get("id"):
-                offer_passengers.append({"id": p.get("id"), "type": (p.get("type") or "adult")})
+                offer_passengers.append(
+                    {"id": p.get("id"), "type": (p.get("type") or "adult")}
+                )
 
         res: Dict[str, Any] = {
             "id": d.get("id"),
@@ -387,16 +420,20 @@ def duffel_get_offer_with_services(offer_id: str) -> Dict[str, Any]:
             "total_amount": d.get("total_amount"),
             "total_currency": d.get("total_currency"),
             "itinerary": _format_itinerary(d.get("slices") or []),
-            "payment_required_by": (d.get("payment_requirements") or {}).get("payment_required_by"),
+            "payment_required_by": (d.get("payment_requirements") or {}).get(
+                "payment_required_by"
+            ),
             "bags": [],
             "offer_passengers": offer_passengers,
         }
-        for svc in (d.get("available_services") or []):
+        for svc in d.get("available_services") or []:
             if not isinstance(svc, dict):
                 continue
             bag = {
                 "id": svc.get("id"),
-                "name": (svc.get("name") or (svc.get("metadata") or {}).get("name") or "Bag"),
+                "name": (
+                    svc.get("name") or (svc.get("metadata") or {}).get("name") or "Bag"
+                ),
                 "total_amount": svc.get("total_amount"),
                 "total_currency": svc.get("total_currency"),
             }
@@ -406,7 +443,10 @@ def duffel_get_offer_with_services(offer_id: str) -> Dict[str, Any]:
         return res
 
     except Exception as e:
-        return {"error": f"offer_refresh_failed: {type(e).__name__}: {e}", "code": "UNKNOWN"}
+        return {
+            "error": f"offer_refresh_failed: {type(e).__name__}: {e}",
+            "code": "UNKNOWN",
+        }
 
 
 def _sanitize_passengers(passengers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -416,8 +456,12 @@ def _sanitize_passengers(passengers: List[Dict[str, Any]]) -> List[Dict[str, Any
             continue
         pp: Dict[str, Any] = {
             "type": p.get("type") or "adult",
-            "given_name": p.get("given_name") or p.get("first_name") or p.get("givenName"),
-            "family_name": p.get("family_name") or p.get("last_name") or p.get("familyName"),
+            "given_name": p.get("given_name")
+            or p.get("first_name")
+            or p.get("givenName"),
+            "family_name": p.get("family_name")
+            or p.get("last_name")
+            or p.get("familyName"),
             "born_on": p.get("born_on") or p.get("dob") or p.get("date_of_birth"),
         }
         if p.get("gender"):
@@ -437,8 +481,14 @@ def _sanitize_passengers(passengers: List[Dict[str, Any]]) -> List[Dict[str, Any
 def _summarize_order_email(d: Dict[str, Any]) -> str:
     total = d.get("total_amount")
     cur = d.get("total_currency")
-    br = d.get("booking_reference") or (d.get("booking_references") or [{}])[0].get("booking_reference")
-    airline = (d.get("owner") or {}).get("name") or (d.get("owner") or {}).get("iata_code") or ""
+    br = d.get("booking_reference") or (d.get("booking_references") or [{}])[0].get(
+        "booking_reference"
+    )
+    airline = (
+        (d.get("owner") or {}).get("name")
+        or (d.get("owner") or {}).get("iata_code")
+        or ""
+    )
     itin = _format_itinerary(d.get("slices") or [])
     lines = [
         "Your booking is confirmed ✅",
@@ -457,8 +507,14 @@ def _summarize_order_email(d: Dict[str, Any]) -> str:
 def _build_booking_html(d: Dict[str, Any]) -> str:
     total = d.get("total_amount")
     cur = d.get("total_currency")
-    br = d.get("booking_reference") or (d.get("booking_references") or [{}])[0].get("booking_reference")
-    airline = (d.get("owner") or {}).get("name") or (d.get("owner") or {}).get("iata_code") or ""
+    br = d.get("booking_reference") or (d.get("booking_references") or [{}])[0].get(
+        "booking_reference"
+    )
+    airline = (
+        (d.get("owner") or {}).get("name")
+        or (d.get("owner") or {}).get("iata_code")
+        or ""
+    )
     itin = _format_itinerary(d.get("slices") or [])
     order_id = d.get("id") or d.get("order_id") or "—"
     total_text = f"{total} {cur}".strip() if (total or cur) else "—"
@@ -470,20 +526,20 @@ def _build_booking_html(d: Dict[str, Any]) -> str:
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
   <title>Booking Confirmed</title>
   <style>
-    body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; background:#f5f7fb; margin:0; padding:24px; }
-    .wrap { max-width:680px; margin:0 auto; }
-    .card { background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 30px rgba(16,24,40,0.08); }
-    .banner { background:linear-gradient(135deg,#5B86E5 0%,#36D1DC 100%); padding:30px 28px; color:#fff; }
-    .banner h1 { margin:0; font-size:24px; font-weight:700; letter-spacing:.2px; }
-    .banner p { margin:8px 0 0; opacity:.95; }
-    .content { padding:32px 32px 12px; color:#1f2937; }
-    .row { display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e5e7eb; padding:14px 0; font-size:14px; line-height:1.5; }
-    .row:first-child { border-top:none; }
-    .label { color:#6b7280; font-weight:600; }
-    .value { color:#111827; font-weight:700; text-align:right; }
-    .tips { padding:18px 32px 18px; color:#374151; font-size:13px; }
-    .tips p { margin:8px 0; }
-    .footer { padding:20px 28px 28px; color:#6b7280; font-size:12px; border-top:1px dashed #e5e7eb; }
+    body {font - family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; background:#f5f7fb; margin:0; padding:24px; }
+    .wrap {max - width:680px; margin:0 auto; }
+    .card {background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 8px 30px rgba(16,24,40,0.08); }
+    .banner {background:linear-gradient(135deg,#5B86E5 0%,#36D1DC 100%); padding:30px 28px; color:#fff; }
+    .banner h1 {margin:0; font-size:24px; font-weight:700; letter-spacing:.2px; }
+    .banner p {margin:8px 0 0; opacity:.95; }
+    .content {padding:32px 32px 12px; color:#1f2937; }
+    .row {display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e5e7eb; padding:14px 0; font-size:14px; line-height:1.5; }
+    .row:first-child {border - top:none; }
+    .label {color:#6b7280; font-weight:600; }
+    .value {color:#111827; font-weight:700; text-align:right; }
+    .tips {padding:18px 32px 18px; color:#374151; font-size:13px; }
+    .tips p {margin:8px 0; }
+    .footer {padding:20px 28px 28px; color:#6b7280; font-size:12px; border-top:1px dashed #e5e7eb; }
   </style>
   </head>
   <body>
@@ -494,10 +550,10 @@ def _build_booking_html(d: Dict[str, Any]) -> str:
           <p>You're all set for your trip.</p>
         </div>
         <div class="content">
-          <div class="row"><div class="label">Airline</div><div class="value">{airline or '-'} </div></div>
-          <div class="row"><div class="label">PNR</div><div class="value">{br or '-'} </div></div>
+          <div class="row"><div class="label">Airline</div><div class="value">{airline or "-"} </div></div>
+          <div class="row"><div class="label">PNR</div><div class="value">{br or "-"} </div></div>
           <div class="row"><div class="label">Order ID</div><div class="value">{order_id}</div></div>
-          <div class="row"><div class="label">Itinerary</div><div class="value">{itin or '-'} </div></div>
+          <div class="row"><div class="label">Itinerary</div><div class="value">{itin or "-"} </div></div>
           <div class="row"><div class="label">Total</div><div class="value">{total_text}</div></div>
         </div>
         <div class="tips"><p>To cancel: ask <strong>Duffel agent on ASI1</strong> to cancel <strong>{order_id}</strong>.</p></div>
@@ -506,7 +562,7 @@ def _build_booking_html(d: Dict[str, Any]) -> str:
     </div>
   </body>
 </html>
-"""
+"""  # noqa: F821
 
 
 @_tool
@@ -543,50 +599,79 @@ def duffel_create_order(
         # Inline payment = instant ticketing
         try:
             with httpx.Client(timeout=15) as client:
-                r_get = client.get(f"{_DUFFEL_BASE}/air/offers/{offer_id}", headers=_headers())
-            d = (r_get.json() or {}).get("data") or {} if r_get.status_code < 400 else {}
+                r_get = client.get(
+                    f"{_DUFFEL_BASE}/air/offers/{offer_id}", headers=_headers()
+                )
+            d = (
+                (r_get.json() or {}).get("data") or {}
+                if r_get.status_code < 400
+                else {}
+            )
             amt = d.get("total_amount")
             cur = d.get("total_currency")
             if amt and cur:
-                body["payments"] = [{"type": "balance", "amount": str(amt), "currency": str(cur)}]
+                body["payments"] = [
+                    {"type": "balance", "amount": str(amt), "currency": str(cur)}
+                ]
         except Exception:
             pass
 
     try:
         with httpx.Client(timeout=_TIMEOUT) as client:
-            rr = client.post(f"{_DUFFEL_BASE}/air/orders", headers=_headers(), json={"data": body})
+            rr = client.post(
+                f"{_DUFFEL_BASE}/air/orders", headers=_headers(), json={"data": body}
+            )
         if rr.status_code >= 400:
-            return {"error": f"Duffel {rr.status_code}: {rr.text[:300]}", "code": "HTTP_ERROR"}
+            return {
+                "error": f"Duffel {rr.status_code}: {rr.text[:300]}",
+                "code": "HTTP_ERROR",
+            }
 
         data = (rr.json() or {}).get("data") or {}
         out = {
             "id": data.get("id"),
-            "booking_reference": data.get("booking_reference") or (data.get("booking_references") or [{}])[0].get("booking_reference"),
+            "booking_reference": data.get("booking_reference")
+            or (data.get("booking_references") or [{}])[0].get("booking_reference"),
             "total_amount": data.get("total_amount"),
             "total_currency": data.get("total_currency"),
-            "awaiting_payment": bool((data.get("payment_status") or {}).get("awaiting_payment")),
+            "awaiting_payment": bool(
+                (data.get("payment_status") or {}).get("awaiting_payment")
+            ),
         }
 
         if notify_email:
             if _smtp_enabled():
                 try:
                     with httpx.Client(timeout=15) as client:
-                        r_full = client.get(f"{_DUFFEL_BASE}/air/orders/{out['id']}", headers=_headers())
+                        r_full = client.get(
+                            f"{_DUFFEL_BASE}/air/orders/{out['id']}", headers=_headers()
+                        )
                     full = (r_full.json() or {}).get("data") or data
                     html = _build_booking_html(full)
-                    ok = _send_email(notify_email, "Your flight booking", _summarize_order_email(full), html)
+                    ok = _send_email(
+                        notify_email,
+                        "Your flight booking",
+                        _summarize_order_email(full),
+                        html,
+                    )
                     try:
-                        logging.getLogger(__name__).info(f"[email] booking email {'sent' if ok else 'skipped'} to {notify_email}")
+                        logging.getLogger(__name__).info(
+                            f"[email] booking email {'sent' if ok else 'skipped'} to {notify_email}"
+                        )
                     except Exception:
                         pass
                 except Exception as e:
                     try:
-                        logging.getLogger(__name__).warning(f"[email] failed to prepare/send booking email: {e}")
+                        logging.getLogger(__name__).warning(
+                            f"[email] failed to prepare/send booking email: {e}"
+                        )
                     except Exception:
                         pass
             else:
                 try:
-                    logging.getLogger(__name__).info("[email] SMTP not configured; skipping booking email")
+                    logging.getLogger(__name__).info(
+                        "[email] SMTP not configured; skipping booking email"
+                    )
                 except Exception:
                     pass
 
@@ -600,12 +685,24 @@ def duffel_pay_hold_order(order_id: str, amount: str, currency: str) -> Dict[str
     """Pay a HOLD order using seller balance (POST /air/payments)."""
     if not _DUFFEL_TOKEN:
         return {"error": "DUFFEL_TOKEN not set", "code": "NO_TOKEN"}
-    payload = {"data": {"order_id": order_id, "type": "balance", "amount": str(amount), "currency": str(currency)}}
+    payload = {
+        "data": {
+            "order_id": order_id,
+            "type": "balance",
+            "amount": str(amount),
+            "currency": str(currency),
+        }
+    }
     try:
         with httpx.Client(timeout=_TIMEOUT) as client:
-            r = client.post(f"{_DUFFEL_BASE}/air/payments", headers=_headers(), json=payload)
+            r = client.post(
+                f"{_DUFFEL_BASE}/air/payments", headers=_headers(), json=payload
+            )
         if r.status_code >= 400:
-            return {"error": f"Duffel {r.status_code}: {r.text[:300]}", "code": "HTTP_ERROR"}
+            return {
+                "error": f"Duffel {r.status_code}: {r.text[:300]}",
+                "code": "HTTP_ERROR",
+            }
         return {"ok": True}
     except Exception as e:
         return {"error": f"pay_hold_failed: {type(e).__name__}: {e}", "code": "UNKNOWN"}
@@ -620,11 +717,15 @@ def duffel_get_order(order_id: str) -> Dict[str, Any]:
         with httpx.Client(timeout=_TIMEOUT) as client:
             r = client.get(f"{_DUFFEL_BASE}/air/orders/{order_id}", headers=_headers())
         if r.status_code >= 400:
-            return {"error": f"Duffel {r.status_code}: {r.text[:300]}", "code": "HTTP_ERROR"}
+            return {
+                "error": f"Duffel {r.status_code}: {r.text[:300]}",
+                "code": "HTTP_ERROR",
+            }
         d = (r.json() or {}).get("data") or {}
         return {
             "id": d.get("id"),
-            "booking_reference": d.get("booking_reference") or (d.get("booking_references") or [{}])[0].get("booking_reference"),
+            "booking_reference": d.get("booking_reference")
+            or (d.get("booking_references") or [{}])[0].get("booking_reference"),
             "total_amount": d.get("total_amount"),
             "total_currency": d.get("total_currency"),
             "payment_status": d.get("payment_status"),
@@ -632,7 +733,10 @@ def duffel_get_order(order_id: str) -> Dict[str, Any]:
             "available_actions": d.get("available_actions"),
         }
     except Exception as e:
-        return {"error": f"get_order_failed: {type(e).__name__}: {e}", "code": "UNKNOWN"}
+        return {
+            "error": f"get_order_failed: {type(e).__name__}: {e}",
+            "code": "UNKNOWN",
+        }
 
 
 @_tool
@@ -642,9 +746,16 @@ def duffel_create_order_cancellation(order_id: str) -> Dict[str, Any]:
         return {"error": "DUFFEL_TOKEN not set", "code": "NO_TOKEN"}
     try:
         with httpx.Client(timeout=_TIMEOUT) as client:
-            r = client.post(f"{_DUFFEL_BASE}/air/order_cancellations", headers=_headers(), json={"data": {"order_id": order_id}})
+            r = client.post(
+                f"{_DUFFEL_BASE}/air/order_cancellations",
+                headers=_headers(),
+                json={"data": {"order_id": order_id}},
+            )
         if r.status_code >= 400:
-            return {"error": f"Duffel {r.status_code}: {r.text[:300]}", "code": "HTTP_ERROR"}
+            return {
+                "error": f"Duffel {r.status_code}: {r.text[:300]}",
+                "code": "HTTP_ERROR",
+            }
         d = (r.json() or {}).get("data") or {}
         return {
             "id": d.get("id"),
@@ -655,11 +766,16 @@ def duffel_create_order_cancellation(order_id: str) -> Dict[str, Any]:
             "status": d.get("status"),
         }
     except Exception as e:
-        return {"error": f"create_cxl_failed: {type(e).__name__}: {e}", "code": "UNKNOWN"}
+        return {
+            "error": f"create_cxl_failed: {type(e).__name__}: {e}",
+            "code": "UNKNOWN",
+        }
 
 
 @_tool
-def duffel_confirm_order_cancellation(order_cancellation_id: str, notify_email: Optional[str] = None) -> Dict[str, Any]:
+def duffel_confirm_order_cancellation(
+    order_cancellation_id: str, notify_email: Optional[str] = None
+) -> Dict[str, Any]:
     """Confirm a previously created cancellation."""
     if not _DUFFEL_TOKEN:
         return {"error": "DUFFEL_TOKEN not set", "code": "NO_TOKEN"}
@@ -671,7 +787,10 @@ def duffel_confirm_order_cancellation(order_cancellation_id: str, notify_email: 
                 json={"data": {}},
             )
         if r.status_code >= 400:
-            return {"error": f"Duffel {r.status_code}: {r.text[:300]}", "code": "HTTP_ERROR"}
+            return {
+                "error": f"Duffel {r.status_code}: {r.text[:300]}",
+                "code": "HTTP_ERROR",
+            }
 
         if notify_email and _smtp_enabled():
             try:
@@ -685,7 +804,10 @@ def duffel_confirm_order_cancellation(order_cancellation_id: str, notify_email: 
 
         return {"ok": True}
     except Exception as e:
-        return {"error": f"confirm_cxl_failed: {type(e).__name__}: {e}", "code": "UNKNOWN"}
+        return {
+            "error": f"confirm_cxl_failed: {type(e).__name__}: {e}",
+            "code": "UNKNOWN",
+        }
 
 
 # Export tools
@@ -698,8 +820,9 @@ def list_orders() -> Dict[str, Any]:
     """
     return {
         "message": "list_orders called - implementation handled by chat_proto",
-        "orders": []
+        "orders": [],
     }
+
 
 @_tool
 def get_order_cancellation_quote(order_id: str) -> Dict[str, Any]:
@@ -710,41 +833,49 @@ def get_order_cancellation_quote(order_id: str) -> Dict[str, Any]:
     token = os.getenv("DUFFEL_TOKEN")
     if not token:
         return {"error": "DUFFEL_TOKEN not set", "code": "NO_TOKEN"}
-    
+
     headers = {
         "Authorization": f"Bearer {token}",
         "Duffel-Version": "v2",
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
-    
+
     try:
         # First check if order is cancellable
         with httpx.Client(timeout=20) as client:
-            r = client.get(f"https://api.duffel.com/air/orders/{order_id}", headers=headers)
-        
+            r = client.get(
+                f"https://api.duffel.com/air/orders/{order_id}", headers=headers
+            )
+
         if r.status_code >= 400:
-            return {"error": f"Duffel {r.status_code}: {r.text[:300]}", "code": "HTTP_ERROR"}
-        
+            return {
+                "error": f"Duffel {r.status_code}: {r.text[:300]}",
+                "code": "HTTP_ERROR",
+            }
+
         order_data = (r.json() or {}).get("data") or {}
         available_actions = order_data.get("available_actions") or []
-        
+
         if "cancel" not in available_actions:
             return {"error": "This order is not cancellable", "code": "NOT_CANCELLABLE"}
-        
+
         # Create cancellation quote
         with httpx.Client(timeout=20) as client:
             cr = client.post(
                 "https://api.duffel.com/air/order_cancellations",
                 headers=headers,
-                json={"data": {"order_id": order_id}}
+                json={"data": {"order_id": order_id}},
             )
-        
+
         if cr.status_code >= 400:
-            return {"error": f"Duffel {cr.status_code}: {cr.text[:300]}", "code": "HTTP_ERROR"}
-        
+            return {
+                "error": f"Duffel {cr.status_code}: {cr.text[:300]}",
+                "code": "HTTP_ERROR",
+            }
+
         cancellation_data = (cr.json() or {}).get("data") or {}
-        
+
         return {
             "order_cancellation_id": cancellation_data.get("id"),
             "order_id": order_id,
@@ -753,9 +884,13 @@ def get_order_cancellation_quote(order_id: str) -> Dict[str, Any]:
             "refund_to": cancellation_data.get("refund_to"),
             "expires_at": cancellation_data.get("expires_at"),
         }
-    
+
     except Exception as e:
-        return {"error": f"get_order_cancellation_quote failed: {type(e).__name__}: {e}", "code": "UNKNOWN"}
+        return {
+            "error": f"get_order_cancellation_quote failed: {type(e).__name__}: {e}",
+            "code": "UNKNOWN",
+        }
+
 
 @_tool
 def confirm_order_cancellation(order_cancellation_id: str) -> Dict[str, Any]:
@@ -765,26 +900,29 @@ def confirm_order_cancellation(order_cancellation_id: str) -> Dict[str, Any]:
     token = os.getenv("DUFFEL_TOKEN")
     if not token:
         return {"error": "DUFFEL_TOKEN not set", "code": "NO_TOKEN"}
-    
+
     headers = {
         "Authorization": f"Bearer {token}",
         "Duffel-Version": "v2",
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
-    
+
     try:
         with httpx.Client(timeout=20) as client:
             r = client.post(
                 f"https://api.duffel.com/air/order_cancellations/{order_cancellation_id}/actions/confirm",
-                headers=headers
+                headers=headers,
             )
-        
+
         if r.status_code >= 400:
-            return {"error": f"Duffel {r.status_code}: {r.text[:300]}", "code": "HTTP_ERROR"}
-        
+            return {
+                "error": f"Duffel {r.status_code}: {r.text[:300]}",
+                "code": "HTTP_ERROR",
+            }
+
         cancellation_data = (r.json() or {}).get("data") or {}
-        
+
         return {
             "order_cancellation_id": cancellation_data.get("id"),
             "order_id": cancellation_data.get("order_id"),
@@ -792,9 +930,13 @@ def confirm_order_cancellation(order_cancellation_id: str) -> Dict[str, Any]:
             "refund_currency": cancellation_data.get("refund_currency"),
             "confirmed_at": cancellation_data.get("confirmed_at"),
         }
-    
+
     except Exception as e:
-        return {"error": f"confirm_order_cancellation failed: {type(e).__name__}: {e}", "code": "UNKNOWN"}
+        return {
+            "error": f"confirm_order_cancellation failed: {type(e).__name__}: {e}",
+            "code": "UNKNOWN",
+        }
+
 
 try:
     TOOLS = [

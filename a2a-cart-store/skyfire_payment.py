@@ -140,5 +140,3 @@ def detect_skyfire_token(payment_response: PaymentResponse) -> Optional[str]:
 
 def is_skyfire_payment(payment_response: PaymentResponse) -> bool:
     return (payment_response.method_name or "").lower() == "skyfire"
-
-

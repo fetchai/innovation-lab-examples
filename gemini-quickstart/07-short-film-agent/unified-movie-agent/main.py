@@ -20,16 +20,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from uagents import Agent, Context, Protocol
-from uagents_core.contrib.protocols.chat import (
+from uagents import Agent, Context, Protocol  # noqa: E402
+from uagents_core.contrib.protocols.chat import (  # noqa: E402
     ChatMessage,
     ChatAcknowledgement,
     TextContent,
     chat_protocol_spec,
 )
 
-from config import AGENT_NAME, AGENT_SEED, AGENT_PORT, SCENE_COUNT
-from pipeline.orchestrator import produce_film
+from config import AGENT_NAME, AGENT_SEED, AGENT_PORT, SCENE_COUNT  # noqa: E402
+from pipeline.orchestrator import produce_film  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,
@@ -64,6 +64,7 @@ def _extract(raw: str):
 
 # ── Chat helpers ────────────────────────────────────────────────
 
+
 def _chat_msg(text: str) -> ChatMessage:
     return ChatMessage(
         timestamp=datetime.now(timezone.utc),
@@ -74,8 +75,8 @@ def _chat_msg(text: str) -> ChatMessage:
 
 # ── Request queue ───────────────────────────────────────────────
 
-_active: Optional[str] = None          # request-id of in-flight film
-_queue: List[Dict[str, Any]] = []      # waiting requests
+_active: Optional[str] = None  # request-id of in-flight film
+_queue: List[Dict[str, Any]] = []  # waiting requests
 
 
 async def _process_queue(ctx: Context) -> None:
@@ -86,7 +87,9 @@ async def _process_queue(ctx: Context) -> None:
         return
     nxt = _queue.pop(0)
     for i, q in enumerate(_queue):
-        await ctx.send(q["user"], _chat_msg(f"⏳ Queue update: you are now #{i+1} in line."))
+        await ctx.send(
+            q["user"], _chat_msg(f"⏳ Queue update: you are now #{i + 1} in line.")
+        )
     await _run_film(ctx, nxt["user"], nxt["prompt"], nxt["refs"])
 
 
@@ -136,7 +139,7 @@ async def _run_film(ctx: Context, user: str, prompt: str, refs: List[str]) -> No
             lines.append("")
         if result.final_url:
             lines.append(f"📽️ **[Watch Full Movie]({result.final_url})**\n")
-            lines.append(f"**Final Movie:**\n")
+            lines.append("**Final Movie:**\n")
             lines.append(f"![]({result.final_url})\n")
         lines.append("Thank you for creating with the Unified Movie Agent ✨")
         await notify("\n".join(lines))
@@ -146,6 +149,7 @@ async def _run_film(ctx: Context, user: str, prompt: str, refs: List[str]) -> No
 
 
 # ── Chat handler ────────────────────────────────────────────────
+
 
 @chat_proto.on_message(ChatMessage)
 async def handle_user_message(ctx: Context, sender: str, msg: ChatMessage) -> None:
@@ -173,10 +177,13 @@ async def handle_user_message(ctx: Context, sender: str, msg: ChatMessage) -> No
     if _active is not None:
         _queue.append({"user": sender, "prompt": prompt, "refs": refs})
         pos = len(_queue)
-        await ctx.send(sender, _chat_msg(
-            f"⏳ **You're #{pos} in the queue.**\n"
-            f"Another film is being produced. I'll start yours automatically!"
-        ))
+        await ctx.send(
+            sender,
+            _chat_msg(
+                f"⏳ **You're #{pos} in the queue.**\n"
+                f"Another film is being produced. I'll start yours automatically!"
+            ),
+        )
         return
 
     # No active film — run immediately (as background task so agent stays responsive)
@@ -189,6 +196,7 @@ async def handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement) -> Non
 
 
 # ── Lifecycle ───────────────────────────────────────────────────
+
 
 @agent.on_event("startup")
 async def startup(ctx: Context) -> None:

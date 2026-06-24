@@ -23,6 +23,7 @@ TEMP_DIR.mkdir(exist_ok=True)
 
 # ── Helpers ──────────────────────────────────────────────────────
 
+
 async def _download(url: str, path: Path) -> Path:
     async with httpx.AsyncClient(timeout=300.0) as http:
         resp = await http.get(url)
@@ -35,9 +36,12 @@ def _duration(media_path: Path) -> float:
     try:
         result = subprocess.run(
             ["ffmpeg", "-i", str(media_path), "-f", "null", "-"],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
-        m = re.search(r"Duration: (\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)", result.stderr or "")
+        m = re.search(
+            r"Duration: (\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)", result.stderr or ""
+        )
         if not m:
             return 0.0
         return int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3))
@@ -53,10 +57,21 @@ def _adjust_duration(audio: Path, target: float, out: Path) -> Path:
         return audio
     if current < target:
         cmd = [
-            "ffmpeg", "-i", str(audio),
-            "-f", "lavfi", "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
-            "-filter_complex", "[0:a][1:a]concat=n=2:v=0:a=1[out]",
-            "-map", "[out]", "-t", str(target), "-y", str(out),
+            "ffmpeg",
+            "-i",
+            str(audio),
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=channel_layout=stereo:sample_rate=44100",
+            "-filter_complex",
+            "[0:a][1:a]concat=n=2:v=0:a=1[out]",
+            "-map",
+            "[out]",
+            "-t",
+            str(target),
+            "-y",
+            str(out),
         ]
     else:
         cmd = ["ffmpeg", "-i", str(audio), "-t", str(target), "-y", str(out)]
@@ -67,13 +82,28 @@ def _adjust_duration(audio: Path, target: float, out: Path) -> Path:
 def _combine(video: Path, voice: Path, music: Path, out: Path) -> Path:
     cmd = [
         "ffmpeg",
-        "-i", str(video), "-i", str(voice), "-i", str(music),
+        "-i",
+        str(video),
+        "-i",
+        str(voice),
+        "-i",
+        str(music),
         "-filter_complex",
         "[1:a]volume=1.0[voice];[2:a]volume=0.5[music];"
         "[voice][music]amix=inputs=2:duration=first[audio]",
-        "-map", "0:v", "-map", "[audio]",
-        "-c:v", "copy", "-c:a", "aac", "-b:a", "192k",
-        "-shortest", "-y", str(out),
+        "-map",
+        "0:v",
+        "-map",
+        "[audio]",
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-shortest",
+        "-y",
+        str(out),
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -82,6 +112,7 @@ def _combine(video: Path, voice: Path, music: Path, out: Path) -> Path:
 
 
 # ── Public API ──────────────────────────────────────────────────
+
 
 async def assemble_scene(
     scene_index: int,

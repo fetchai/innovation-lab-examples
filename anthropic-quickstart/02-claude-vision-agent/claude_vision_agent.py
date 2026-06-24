@@ -24,14 +24,14 @@ from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
     TextContent,
     ResourceContent,
-    chat_protocol_spec
+    chat_protocol_spec,
 )
 
 # Load environment variables
 load_dotenv()
 
 # Configure Anthropic Claude
-anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
+anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
 if not anthropic_api_key:
     raise ValueError("ANTHROPIC_API_KEY not found in environment variables")
 
@@ -39,7 +39,7 @@ if not anthropic_api_key:
 client = Anthropic(api_key=anthropic_api_key)
 
 # Model configuration - Claude 3.5 Sonnet supports vision
-MODEL_NAME = 'claude-3-5-sonnet-20241022'  # Latest stable version
+MODEL_NAME = "claude-3-5-sonnet-20241022"  # Latest stable version
 MAX_TOKENS = 2048  # Longer responses for detailed image analysis
 TEMPERATURE = 0.7
 
@@ -48,7 +48,7 @@ agent = Agent(
     name="claude_vision",
     seed="claude-vision-seed-phrase-12345",  # Change this for your agent
     port=8002,
-    mailbox=True  # Required for Agentverse deployment
+    mailbox=True,  # Required for Agentverse deployment
 )
 
 # Initialize chat protocol
@@ -80,22 +80,22 @@ def create_text_chat(text: str) -> ChatMessage:
     return ChatMessage(
         timestamp=datetime.now(timezone.utc),
         msg_id=uuid4(),
-        content=[TextContent(text=text, type="text")]
+        content=[TextContent(text=text, type="text")],
     )
 
 
 async def download_image_from_uri(uri: str, ctx: Context) -> bytes:
     """Download image from URI and return bytes"""
     try:
-        if uri.startswith('http://') or uri.startswith('https://'):
+        if uri.startswith("http://") or uri.startswith("https://"):
             # Direct HTTP/HTTPS URL with proper headers
             headers = {
-                'User-Agent': 'Mozilla/5.0 (compatible; ClaudeVisionBot/1.0; +https://fetch.ai)'
+                "User-Agent": "Mozilla/5.0 (compatible; ClaudeVisionBot/1.0; +https://fetch.ai)"
             }
             response = requests.get(uri, timeout=10, headers=headers)
             response.raise_for_status()
             return response.content
-        elif uri.startswith('agent-storage://'):
+        elif uri.startswith("agent-storage://"):
             # Agentverse storage - would need proper implementation
             ctx.logger.warning(f"Agent storage URI not fully implemented: {uri}")
             # For now, return None - in production, implement proper storage access
@@ -110,19 +110,19 @@ async def download_image_from_uri(uri: str, ctx: Context) -> bytes:
 
 def image_to_base64(image_bytes: bytes) -> str:
     """Convert image bytes to base64 string"""
-    return base64.b64encode(image_bytes).decode('utf-8')
+    return base64.b64encode(image_bytes).decode("utf-8")
 
 
 def get_image_media_type(image_bytes: bytes) -> str:
     """Detect image media type from bytes"""
     # Check magic numbers for common formats
-    if image_bytes.startswith(b'\xff\xd8\xff'):
+    if image_bytes.startswith(b"\xff\xd8\xff"):
         return "image/jpeg"
-    elif image_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
+    elif image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
         return "image/png"
-    elif image_bytes.startswith(b'GIF87a') or image_bytes.startswith(b'GIF89a'):
+    elif image_bytes.startswith(b"GIF87a") or image_bytes.startswith(b"GIF89a"):
         return "image/gif"
-    elif image_bytes.startswith(b'RIFF') and b'WEBP' in image_bytes[:12]:
+    elif image_bytes.startswith(b"RIFF") and b"WEBP" in image_bytes[:12]:
         return "image/webp"
     else:
         return "image/jpeg"  # Default fallback
@@ -131,7 +131,7 @@ def get_image_media_type(image_bytes: bytes) -> str:
 def extract_image_urls(text: str) -> list[str]:
     """Extract image URLs from text"""
     # Pattern to match common image URLs
-    url_pattern = r'https?://[^\s]+\.(?:jpg|jpeg|png|gif|webp|bmp)'
+    url_pattern = r"https?://[^\s]+\.(?:jpg|jpeg|png|gif|webp|bmp)"
     urls = re.findall(url_pattern, text, re.IGNORECASE)
     return urls
 
@@ -141,12 +141,12 @@ async def startup(ctx: Context):
     """Initialize agent on startup"""
     ctx.logger.info("👁️ Starting Claude Vision Agent...")
     ctx.logger.info(f"📍 Agent address: {agent.address}")
-    
+
     if anthropic_api_key:
         ctx.logger.info("✅ Claude Vision API configured")
     else:
         ctx.logger.error("❌ Anthropic API key not set")
-    
+
     # Initialize storage
     ctx.storage.set("total_messages", 0)
     ctx.storage.set("total_images", 0)
@@ -155,30 +155,36 @@ async def startup(ctx: Context):
 @chat_proto.on_message(ChatMessage)
 async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
     """Handle incoming chat messages with optional images"""
-    
+
     try:
         # Extract text and images from message
         user_text = ""
         images = []
-        
+
         for item in msg.content:
             if isinstance(item, TextContent):
                 user_text = item.text
             elif isinstance(item, ResourceContent):
                 # Handle image resources
                 ctx.logger.info(f"📸 Received image resource: {item.resource_id}")
-                
+
                 # Try to download the image
                 # Handle both single resource and list of resources
-                resources = item.resource if isinstance(item.resource, list) else [item.resource]
-                
+                resources = (
+                    item.resource
+                    if isinstance(item.resource, list)
+                    else [item.resource]
+                )
+
                 for resource in resources:
-                    if resource and hasattr(resource, 'uri') and resource.uri:
+                    if resource and hasattr(resource, "uri") and resource.uri:
                         image_bytes = await download_image_from_uri(resource.uri, ctx)
                         if image_bytes:
                             images.append(image_bytes)
-                            ctx.logger.info(f"✅ Downloaded image ({len(image_bytes)} bytes)")
-        
+                            ctx.logger.info(
+                                f"✅ Downloaded image ({len(image_bytes)} bytes)"
+                            )
+
         # Extract image URLs from text if present
         if user_text:
             image_urls = extract_image_urls(user_text)
@@ -187,90 +193,91 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
                 image_bytes = await download_image_from_uri(url, ctx)
                 if image_bytes:
                     images.append(image_bytes)
-                    ctx.logger.info(f"✅ Downloaded image from URL ({len(image_bytes)} bytes)")
-        
+                    ctx.logger.info(
+                        f"✅ Downloaded image from URL ({len(image_bytes)} bytes)"
+                    )
+
         # Default prompt if no text provided
         if not user_text and images:
             user_text = "What do you see in this image? Provide a detailed description."
-        
+
         if not user_text and not images:
             ctx.logger.warning("No text or images in message")
             return
-        
+
         # Log incoming message
         ctx.logger.info(f"📨 Message from {sender}: {user_text[:50]}...")
         if images:
             ctx.logger.info(f"📸 With {len(images)} image(s)")
-        
+
         # Send acknowledgement
-        await ctx.send(sender, ChatAcknowledgement(
-            timestamp=datetime.now(timezone.utc),
-            acknowledged_msg_id=msg.msg_id
-        ))
-        
+        await ctx.send(
+            sender,
+            ChatAcknowledgement(
+                timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id
+            ),
+        )
+
         # Build messages array for Claude API
         message_content = []
-        
+
         # Add images first (Claude prefers images before text)
         for img_bytes in images:
             img_base64 = image_to_base64(img_bytes)
             media_type = get_image_media_type(img_bytes)
-            
-            message_content.append({
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": media_type,
-                    "data": img_base64
+
+            message_content.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": img_base64,
+                    },
                 }
-            })
-        
+            )
+
         # Add text
-        message_content.append({
-            "type": "text",
-            "text": user_text
-        })
-        
+        message_content.append({"type": "text", "text": user_text})
+
         # Generate response from Claude
         ctx.logger.info("🤔 Analyzing with Claude Vision...")
-        
+
         response = client.messages.create(
             model=MODEL_NAME,
             max_tokens=MAX_TOKENS,
             temperature=TEMPERATURE,
             system=SYSTEM_PROMPT,
-            messages=[{
-                "role": "user",
-                "content": message_content
-            }]
+            messages=[{"role": "user", "content": message_content}],
         )
-        
+
         # Extract response text
         response_text = response.content[0].text
-        
+
         ctx.logger.info(f"✅ Response generated: {response_text[:50]}...")
-        
+
         # Track stats
         total_msgs = ctx.storage.get("total_messages") or 0
         ctx.storage.set("total_messages", total_msgs + 1)
-        
+
         if images:
             total_imgs = ctx.storage.get("total_images") or 0
             ctx.storage.set("total_images", total_imgs + len(images))
-        
+
         # Send response back to user
         await ctx.send(sender, create_text_chat(response_text))
-        
+
         ctx.logger.info(f"💬 Response sent to {sender}")
-        
+
     except Exception as e:
         ctx.logger.error(f"❌ Error processing message: {e}")
         import traceback
+
         ctx.logger.error(traceback.format_exc())
-        
+
         # Check for specific error types
         error_str = str(e)
-        
+
         if "rate_limit" in error_str.lower() or "429" in error_str:
             error_msg = """⚠️ **Rate Limit Reached**
 
@@ -311,7 +318,7 @@ Please try:
 - Sending a different image
 - Waiting a moment and trying again
 """
-        
+
         await ctx.send(sender, create_text_chat(error_msg))
 
 
@@ -328,7 +335,7 @@ agent.include(chat_proto, publish_manifest=True)
 if __name__ == "__main__":
     print("👁️ Starting Claude Vision Agent...")
     print(f"📍 Agent address: {agent.address}")
-    
+
     if anthropic_api_key:
         print("✅ Claude Vision API configured")
         print(f"   Using model: {MODEL_NAME}")
@@ -337,7 +344,7 @@ if __name__ == "__main__":
         print("   Please add it to your .env file")
         print("   Get your key from: https://console.anthropic.com")
         exit(1)
-    
+
     print("\n🎯 Agent Features:")
     print("   • Image analysis with Claude 3.5 Sonnet Vision")
     print("   • Detailed scene descriptions")
@@ -345,13 +352,13 @@ if __name__ == "__main__":
     print("   • Object identification")
     print("   • Visual Q&A")
     print("   • Multiple image input methods")
-    
+
     print("\n📸 Supported Image Formats:")
     print("   • JPEG, PNG, WebP, GIF")
     print("   • Max size: 5MB per image")
     print("   • URLs and base64 encoding")
-    
+
     print("\n✅ Agent is running! Send images via ASI One to analyze them.")
     print("   Press Ctrl+C to stop.\n")
-    
+
     agent.run()

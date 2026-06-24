@@ -25,4 +25,3 @@ agent.include(build_payment_proto(on_commit, on_reject), publish_manifest=True)
 
 if __name__ == "__main__":
     agent.run()
-

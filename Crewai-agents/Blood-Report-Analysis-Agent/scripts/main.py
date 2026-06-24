@@ -9,15 +9,16 @@ from uagents_adapter import CrewaiRegisterTool
 from pdf_downloader import download_pdf_from_drive
 from pdf_to_text import pdf_to_text
 
-from agents import BloodReportAgents  
-from tasks import BloodReportTasks    
+from agents import BloodReportAgents
+from tasks import BloodReportTasks
 
 load_dotenv()
+
 
 class BloodReportCrew:
     def __init__(self, drive_link, text_file):
         self.drive_link = drive_link
-        self.text_file = text_file or "input/blood_report.txt"  
+        self.text_file = text_file or "input/blood_report.txt"
 
     def run(self):
         # Validate inputs
@@ -45,7 +46,7 @@ class BloodReportCrew:
         crew = Crew(
             agents=[analyst, advisor],
             tasks=[analyze_task, recommend_task],
-            verbose=True
+            verbose=True,
         )
         crew.kickoff()
 
@@ -58,15 +59,18 @@ class BloodReportCrew:
         # Check if files exist and contain valid content
         try:
             if os.path.exists(summary_path) and os.path.getsize(summary_path) > 0:
-                with open(summary_path, 'r', encoding='utf-8') as f:
+                with open(summary_path, "r", encoding="utf-8") as f:
                     summary_md = f.read().strip()
                     if not summary_md:
                         return f"Error: {summary_path} is empty"
             else:
                 return f"Error: {summary_path} does not exist or is empty"
 
-            if os.path.exists(recommendations_path) and os.path.getsize(recommendations_path) > 0:
-                with open(recommendations_path, 'r', encoding='utf-8') as f:
+            if (
+                os.path.exists(recommendations_path)
+                and os.path.getsize(recommendations_path) > 0
+            ):
+                with open(recommendations_path, "r", encoding="utf-8") as f:
                     recommendations_md = f.read().strip()
                     if not recommendations_md:
                         return f"Error: {recommendations_path} is empty"
@@ -111,6 +115,7 @@ Blood Report Analysis Agent Powered by Fetch.ai Innovation Lab
             self.text_file = inputs.get("text_file", self.text_file)
         return self.run()
 
+
 def main():
     """Main function to demonstrate Blood Report Analysis with uAgents adapter."""
     api_key = os.getenv("AGENTVERSE_API_KEY")
@@ -124,16 +129,12 @@ def main():
     os.environ["OPENAI_API_KEY"] = openai_api_key
     os.environ["SERPER_API_KEY"] = serper_api_key
 
-
-    crew = BloodReportCrew(
-        drive_link="",
-        text_file="input/blood_report.txt"
-    )
+    crew = BloodReportCrew(drive_link="", text_file="input/blood_report.txt")
 
     register_tool = CrewaiRegisterTool()
     query_params = {
         "drive_link": {"type": "str", "required": True},
-        "text_file": {"type": "str", "required": False}
+        "text_file": {"type": "str", "required": False},
     }
 
     result = register_tool.run(
@@ -154,9 +155,11 @@ def main():
     try:
         while True:
             import time
+
             time.sleep(1)
     except KeyboardInterrupt:
         print("\nExiting...")
+
 
 if __name__ == "__main__":
     main()

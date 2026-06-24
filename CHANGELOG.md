@@ -4,6 +4,9 @@ All notable changes to this repository are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Fixed security vulnerabilities in Flask frontend, agent timeouts, and exception suppression (PR #137)
+
 ### Added
 
 - `Browser-based-agents/playwright/job-application-agent/`: Playwright + ASI:One + Stripe job application agent. Orchestrates a Chromium session to auto-fill Greenhouse application forms using a stored user profile, with LLM-drafted free-text answers via ASI:One, Stripe-gated premium features, and resume ingestion.

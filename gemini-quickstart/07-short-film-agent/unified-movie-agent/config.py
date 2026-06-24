@@ -38,8 +38,8 @@ IMAGE_GEN_MODEL = "gemini-2.5-flash-image"
 #           key 4 → opening + closing videos
 
 API_KEYS = [
-    os.getenv("7GEMINI_API_KEY"),   # key 0 → scenes 0,1 + safety + creative
-    os.getenv("9GEMINI_API_KEY"),   # key 1 → scenes 2,3
+    os.getenv("7GEMINI_API_KEY"),  # key 0 → scenes 0,1 + safety + creative
+    os.getenv("9GEMINI_API_KEY"),  # key 1 → scenes 2,3
     os.getenv("10GEMINI_API_KEY"),  # key 2 → scenes 4,5
     os.getenv("11GEMINI_API_KEY"),  # key 3 → scenes 6,7
     os.getenv("12GEMINI_API_KEY"),  # key 4 → opening + closing
@@ -64,8 +64,8 @@ def key_index_for_scene(scene_index: int) -> int:
 # Convenience aliases
 SAFETY_KEY = API_KEYS[0]
 CREATIVE_KEY = API_KEYS[0]
-OPENING_KEY = API_KEYS[4]   # dedicated key for opening
-CLOSING_KEY = API_KEYS[4]   # dedicated key for closing
+OPENING_KEY = API_KEYS[4]  # dedicated key for opening
+CLOSING_KEY = API_KEYS[4]  # dedicated key for closing
 
 # ── GCS ─────────────────────────────────────────────────────────
 GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME")

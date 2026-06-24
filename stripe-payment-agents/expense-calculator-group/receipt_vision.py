@@ -1,6 +1,7 @@
 """
 Extract line items (name, price) from a receipt image using OpenAI Vision.
 """
+
 from __future__ import annotations
 
 import base64
@@ -18,6 +19,7 @@ def _get_client():
     if _openai_client is None:
         from openai import OpenAI
         import os
+
         key = os.getenv("OPENAI_API_KEY")
         if not key:
             raise ValueError("OPENAI_API_KEY is required for receipt photo extraction")

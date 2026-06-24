@@ -2,6 +2,7 @@
 Expense split logic for group receipt calculator.
 Each item is split only among members who marked they brought that item.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from typing import Optional
 @dataclass
 class ReceiptItem:
     """Single line item on the receipt."""
+
     index: int
     name: str
     price: Decimal
@@ -80,7 +82,9 @@ def compute_splits(
     for item in receipt.items:
         item_name_lower = item.name.lower()
         is_tax_item = any(k in item_name_lower for k in tax_keywords)
-        who_brought = [sid for sid, indices in selections.items() if item.index in indices]
+        who_brought = [
+            sid for sid, indices in selections.items() if item.index in indices
+        ]
 
         note = None
         share_group = who_brought
@@ -110,7 +114,11 @@ def compute_splits(
         }
         for sid in share_group:
             if sid not in per_person:
-                per_person[sid] = {"total": Decimal("0"), "breakdown": [], "item_indices": []}
+                per_person[sid] = {
+                    "total": Decimal("0"),
+                    "breakdown": [],
+                    "item_indices": [],
+                }
             per_person[sid]["total"] += share_each
             per_person[sid]["breakdown"].append((item.name, share_each))
             per_person[sid]["item_indices"].append(item.index)
@@ -166,7 +174,9 @@ def format_split_result(
                 line += f" [{note}]"
             lines.append(line)
         else:
-            lines.append(f"• {item.index}. {item.name} — ${item.price:.2f}\n  No one claimed")
+            lines.append(
+                f"• {item.index}. {item.name} — ${item.price:.2f}\n  No one claimed"
+            )
         lines.append("")
 
     lines.append("**Breakdown per person:**")
@@ -285,7 +295,9 @@ def format_split_summary_table(
         "|---|---:|---:|",
     ]
     for sid, data in sorted(per_person.items(), key=lambda x: -x[1]["total"]):
-        lines.append(f"| {name(sid)} | ${data['total']:.2f} | {len(data.get('item_indices', []))} |")
+        lines.append(
+            f"| {name(sid)} | ${data['total']:.2f} | {len(data.get('item_indices', []))} |"
+        )
     lines.append("")
     lines.append(f"**Receipt total:** ${receipt.total():.2f}")
 
@@ -341,17 +353,21 @@ def format_split_full_table(
         "|---|---:|---:|",
     ]
     for sid, data in sorted(per_person.items(), key=lambda x: -x[1]["total"]):
-        lines.append(f"| {name(sid)} | ${data['total']:.2f} | {len(data.get('item_indices', []))} |")
+        lines.append(
+            f"| {name(sid)} | ${data['total']:.2f} | {len(data.get('item_indices', []))} |"
+        )
     lines.append("")
     lines.append(f"**Receipt total:** ${receipt.total():.2f}")
     lines.append("")
 
-    lines.extend([
-        "**Per-item split**",
-        "",
-        "| # | Item | Price | Shared By | Each | Note |",
-        "|---:|---|---:|---|---:|---|",
-    ])
+    lines.extend(
+        [
+            "**Per-item split**",
+            "",
+            "| # | Item | Price | Shared By | Each | Note |",
+            "|---:|---|---:|---|---:|---|",
+        ]
+    )
     for item in receipt.items:
         info = per_item.get(item.index, {})
         shared_by = info.get("shared_by", [])

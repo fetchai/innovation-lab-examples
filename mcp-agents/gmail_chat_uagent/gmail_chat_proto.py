@@ -24,21 +24,21 @@ Only a handful of helpers are carried over from the much larger MOT booking
 agent to keep the logic lightweight and easy to reason about.
 """
 
-import asyncio
-import contextvars
-import importlib
-import json
-import logging
-import os
-import pathlib
-import sys
-from datetime import datetime, timezone
-from typing import Any, Dict, List
-from uuid import uuid4
+import asyncio  # noqa: E402
+import contextvars  # noqa: E402
+import importlib  # noqa: E402
+import json  # noqa: E402
+import logging  # noqa: E402
+import os  # noqa: E402
+import pathlib  # noqa: E402
+import sys  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
+from typing import Any, Dict, List  # noqa: E402
+from uuid import uuid4  # noqa: E402
 
-import httpx
-from uagents import Context, Protocol
-from uagents_core.contrib.protocols.chat import (
+import httpx  # noqa: E402
+from uagents import Context, Protocol  # noqa: E402
+from uagents_core.contrib.protocols.chat import (  # noqa: E402
     ChatAcknowledgement,
     ChatMessage,
     EndSessionContent,
@@ -46,7 +46,7 @@ from uagents_core.contrib.protocols.chat import (
     TextContent,
     chat_protocol_spec,
 )
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 # ExternalStorage removed – we no longer back up tokens externally
 
 load_dotenv()
@@ -67,7 +67,9 @@ external_storage = None
 # IO logger for raw chat traffic (optional)
 chat_io_logger = logging.getLogger("gmail_chat_io")
 if not any(isinstance(h, logging.FileHandler) for h in chat_io_logger.handlers):
-    _fh2 = logging.FileHandler(os.getenv("GMAIL_CHAT_IO_LOG", "gmail_chat_io.log"), mode="a", encoding="utf-8")
+    _fh2 = logging.FileHandler(
+        os.getenv("GMAIL_CHAT_IO_LOG", "gmail_chat_io.log"), mode="a", encoding="utf-8"
+    )
     _fh2.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     _fh2.setLevel(logging.DEBUG)
     chat_io_logger.addHandler(_fh2)
@@ -92,7 +94,9 @@ MAX_HISTORY = int(os.getenv("MAX_GMAIL_CHAT_HISTORY", "10"))
 LOG_FILE = os.getenv("GMAIL_CHAT_LOG", "gmail_chat_debug.log")
 if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
     _fh = logging.FileHandler(LOG_FILE, mode="a", encoding="utf-8")
-    _fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    _fh.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    )
     _fh.setLevel(logging.DEBUG)
     logger.addHandler(_fh)
 
@@ -105,7 +109,10 @@ if not any(isinstance(h, logging.FileHandler) for h in logger.handlers):
 try:
     from . import server as gmail_server  # type: ignore
 except ImportError:  # running as plain script – fallback to absolute import
-    import importlib, pathlib, sys
+    import importlib
+    import pathlib
+    import sys
+
     CURRENT_DIR = pathlib.Path(__file__).resolve().parent
     if str(CURRENT_DIR) not in sys.path:
         sys.path.insert(0, str(CURRENT_DIR))
@@ -118,12 +125,15 @@ gmail_auth = gmail_server.gmail_auth  # shared GmailAuth helper
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _create_chat_message(text: str, end_session: bool = False) -> ChatMessage:
     """Wrap *text* into a ChatMessage with correct timestamp."""
     content: List[Any] = [TextContent(type="text", text=text)]
     if end_session:
         content.append(EndSessionContent(type="end-session"))
-    return ChatMessage(timestamp=datetime.now(timezone.utc), msg_id=uuid4(), content=content)
+    return ChatMessage(
+        timestamp=datetime.now(timezone.utc), msg_id=uuid4(), content=content
+    )
 
 
 def _unwrap(result: Any) -> str:
@@ -138,12 +148,16 @@ def _unwrap(result: Any) -> str:
         return json.dumps(result)
     return str(result)
 
+
 # ContextVar to pass the current *session_data* to helper fns like _run_gmail_tool
-CURRENT_SESSION_DATA: contextvars.ContextVar[dict] = contextvars.ContextVar("CURRENT_SESSION_DATA")
+CURRENT_SESSION_DATA: contextvars.ContextVar[dict] = contextvars.ContextVar(
+    "CURRENT_SESSION_DATA"
+)
 
 # ---------------------------------------------------------------------------
 # FastMCP tool execution helper (automatic retry + token-path injection)
 # ---------------------------------------------------------------------------
+
 
 async def _run_gmail_tool(fn_name: str, args: Dict[str, Any]) -> str:
     """Execute *fn_name* with *args* against the Gmail FastMCP server."""
@@ -190,7 +204,9 @@ async def _run_gmail_tool(fn_name: str, args: Dict[str, Any]) -> str:
                     pass
             return out
         except Exception as e:  # pylint: disable=broad-except
-            logger.warning("⚠️  TOOL ERROR (%s) attempt %s/2 – %s", fn_name, attempt + 1, e)
+            logger.warning(
+                "⚠️  TOOL ERROR (%s) attempt %s/2 – %s", fn_name, attempt + 1, e
+            )
             if attempt == 0:
                 await asyncio.sleep(0.5)
                 continue
@@ -209,14 +225,18 @@ async def _run_gmail_tool(fn_name: str, args: Dict[str, Any]) -> str:
             pass
     return json.dumps({"success": False, "error": "Unknown tool failure"})
 
+
 # ---------------------------------------------------------------------------
 # OpenAI *Responses* streaming helper (spec compliant)
 # ---------------------------------------------------------------------------
 
+
 async def _call_openai_responses(messages: List[Dict[str, str]]) -> str:
     """Stream /v1/responses events, execute tool calls, return final assistant text."""
 
-    transcript = "\n".join(f"{m['role'].capitalize()}: {m['content']}" for m in messages)
+    transcript = "\n".join(
+        f"{m['role'].capitalize()}: {m['content']}" for m in messages
+    )
 
     TOOLS_BLOCK = [
         {
@@ -250,7 +270,12 @@ async def _call_openai_responses(messages: List[Dict[str, str]]) -> str:
         follow_payload = dict(payload)
 
         for hop in range(10):  # generous limit for tool chaining
-            async with client.stream("POST", "https://api.openai.com/v1/responses", json=follow_payload, headers=headers) as stream:
+            async with client.stream(
+                "POST",
+                "https://api.openai.com/v1/responses",
+                json=follow_payload,
+                headers=headers,
+            ) as stream:
                 async for raw in stream.aiter_lines():
                     if not raw.startswith("data:"):
                         continue
@@ -265,7 +290,11 @@ async def _call_openai_responses(messages: List[Dict[str, str]]) -> str:
 
                     kind = event.get("type")
 
-                    if kind in ("content_block_delta", "message_delta", "response.output_text.delta"):
+                    if kind in (
+                        "content_block_delta",
+                        "message_delta",
+                        "response.output_text.delta",
+                    ):
                         delta = event.get("delta", {})
                         if isinstance(delta, dict):
                             assistant_chunks.append(delta.get("text", ""))
@@ -280,7 +309,9 @@ async def _call_openai_responses(messages: List[Dict[str, str]]) -> str:
                             args_json = call["function"].get("arguments") or "{}"
                             args_dict = json.loads(args_json)
                             out = await _run_gmail_tool(fn, args_dict)
-                            tool_outputs.append({"tool_call_id": call["id"], "output": out})
+                            tool_outputs.append(
+                                {"tool_call_id": call["id"], "output": out}
+                            )
 
                         # Prepare follow-up request (still streaming)
                         follow_payload = {
@@ -297,6 +328,7 @@ async def _call_openai_responses(messages: List[Dict[str, str]]) -> str:
         else:
             raise RuntimeError("Streaming run exceeded hop limit – possible tool loop?")
 
+
 # ---------------------------------------------------------------------------
 # System prompt – keeps the model focused on Gmail tasks only
 # ---------------------------------------------------------------------------
@@ -312,7 +344,7 @@ _SYSTEM_PROMPT = (
     "   with `setup_oauth` followed by `complete_oauth`.\n"
     "3. When the user asks to *read* or *delete* an email but hasn’t supplied\n"
     "   a message-ID, first call `list_emails` (optionally with a query such\n"
-    "   as \"from:devpost.com\") and present the top results in a numbered\n"
+    '   as "from:devpost.com") and present the top results in a numbered\n'
     "   list that shows Subject, From, Date **and** the message-ID.\n"
     "   Then ask the user which ID they’d like to act on, or if they want the\n"
     "   first one you can proceed automatically.\n"
@@ -338,16 +370,24 @@ chat_proto = Protocol(spec=chat_protocol_spec)
 
 SESSIONS_KEY = "gmail_chat_sessions"
 
+
 @chat_proto.on_message(ChatMessage)
 async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # noqa: C901 – complex but readable
 
     # Acknowledge immediately (for client UX)
-    await ctx.send(sender, ChatAcknowledgement(timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id))
+    await ctx.send(
+        sender,
+        ChatAcknowledgement(
+            timestamp=datetime.now(timezone.utc), acknowledged_msg_id=msg.msg_id
+        ),
+    )
 
     # 1) Load per-session persisted data
     try:
         sessions_raw = ctx.storage.get(SESSIONS_KEY) or "{}"
-        sessions: Dict[str, Any] = json.loads(sessions_raw) if isinstance(sessions_raw, str) else sessions_raw
+        sessions: Dict[str, Any] = (
+            json.loads(sessions_raw) if isinstance(sessions_raw, str) else sessions_raw
+        )
     except Exception:
         sessions = {}
 
@@ -369,7 +409,11 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
             tokens_dir.mkdir(exist_ok=True)
             tokens_path = tokens_dir / f"oauth_tokens_{session_id}.json"
             with open(tokens_path, "wb") as lf:
-                lf.write(data["contents"] if isinstance(data["contents"], bytes) else data["contents"].encode())
+                lf.write(
+                    data["contents"]
+                    if isinstance(data["contents"], bytes)
+                    else data["contents"].encode()
+                )
             session_data["tokens_path"] = str(tokens_path)
             ctx.logger.info("📥 Downloaded tokens from Agentverse asset %s", asset_id)
         except Exception as dl_err:  # pragma: no cover
@@ -380,7 +424,9 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
 
     try:
         # Extract plain text blocks from incoming message
-        inbound_texts: List[str] = [b.text.strip() for b in msg.content if isinstance(b, TextContent)]
+        inbound_texts: List[str] = [
+            b.text.strip() for b in msg.content if isinstance(b, TextContent)
+        ]
         ctx.logger.info("📨 inbound_texts=%s", inbound_texts)
 
         # Shortcut – start session reset
@@ -404,12 +450,17 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
         # If we previously asked for an auth code but the agent restarted
         # (so gmail_auth lost its _flow) we must reset the flag, otherwise
         # every user message will be incorrectly treated as a code.
-        if session_data.get("awaiting_auth_code") and getattr(gmail_auth, "_flow", None) is None:
+        if (
+            session_data.get("awaiting_auth_code")
+            and getattr(gmail_auth, "_flow", None) is None
+        ):
             ctx.logger.warning(
                 "Stale awaiting_auth_code detected but OAuth flow is missing – resetting state"
             )
             session_data.pop("awaiting_auth_code", None)
-            session_data.pop("oauth_link_sent", None)  # also clear link flag so new flow can start
+            session_data.pop(
+                "oauth_link_sent", None
+            )  # also clear link flag so new flow can start
 
         if session_data.get("gmail_authenticated"):
             # Point gmail_auth at the session token file before the check
@@ -430,13 +481,17 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
         # 1. Handle authentication workflow (setup_oauth / complete_oauth)
         # ------------------------------------------------------------------
 
-        ctx.logger.info("🔍 Auth status: authenticated=%s, awaiting_code=%s, inbound_texts=%s", 
-                        session_data.get("gmail_authenticated"), 
-                        session_data.get("awaiting_auth_code"), 
-                        bool(inbound_texts))
+        ctx.logger.info(
+            "🔍 Auth status: authenticated=%s, awaiting_code=%s, inbound_texts=%s",
+            session_data.get("gmail_authenticated"),
+            session_data.get("awaiting_auth_code"),
+            bool(inbound_texts),
+        )
 
         if not session_data.get("gmail_authenticated"):
-            if session_data.get("oauth_link_sent") and not session_data.get("awaiting_auth_code"):
+            if session_data.get("oauth_link_sent") and not session_data.get(
+                "awaiting_auth_code"
+            ):
                 # Shouldn't normally happen, but guard against duplicate sends
                 return
 
@@ -464,13 +519,20 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
                 gmail_auth._service = None  # reset cache
 
                 try:
-                    result = await _run_gmail_tool("complete_oauth", {"auth_code": auth_code})
+                    result = await _run_gmail_tool(
+                        "complete_oauth", {"auth_code": auth_code}
+                    )
                     parsed = json.loads(result)
                 except RuntimeError as flow_err:
                     # _flow not initialised (e.g. after restart). Reset and fall back.
-                    ctx.logger.warning("OAuth flow missing – restarting auth: %s", flow_err)
+                    ctx.logger.warning(
+                        "OAuth flow missing – restarting auth: %s", flow_err
+                    )
                     session_data.pop("awaiting_auth_code", None)
-                    parsed = {"success": False, "error": "OAuth flow reset. Please authorise again."}
+                    parsed = {
+                        "success": False,
+                        "error": "OAuth flow reset. Please authorise again.",
+                    }
 
                 if parsed.get("success"):
                     session_data["gmail_authenticated"] = True
@@ -488,12 +550,16 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
                         except FileNotFoundError:
                             pass
                     except Exception as token_read_err:  # pragma: no cover
-                        logger.warning("Failed to load token JSON for storage: %s", token_read_err)
+                        logger.warning(
+                            "Failed to load token JSON for storage: %s", token_read_err
+                        )
 
                     # External token backup disabled – tokens remain local
                     reply = "✅ Authentication successful! You can now ask me to read, send or manage your Gmail messages."
                 else:
-                    session_data.pop("awaiting_auth_code", None)  # reset so a new auth flow can start
+                    session_data.pop(
+                        "awaiting_auth_code", None
+                    )  # reset so a new auth flow can start
                     reply = f"❌ Authentication failed: {parsed.get('error', 'unknown error')}. Please try again."
 
                 await ctx.send(sender, _create_chat_message(reply))
@@ -505,7 +571,7 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
             # If we're still waiting for the code but didn't get a valid one, remind user instead of starting a new flow
             if session_data.get("awaiting_auth_code"):
                 reminder = (
-                    "⚠️ I\'m still waiting for the Google authorisation to complete. "
+                    "⚠️ I'm still waiting for the Google authorisation to complete. "
                     "Please click the Authorise Gmail link I sent above and grant access."
                 )
                 await ctx.send(sender, _create_chat_message(reminder))
@@ -516,12 +582,21 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
             # Not authenticated & not waiting – start OAuth
             ctx.logger.info("🚀 Starting OAuth setup...")
             try:
-                oauth_json = await _run_gmail_tool("setup_oauth", {"session_id": session_id})
+                oauth_json = await _run_gmail_tool(
+                    "setup_oauth", {"session_id": session_id}
+                )
                 ctx.logger.info("📋 OAuth response: %s", oauth_json)
                 oauth_data = json.loads(oauth_json)
                 if not oauth_data.get("success"):
-                    err_msg = oauth_data.get("error", "Unknown error during OAuth setup")
-                    await ctx.send(sender, _create_chat_message(f"❌ Authentication setup failed: {err_msg}"))
+                    err_msg = oauth_data.get(
+                        "error", "Unknown error during OAuth setup"
+                    )
+                    await ctx.send(
+                        sender,
+                        _create_chat_message(
+                            f"❌ Authentication setup failed: {err_msg}"
+                        ),
+                    )
                     ctx.logger.error("❌ OAuth setup returned error: %s", err_msg)
                     return
 
@@ -536,7 +611,12 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
                 session_data["oauth_link_sent"] = True
             except Exception as oauth_err:
                 ctx.logger.error("❌ OAuth setup failed: %s", oauth_err)
-                await ctx.send(sender, _create_chat_message(f"❌ Authentication setup failed: {oauth_err}"))
+                await ctx.send(
+                    sender,
+                    _create_chat_message(
+                        f"❌ Authentication setup failed: {oauth_err}"
+                    ),
+                )
                 return
             reply = (
                 "Click the **Authorize Gmail** link below.\n"
@@ -550,7 +630,9 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
             await ctx.send(sender, _create_chat_message(reply))
             sessions[session_id] = session_data
             ctx.storage.set(SESSIONS_KEY, json.dumps(sessions))
-            ctx.logger.info(">> session=%s to=%s content=%s", ctx.session, sender, reply)
+            ctx.logger.info(
+                ">> session=%s to=%s content=%s", ctx.session, sender, reply
+            )
             return
 
         # 3) Build conversation context for OpenAI call
@@ -558,14 +640,18 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
             role = "user" if m.get("source") == "human" else "assistant"
             return {"role": role, "content": m.get("content", "")}
 
-        messages: List[Dict[str, str]] = [_to_openai(m) for m in session_data.get("messages", [])]
+        messages: List[Dict[str, str]] = [
+            _to_openai(m) for m in session_data.get("messages", [])
+        ]
         messages.insert(0, {"role": "system", "content": _SYSTEM_PROMPT})
 
         # Append current user input
         if inbound_texts:
             user_content = "\n".join(inbound_texts)
             messages.append({"role": "user", "content": user_content})
-            session_data.setdefault("messages", []).append({"source": "human", "content": user_content})
+            session_data.setdefault("messages", []).append(
+                {"source": "human", "content": user_content}
+            )
 
         # Trim history
         if len(session_data["messages"]) > MAX_HISTORY * 2:
@@ -576,10 +662,13 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
 
         # ---------------- Fallback: model leaked raw tool_calls JSON -------
         try:
-            import re as _re, ast as _ast
+            import re as _re
+            import ast as _ast
 
             # If assistant dumped a tool_calls block, parse & execute it, then re-call OpenAI
-            _match = _re.search(r"tool_calls\s*:?\s*(\{.*\})", assistant_reply, flags=_re.S)
+            _match = _re.search(
+                r"tool_calls\s*:?\s*(\{.*\})", assistant_reply, flags=_re.S
+            )
             if _match:
                 blob = _match.group(1)
                 try:
@@ -602,20 +691,39 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
                     if calls:
                         outs = []
                         for c in calls:
-                            name = c.get("tool") or c.get("method") or c.get("function", {}).get("name", "")
+                            name = (
+                                c.get("tool")
+                                or c.get("method")
+                                or c.get("function", {}).get("name", "")
+                            )
                             name = name.split(".")[-1]
-                            params = c.get("params") or c.get("parameters") or c.get("input") or {}
+                            params = (
+                                c.get("params")
+                                or c.get("parameters")
+                                or c.get("input")
+                                or {}
+                            )
                             out = await _run_gmail_tool(name, params)
-                            outs.append({"tool_call_id": f"manual_{name}", "output": out})
+                            outs.append(
+                                {"tool_call_id": f"manual_{name}", "output": out}
+                            )
 
                         # get proper assistant reply with outputs
-                        assistant_reply = await _call_openai_responses([
-                            {"role": "assistant", "content": "", "tool_outputs": outs},
-                        ])
+                        assistant_reply = await _call_openai_responses(
+                            [
+                                {
+                                    "role": "assistant",
+                                    "content": "",
+                                    "tool_outputs": outs,
+                                },
+                            ]
+                        )
 
             # Raw list variant starting with parallel_tool_calls [ ... ]
             if assistant_reply.strip().startswith("parallel_tool_calls"):
-                _m = _re.search(r"parallel_tool_calls\s*:?\s*(\[.*\])", assistant_reply, flags=_re.S)
+                _m = _re.search(
+                    r"parallel_tool_calls\s*:?\s*(\[.*\])", assistant_reply, flags=_re.S
+                )
                 if _m:
                     list_blob = _m.group(1)
                     try:
@@ -633,16 +741,26 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
                             name = name.split(".")[-1]
                             params = c.get("params") or {}
                             out = await _run_gmail_tool(name, params)
-                            outs.append({"tool_call_id": f"manual_{name}", "output": out})
+                            outs.append(
+                                {"tool_call_id": f"manual_{name}", "output": out}
+                            )
 
-                        assistant_reply = await _call_openai_responses([
-                            {"role": "assistant", "content": "", "tool_outputs": outs},
-                        ])
+                        assistant_reply = await _call_openai_responses(
+                            [
+                                {
+                                    "role": "assistant",
+                                    "content": "",
+                                    "tool_outputs": outs,
+                                },
+                            ]
+                        )
 
         except Exception as _fallback_err:
             logger.debug("Fallback parsing skipped: %s", _fallback_err)
 
-        session_data.setdefault("messages", []).append({"source": "assistant", "content": assistant_reply})
+        session_data.setdefault("messages", []).append(
+            {"source": "assistant", "content": assistant_reply}
+        )
 
         await ctx.send(sender, _create_chat_message(assistant_reply))
 
@@ -653,10 +771,12 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):  # n
     finally:
         CURRENT_SESSION_DATA.reset(token)
 
+
 # ---------------------------------------------------------------------------
 # ACK handler – currently noop
 # ---------------------------------------------------------------------------
 
+
 @chat_proto.on_message(ChatAcknowledgement)
 async def _handle_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):  # noqa: D401
-    logger.debug("ACK from %s for message %s", sender, msg.acknowledged_msg_id) 
+    logger.debug("ACK from %s for message %s", sender, msg.acknowledged_msg_id)

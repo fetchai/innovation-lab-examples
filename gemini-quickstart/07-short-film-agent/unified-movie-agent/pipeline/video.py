@@ -13,9 +13,14 @@ from google import genai
 from google.genai import types
 
 from config import (
-    VEO_MODEL, VEO_RESOLUTION, VEO_ASPECT_RATIO,
-    SCENE_DURATION_SECONDS, key_for_scene,
-    OPENING_KEY, CLOSING_KEY, API_KEYS,
+    VEO_MODEL,
+    VEO_RESOLUTION,
+    VEO_ASPECT_RATIO,
+    SCENE_DURATION_SECONDS,
+    key_for_scene,
+    OPENING_KEY,
+    CLOSING_KEY,
+    API_KEYS,
 )
 from utils.gcs import upload_to_storage
 
@@ -34,6 +39,7 @@ def _get_client(api_key: str) -> genai.Client:
 
 
 # ── Helpers ──────────────────────────────────────────────────────
+
 
 async def _download_image(url: str) -> tuple[bytes, str]:
     async with httpx.AsyncClient(timeout=120.0) as http:
@@ -60,10 +66,12 @@ async def _build_refs(urls: Optional[List[str]]) -> Optional[list]:
     for url in urls[:3]:
         try:
             img_bytes, mime = await _download_image(url)
-            refs.append(types.VideoGenerationReferenceImage(
-                image=types.Image(image_bytes=img_bytes, mime_type=mime),
-                reference_type="asset",
-            ))
+            refs.append(
+                types.VideoGenerationReferenceImage(
+                    image=types.Image(image_bytes=img_bytes, mime_type=mime),
+                    reference_type="asset",
+                )
+            )
         except Exception as e:
             log.warning("Failed to download ref image %s: %s", url, e)
     return refs or None
@@ -124,9 +132,12 @@ async def _generate_video(
     try:
         video_bytes = client.files.download(file=video)
     except Exception:
-        uri = getattr(video, "uri", None) or \
-              f"https://generativelanguage.googleapis.com/v1beta/{video.name}"
+        uri = (
+            getattr(video, "uri", None)
+            or f"https://generativelanguage.googleapis.com/v1beta/{video.name}"
+        )
         import requests
+
         resp = requests.get(uri, headers={"Authorization": f"Bearer {api_key}"})
         resp.raise_for_status()
         video_bytes = resp.content
@@ -147,6 +158,7 @@ async def _generate_video(
 
 
 # ── Public API ──────────────────────────────────────────────────
+
 
 async def generate_scene_video(
     scene_index: int,

@@ -33,6 +33,7 @@ MAX_CHARACTER_REFS = 3
 
 # ── Step 1: Extract characters from the story plan ───────────────
 
+
 async def _extract_characters(
     story_title: str,
     story_logline: str,
@@ -40,7 +41,7 @@ async def _extract_characters(
 ) -> List[dict]:
     """Use Gemini to identify main characters and build image-gen prompts."""
     scenes_text = "\n".join(
-        f"- Scene {i+1}: {vp}" for i, vp in enumerate(scene_visual_prompts)
+        f"- Scene {i + 1}: {vp}" for i, vp in enumerate(scene_visual_prompts)
     )
 
     prompt = f"""Analyze this story plan and identify up to {MAX_CHARACTER_REFS} main characters.
@@ -94,6 +95,7 @@ Return ONLY valid JSON, no markdown code blocks:
 
 # ── Step 2: Generate one reference image ─────────────────────────
 
+
 async def _generate_character_image(name: str, image_prompt: str, index: int) -> str:
     """Generate one character reference image and upload to GCS."""
     log.info("Generating reference image for: %s", name)
@@ -110,9 +112,11 @@ async def _generate_character_image(name: str, image_prompt: str, index: int) ->
     )
 
     for part in response.parts:
-        if hasattr(part, 'inline_data') and part.inline_data is not None:
+        if hasattr(part, "inline_data") and part.inline_data is not None:
             image_data = part.inline_data.data
-            mime_type = getattr(part.inline_data, 'mime_type', 'image/png') or 'image/png'
+            mime_type = (
+                getattr(part.inline_data, "mime_type", "image/png") or "image/png"
+            )
 
             # Handle base64-encoded data (str or bytes)
             if isinstance(image_data, str):
@@ -120,7 +124,14 @@ async def _generate_character_image(name: str, image_prompt: str, index: int) ->
             elif isinstance(image_data, bytes):
                 # Gemini sometimes returns base64 as bytes
                 try:
-                    if image_data[:20].decode('ascii', errors='ignore').replace('=', '').replace('+', '').replace('/', '').isalnum():
+                    if (
+                        image_data[:20]
+                        .decode("ascii", errors="ignore")
+                        .replace("=", "")
+                        .replace("+", "")
+                        .replace("/", "")
+                        .isalnum()
+                    ):
                         img_bytes = base64.b64decode(image_data)
                     else:
                         img_bytes = image_data
@@ -130,17 +141,20 @@ async def _generate_character_image(name: str, image_prompt: str, index: int) ->
                 log.warning("Unexpected image data type: %s", type(image_data))
                 continue
 
-            ext = 'png' if 'png' in mime_type else 'jpg'
+            ext = "png" if "png" in mime_type else "jpg"
             ts = int(datetime.now().timestamp())
             filename = f"charref_{ts}_{index}.{ext}"
             url = upload_to_storage(img_bytes, filename, mime_type)
-            log.info("Character ref '%s' uploaded: %s (%d bytes)", name, url, len(img_bytes))
+            log.info(
+                "Character ref '%s' uploaded: %s (%d bytes)", name, url, len(img_bytes)
+            )
             return url
 
     raise RuntimeError(f"Image generation returned no image for '{name}'")
 
 
 # ── Public API ───────────────────────────────────────────────────
+
 
 async def generate_character_refs(
     story_title: str,
@@ -155,7 +169,9 @@ async def generate_character_refs(
     log.info("Extracting characters from story plan…")
     try:
         characters = await _extract_characters(
-            story_title, story_logline, scene_visual_prompts,
+            story_title,
+            story_logline,
+            scene_visual_prompts,
         )
     except Exception as e:
         log.warning("Character extraction failed: %s — skipping ref generation", e)

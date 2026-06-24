@@ -1,4 +1,3 @@
-import os
 import logging
 from typing import Dict, List
 from dotenv import load_dotenv
@@ -12,6 +11,7 @@ load_dotenv()
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("CurrencyAgentRunner")
+
 
 class CurrencyAgent:
     def __init__(self):
@@ -29,12 +29,10 @@ class CurrencyAgent:
                 url="http://localhost:10000",
                 port=10000,
                 specialties=["currency conversion", "currency exchange", "forex rates"],
-                priority=2
+                priority=2,
             )
         ]
-        self.executors = {
-            "currency_specialist": CurrencyAgentExecutor()
-        }
+        self.executors = {"currency_specialist": CurrencyAgentExecutor()}
         logger.info("✅ Agent configuration created")
 
     def start_individual_a2a_servers(self):
@@ -49,7 +47,7 @@ class CurrencyAgent:
             name="currency-coordinator",
             description="Routes queries to the Currency Agent",
             port=8100,
-            mailbox=True
+            mailbox=True,
         )
         logger.info(f"✅ Coordinator created on port {self.coordinator.port}")
         return self.coordinator
@@ -61,7 +59,9 @@ class CurrencyAgent:
             self.start_individual_a2a_servers()
             coordinator = self.create_coordinator()
             self.running = True
-            logger.info(f"🎯 Starting coordinator on port {coordinator.port}... Press Ctrl+C to stop.")
+            logger.info(
+                f"🎯 Starting coordinator on port {coordinator.port}... Press Ctrl+C to stop."
+            )
             coordinator.run()
         except KeyboardInterrupt:
             logger.info("👋 System shutdown by user.")
@@ -69,6 +69,7 @@ class CurrencyAgent:
         except Exception as e:
             logger.error(f"❌ Error occurred: {e}")
             self.running = False
+
 
 def main():
     try:
@@ -78,5 +79,7 @@ def main():
         print("👋 Shutdown complete!")
     except Exception as e:
         print(f"❌ Error: {e}")
+
+
 if __name__ == "__main__":
     main()

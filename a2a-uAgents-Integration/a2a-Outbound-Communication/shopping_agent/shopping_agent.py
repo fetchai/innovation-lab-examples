@@ -1,5 +1,4 @@
 import asyncio
-from typing import List
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.types import Part, TextPart
@@ -38,15 +37,17 @@ shopping_partner_agno_agent = Agent(
         "**After listing individual product details, provide a comparative analysis section.**",
         "  - Compare the top 3-5 recommended products based on key criteria (e.g., price, features, rating, best use case).",
         "  - Highlight their similarities and differences to help the user make an informed decision.",
-        "Format the recommendations neatly and ensure clarity for ease of user understanding, presenting them as a structured report with clear headings and bullet points. Use a table for the comparative analysis if appropriate."
+        "Format the recommendations neatly and ensure clarity for ease of user understanding, presenting them as a structured report with clear headings and bullet points. Use a table for the comparative analysis if appropriate.",
     ],
     tools=[ExaTools()],
 )
+
 
 class ShoppingAgentExecutor(AgentExecutor):
     """
     AgentExecutor wrapper for the agno.agent shopping partner.
     """
+
     def __init__(self):
         self.agent = shopping_partner_agno_agent
 
@@ -65,19 +66,25 @@ class ShoppingAgentExecutor(AgentExecutor):
                 if isinstance(part.root, TextPart):
                     message_content = part.root.text
                     break
-        
+
         if not message_content:
-            await event_queue.enqueue_event(new_agent_text_message("Error: No message content received."))
+            await event_queue.enqueue_event(
+                new_agent_text_message("Error: No message content received.")
+            )
             return
 
         message: Message = Message(role="user", content=message_content)
         logger.info(f"Received message: {message.content}")
-        
+
         try:
             logger.info("Starting agno agent run with timeout...")
-            result: RunOutput = await asyncio.wait_for(self.agent.arun(message), timeout=180)
-            logger.info(f"Agno agent finished run. Response content type: {type(result.content)}")
-            
+            result: RunOutput = await asyncio.wait_for(
+                self.agent.arun(message), timeout=180
+            )
+            logger.info(
+                f"Agno agent finished run. Response content type: {type(result.content)}"
+            )
+
             response_text = str(result.content)
             await event_queue.enqueue_event(new_agent_text_message(response_text))
             logger.info("Event enqueued successfully.")
@@ -85,12 +92,20 @@ class ShoppingAgentExecutor(AgentExecutor):
         except asyncio.TimeoutError:
             error_message = "Agno agent execution timed out after 180 seconds. The query might be too complex or require more time."
             logger.error(error_message)
-            await event_queue.enqueue_event(new_agent_text_message(f"Error: {error_message}. Please try again or simplify your query."))
+            await event_queue.enqueue_event(
+                new_agent_text_message(
+                    f"Error: {error_message}. Please try again or simplify your query."
+                )
+            )
         except Exception as e:
             error_message = f"Error during agno agent execution: {e}"
             logger.error(error_message, exc_info=True)
-            await event_queue.enqueue_event(new_agent_text_message(f"Error: {error_message}. Please check logs for details."))
-        
+            await event_queue.enqueue_event(
+                new_agent_text_message(
+                    f"Error: {error_message}. Please check logs for details."
+                )
+            )
+
         logger.info("execute method finished.")
 
     @override
