@@ -36,7 +36,9 @@ def generate_task_plan(goal: str) -> str:
         return "Please send me a goal or task, e.g. 'Learn Python in 30 days' or 'Build a portfolio website'."
 
     if not GEMINI_API_KEY:
-        return "This agent is missing a GEMINI_API_KEY — ask the operator to configure it."
+        return (
+            "This agent is missing a GEMINI_API_KEY — ask the operator to configure it."
+        )
 
     prompt = (
         f"You are a productivity expert. The user wants to achieve the following goal:\n\n"
@@ -46,10 +48,7 @@ def generate_task_plan(goal: str) -> str:
         f"End with one motivational sentence."
     )
 
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt
-    )
+    response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
     return response.text
 
 
