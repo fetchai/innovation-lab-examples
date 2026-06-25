@@ -7,6 +7,7 @@ Falls back to direct REST calls using the anon key if supabase-py isn't availabl
 import os
 import sys
 import json
+import time
 import httpx
 from pathlib import Path
 from datetime import datetime, timezone
@@ -21,20 +22,39 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", os.environ.get("SUPABASE_ANON_KEY"
 _client = None
 
 
-def get_client():
+_DB_RETRIES = 5
+_DB_RETRY_BASE = 5  # seconds; doubles each attempt
+
+
+def get_client(force_new: bool = False):
     global _client
-    if _client is None:
+    if _client is None or force_new:
         try:
             from supabase import create_client
-            url = SUPABASE_URL
-            key = SUPABASE_KEY
-            if not key:
+            if not SUPABASE_KEY:
                 raise ValueError("SUPABASE_KEY not set")
-            _client = create_client(url, key)
+            _client = create_client(SUPABASE_URL, SUPABASE_KEY)
         except Exception as e:
             print(f"  [DB] supabase-py init failed ({e}), will use REST fallback")
             _client = "rest"
     return _client
+
+
+def _with_retry(fn, label: str):
+    """Call fn(), retrying on network/DNS errors with exponential backoff."""
+    delay = _DB_RETRY_BASE
+    for attempt in range(1, _DB_RETRIES + 1):
+        try:
+            return fn()
+        except Exception as e:
+            is_network = any(k in str(e) for k in ("nodename", "Name or service", "Connection", "timeout", "Errno 8", "Errno 110"))
+            if is_network and attempt < _DB_RETRIES:
+                print(f"  [DB] {label} network error (attempt {attempt}/{_DB_RETRIES}), retrying in {delay}s: {e}")
+                time.sleep(delay)
+                delay = min(delay * 2, 120)
+                get_client(force_new=True)  # reset connection
+            else:
+                raise
 
 
 def _now_iso() -> str:
@@ -117,14 +137,13 @@ def upsert_event(event: dict[str, Any]) -> bool:
     client = get_client()
 
     try:
-        if client == "rest":
-            return _rest_upsert("events", row, "slug")
-        result = (
-            client.table("events")
-            .upsert(row, on_conflict="slug")
-            .execute()
-        )
-        return True
+        def _do():
+            c = get_client()
+            if c == "rest":
+                return _rest_upsert("events", row, "slug")
+            c.table("events").upsert(row, on_conflict="slug").execute()
+            return True
+        return _with_retry(_do, f"upsert {event.get('slug')}")
     except Exception as e:
         print(f"  [DB] upsert failed for slug={event.get('slug')}: {e}")
         return False
@@ -146,12 +165,14 @@ def log_crawl(
         "error_msg": error_msg,
         "crawled_at": _now_iso(),
     }
-    client = get_client()
     try:
-        if client == "rest":
-            _rest_insert("crawl_log", row)
-            return
-        client.table("crawl_log").insert(row).execute()
+        def _do():
+            c = get_client()
+            if c == "rest":
+                _rest_insert("crawl_log", row)
+            else:
+                c.table("crawl_log").insert(row).execute()
+        _with_retry(_do, "crawl_log insert")
     except Exception as e:
         print(f"  [DB] crawl_log insert failed: {e}")
 
@@ -187,21 +208,23 @@ def fetch_uncrawled_events(
     source_filter      — filters by external_source (which platform hosts the event)
     event_source_filter — filters by source (which crawler ingested the event, e.g. 'mlh')
     """
-    client = get_client()
     try:
-        q = (
-            client.table("events")
-            .select("id, slug, external_url, external_source, start_datetime, title")
-            .is_("external_data", "null")
-            .not_.is_("external_url", "null")
-            .order("start_datetime", desc=True)
-            .range(offset, offset + batch_size - 1)
-        )
-        if source_filter:
-            q = q.eq("external_source", source_filter)
-        if event_source_filter:
-            q = q.eq("source", event_source_filter)
-        return q.execute().data or []
+        def _do():
+            c = get_client()
+            q = (
+                c.table("events")
+                .select("id, slug, external_url, external_source, start_datetime, title")
+                .is_("external_data", "null")
+                .not_.is_("external_url", "null")
+                .order("start_datetime", desc=True)
+                .range(offset, offset + batch_size - 1)
+            )
+            if source_filter:
+                q = q.eq("external_source", source_filter)
+            if event_source_filter:
+                q = q.eq("source", event_source_filter)
+            return q.execute().data or []
+        return _with_retry(_do, "fetch_uncrawled_events")
     except Exception as e:
         print(f"  [DB] fetch_uncrawled_events failed: {e}")
         return []
@@ -212,19 +235,21 @@ def count_uncrawled_events(
     event_source_filter: str | None = None,
 ) -> int:
     """Return count of events with external_url but no external_data."""
-    client = get_client()
     try:
-        q = (
-            client.table("events")
-            .select("id", count="exact")
-            .is_("external_data", "null")
-            .not_.is_("external_url", "null")
-        )
-        if source_filter:
-            q = q.eq("external_source", source_filter)
-        if event_source_filter:
-            q = q.eq("source", event_source_filter)
-        return q.execute().count or 0
+        def _do():
+            c = get_client()
+            q = (
+                c.table("events")
+                .select("id", count="exact")
+                .is_("external_data", "null")
+                .not_.is_("external_url", "null")
+            )
+            if source_filter:
+                q = q.eq("external_source", source_filter)
+            if event_source_filter:
+                q = q.eq("source", event_source_filter)
+            return q.execute().count or 0
+        return _with_retry(_do, "count_uncrawled_events")
     except Exception as e:
         print(f"  [DB] count_uncrawled_events failed: {e}")
         return 0
@@ -232,14 +257,15 @@ def count_uncrawled_events(
 
 def update_external_data(slug: str, external_data: dict, error: bool = False) -> bool:
     """Patch just the external_data (and updated_at) on an existing event row."""
-    client = get_client()
     payload = {
         "external_data": json.dumps(external_data),
         "updated_at": _now_iso(),
     }
     try:
-        client.table("events").update(payload).eq("slug", slug).execute()
-        return True
+        def _do():
+            get_client().table("events").update(payload).eq("slug", slug).execute()
+            return True
+        return _with_retry(_do, f"update_external_data {slug}")
     except Exception as e:
         print(f"  [DB] update_external_data failed for {slug}: {e}")
         return False
