@@ -1,0 +1,7 @@
+uagents
+chromadb 
+sentence-transformers 
+langchain-text-splitters
+watchdog
+streamlit
+openai

@@ -14,3 +14,4 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - Fixed sandbox validation in `scan_directory` to properly reject paths outside the demo sandbox using `Path.relative_to()` (#159)
 - `contributors/news-summarizer-agent/` — beginner-friendly agent that fetches top headlines via NewsAPI and summarizes them with ASI:One; now a uAgent with Chat Protocol support
+- `contributors/workspace-context-provider/` : Hybrid AI workspace context provider that indexes local codebases and exposes them through a Streamlit RAG interface and an MCP server for IDE integration
