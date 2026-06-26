@@ -169,13 +169,7 @@
           }
         ]
       }
-    ],
-    "action": {
-      "selection": {
-        "action": "view_details",
-        "event_slug": "_SLUG_"
-      }
-    }
+    ]
   },
 
   "event_detail": {
@@ -224,6 +218,40 @@
               ]
             },
             {
+              "type": "group",
+              "direction": "row",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "group",
+                  "direction": "column",
+                  "gap": 4,
+                  "children": [
+                    { "type": "text", "value": "ORGANIZER", "style": "muted" },
+                    { "type": "text", "value": "_ORGANIZER_" }
+                  ]
+                },
+                {
+                  "type": "group",
+                  "direction": "column",
+                  "gap": 4,
+                  "children": [
+                    { "type": "text", "value": "TEAM SIZE", "style": "muted" },
+                    { "type": "text", "value": "_TEAM_SIZE_" }
+                  ]
+                },
+                {
+                  "type": "group",
+                  "direction": "column",
+                  "gap": 4,
+                  "children": [
+                    { "type": "text", "value": "REGISTRATIONS", "style": "muted" },
+                    { "type": "text", "value": "_REG_COUNT_" }
+                  ]
+                }
+              ]
+            },
+            {
               "type": "text",
               "value": "_DESCRIPTION_",
               "style": "body"
@@ -239,45 +267,30 @@
               "direction": "column",
               "gap": 6,
               "children": [
-                { "type": "text", "value": "Registration Questions", "style": "muted" },
+                { "type": "text", "value": "REGISTRATION QUESTIONS", "style": "muted" },
                 { "type": "text", "value": "_QUESTIONS_" }
               ]
             },
             {
               "type": "group",
-              "direction": "row",
-              "gap": 12,
+              "direction": "column",
+              "gap": 4,
               "children": [
-                {
-                  "type": "button",
-                  "label": "Register Now",
-                  "primary": true,
-                  "action": {
-                    "selection": {
-                      "action": "register",
-                      "event_slug": "_SLUG_",
-                      "event_url": "_URL_"
-                    }
-                  }
-                },
-                {
-                  "type": "button",
-                  "label": "Open Website",
-                  "primary": false,
-                  "action": {
-                    "selection": {
-                      "action": "open_url",
-                      "url": "_URL_"
-                    }
-                  }
-                },
-                {
-                  "type": "button",
-                  "label": "Back",
-                  "primary": false,
-                  "action": { "selection": { "action": "back" } }
-                }
+                { "type": "text", "value": "WEBSITE", "style": "muted" },
+                { "type": "text", "value": "_URL_" }
               ]
+            },
+            {
+              "type": "button",
+              "label": "Register Now",
+              "primary": true,
+              "action": {
+                "selection": {
+                  "action": "register",
+                  "event_slug": "_SLUG_",
+                  "event_url": "_URL_"
+                }
+              }
             }
           ]
         }

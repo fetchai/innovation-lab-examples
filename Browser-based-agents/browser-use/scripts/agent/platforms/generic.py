@@ -14,7 +14,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from langchain_openai import ChatOpenAI
-from browser_use import Agent, Browser, BrowserConfig
+from browser_use import Agent, Browser, BrowserProfile
 from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL
 
 
@@ -41,7 +41,7 @@ async def register(
     """
     task = _build_task(event_url, profile, answers, event_title)
 
-    browser = Browser(config=BrowserConfig(headless=headless))
+    browser = Browser(browser_profile=BrowserProfile(headless=headless))
 
     try:
         agent = Agent(

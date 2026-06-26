@@ -117,8 +117,9 @@ def text_msg(text: str, end: bool = False) -> ChatMessage:
         content.append(EndSessionContent(type="end-session"))
     return ChatMessage(timestamp=_now(), msg_id=_mid(), content=content)
 
-def card_msg(card: dict) -> ChatMessage:
+def card_msg(card: dict, label: str = "") -> ChatMessage:
     return ChatMessage(timestamp=_now(), msg_id=_mid(), content=[
+        TextContent(type="text", text=label),
         MetadataContent(
             type="metadata",
             metadata={
@@ -127,7 +128,7 @@ def card_msg(card: dict) -> ChatMessage:
                 "card_kind": "custom",
                 "card_payload": json.dumps(card),
             },
-        )
+        ),
     ])
 
 def ack(msg_id) -> ChatAcknowledgement:
@@ -156,7 +157,7 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                 timestamp=_now(), msg_id=_mid(),
                 content=[MetadataContent(type="metadata", metadata={"attachments": "false"})],
             ))
-            await ctx.send(sender, card_msg(welcome_card()))
+            await ctx.send(sender, card_msg(welcome_card(), "👋 Hi! I'm Hackrawl — your hackathon search assistant."))
             return
 
         if isinstance(item, TextContent):
@@ -164,9 +165,6 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
             if not text:
                 continue
             ctx.logger.info(f"[{sender[:10]}] {text[:80]}")
-            if not sess.get("greeted"):
-                sess["greeted"] = True
-                await ctx.send(sender, card_msg(welcome_card()))
             await _handle_text(ctx, sender, sess, text)
             return
 
@@ -182,7 +180,38 @@ async def on_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
 
 # ── Intent handlers ───────────────────────────────────────────────────────────
 
+def _parse_selection(text: str) -> dict | None:
+    """Try to extract a card selection from text sent by ASI:One on button click."""
+    stripped = text.strip()
+    # Strip leading @agent_address prefix (ASI:One prepends it on button clicks)
+    if stripped.startswith("@"):
+        parts = stripped.split(None, 1)
+        stripped = parts[1].strip() if len(parts) > 1 else stripped
+    # Direct JSON object
+    if stripped.startswith("{"):
+        try:
+            data = json.loads(stripped)
+            if isinstance(data, dict) and "action" in data:
+                return data
+            # Wrapped: {"selection": {...}}
+            if isinstance(data, dict) and isinstance(data.get("selection"), dict):
+                return data["selection"]
+        except json.JSONDecodeError:
+            pass
+    return None
+
+
 async def _handle_text(ctx: Context, sender: str, sess: dict, text: str):
+    # Card button clicks arrive as TextContent containing the selection JSON
+    selection = _parse_selection(text)
+    if selection:
+        await _handle_action(ctx, sender, sess, selection)
+        return
+
+    if text.lower().strip() in {"hi", "hello", "hey", "start", "help"}:
+        await ctx.send(sender, card_msg(welcome_card(), "Hi! I'm Hackrawl — your hackathon search assistant."))
+        return
+
     parsed = parse_question(text)
     intent = parsed.get("intent", "search")
 
@@ -193,7 +222,7 @@ async def _handle_text(ctx: Context, sender: str, sess: dict, text: str):
         ev = lookup_event(parsed.get("event_name", text))
         if ev:
             sess["last_event"] = ev
-            await ctx.send(sender, card_msg(event_detail_card(ev)))
+            await ctx.send(sender, card_msg(event_detail_card(ev), ev.get("title", "Event details")))
         else:
             await ctx.send(sender, text_msg(
                 f"Couldn't find an event matching that name. Try a more specific name or ask me to search."
@@ -217,7 +246,7 @@ async def _handle_text(ctx: Context, sender: str, sess: dict, text: str):
             return
 
         subtitle = _subtitle(prefs, len(results))
-        await ctx.send(sender, card_msg(event_list_card(results, subtitle)))
+        await ctx.send(sender, card_msg(event_list_card(results, subtitle), "Here are your top matches:"))
 
 
 async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
@@ -232,7 +261,7 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
         ev = _find(sess, slug) or lookup_event(slug)
         if ev:
             sess["last_event"] = ev
-            await ctx.send(sender, card_msg(event_detail_card(ev)))
+            await ctx.send(sender, card_msg(event_detail_card(ev), ev.get("title", "Event details")))
         else:
             await ctx.send(sender, text_msg("Event not found. Try searching again."))
 
@@ -245,7 +274,7 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
         profile   = load_profile()
         questions = _parse_qs(ev.get("questions"))
         answers   = generate_answers(questions, profile, ev.get("title",""), ev.get("description_summary",""))
-        await ctx.send(sender, card_msg(registration_confirm_card(ev, answers)))
+        await ctx.send(sender, card_msg(registration_confirm_card(ev, answers), "Ready to register:"))
 
     elif action == "confirm_register":
         ev = sess.get("last_event")
@@ -292,14 +321,7 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
         else:
             await ctx.send(sender, text_msg("No more results. Try a different search."))
 
-    elif action == "back":
-        results = sess.get("last_results", [])
-        if results:
-            await ctx.send(sender, card_msg(event_list_card(results)))
 
-    elif action == "open_url":
-        url = sel.get("url", "")
-        await ctx.send(sender, text_msg(f"🔗 {url}"))
 
 # ── Formatting ────────────────────────────────────────────────────────────────
 

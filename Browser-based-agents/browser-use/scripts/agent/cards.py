@@ -40,15 +40,21 @@ def event_detail_card(ev: dict) -> dict:
     le = _parse_jsonb(ev.get("llm_extracted"))
     qs = _parse_jsonb(ev.get("questions")) if ev.get("questions") else []
 
-    title   = ev.get("title", "Untitled")
-    slug    = ev.get("slug", "")
-    url     = ev.get("external_url") or ev.get("event_url") or ""
-    source  = ev.get("source", "")
-    prize   = le.get("prize_amount") or ed.get("prize_amount") or "—"
-    desc    = ev.get("description_summary") or ed.get("description") or ""
-    city    = ev.get("city") or ed.get("location") or "—"
+    title      = ev.get("title", "Untitled")
+    slug       = ev.get("slug", "")
+    url        = ev.get("external_url") or ev.get("event_url") or ""
+    source     = ev.get("source", "")
+    prize      = le.get("prize_amount") or ed.get("prize_amount") or "—"
+    desc       = ev.get("description_summary") or ed.get("description") or ""
+    city       = ev.get("city") or ed.get("location") or "—"
+    venue      = ev.get("venue") or ed.get("venue") or ""
+    location   = f"{venue}, {city}" if venue else city
     reg_closed = ev.get("registration_closed")
-    status  = "❌ Closed" if reg_closed else "✅ Open"
+    status     = "Closed" if reg_closed else "Open"
+    capacity   = ed.get("capacity") or ev.get("capacity") or "—"
+    team_size  = ed.get("team_size") or le.get("team_size") or "—"
+    org        = ed.get("organization_name") or le.get("organizer") or "—"
+    reg_count  = ed.get("registrations_count") or "—"
 
     start = _fmt_date(ev.get("start_datetime"))
     end   = _fmt_date(ev.get("end_datetime"))
@@ -57,7 +63,7 @@ def event_detail_card(ev: dict) -> dict:
     # Questions text
     q_lines = []
     if isinstance(qs, list):
-        for q in qs[:5]:
+        for q in qs[:10]:
             req = " *" if q.get("required") else ""
             q_lines.append(f"• {q.get('question','')}{req}")
     q_text = "\n".join(q_lines) if q_lines else "No custom questions"
@@ -67,12 +73,16 @@ def event_detail_card(ev: dict) -> dict:
 
     _fill(root, {
         "_TITLE_":       title,
-        "_PLATFORM_":    source.capitalize(),
+        "_PLATFORM_":    source.capitalize() or "—",
         "_STATUS_":      status,
         "_DATE_RANGE_":  date_range or "—",
-        "_LOCATION_":    city,
+        "_LOCATION_":    location,
         "_PRIZE_":       prize,
-        "_DESCRIPTION_": desc[:300] + ("…" if len(desc) > 300 else "") if desc else "No description available.",
+        "_CAPACITY_":    str(capacity),
+        "_TEAM_SIZE_":   str(team_size),
+        "_ORGANIZER_":   str(org),
+        "_REG_COUNT_":   str(reg_count),
+        "_DESCRIPTION_": desc[:500] + ("…" if len(desc) > 500 else "") if desc else "No description available.",
         "_QUESTIONS_":   q_text,
         "_SLUG_":        slug,
         "_URL_":         url,
@@ -182,8 +192,8 @@ def _fill(obj, replacements: dict) -> None:
         for k, v in obj.items():
             if isinstance(v, str):
                 for placeholder, value in replacements.items():
-                    if placeholder in v:
-                        obj[k] = v.replace(placeholder, str(value))
+                    v = v.replace(placeholder, str(value))
+                obj[k] = v
             else:
                 _fill(v, replacements)
     elif isinstance(obj, list):
