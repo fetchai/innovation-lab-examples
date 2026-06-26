@@ -12,3 +12,4 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `contributors/` folder and contribution guide for community agent examples
 - `contributors/community_agent/` — moved from repository root; AI community growth agent for events and hackathons
 - `contributors/news-summarizer-agent/` — beginner-friendly agent that fetches top headlines via NewsAPI and summarizes them with ASI:One; now a uAgent with Chat Protocol support
+- `contributors/workspace-context-provider/` : Hybrid AI workspace context provider that indexes local codebases and exposes them through a Streamlit RAG interface and an MCP server for IDE integration
