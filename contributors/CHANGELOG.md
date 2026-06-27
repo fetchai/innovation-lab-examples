@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `rag-document-qa-agent/`: RAG-powered Document Q&A Agent using uAgents + LangChain + Gemini 2.0 Flash + ChromaDB (@davi713albano-coder)
 - `gemini-research-agent/`: Added Gemini-powered research assistant demonstrating the standard Agent Chat Protocol (@Kavurubuvanesh)
 - `contributors/` folder and contribution guide for community agent examples
 - `contributors/community_agent/` — moved from repository root; AI community growth agent for events and hackathons
