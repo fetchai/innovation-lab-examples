@@ -32,6 +32,7 @@ from uagents_core.contrib.protocols.payment import Funds, RequestPayment
 from uagents_core.types import DeliveryStatus
 
 from growth_pipeline import (
+    GrowthState,
     app as growth_graph,
     channel_analyzer,
     content_researcher,
@@ -78,7 +79,7 @@ def create_embedded_checkout_session(
 ) -> dict:
     """Create an embedded Stripe Checkout session and return its client payload."""
     session = stripe.checkout.Session.create(
-        ui_mode=STRIPE_API_UI_MODE,
+        ui_mode=STRIPE_API_UI_MODE,  # type: ignore[arg-type]
         redirect_on_completion="if_required",
         mode="payment",
         payment_method_types=["card"],
@@ -166,7 +167,7 @@ def extract_channel_name(message: str) -> Optional[str]:
         f"Message: {message}"
     )
     try:
-        raw = llm.invoke(prompt).content.strip()
+        raw = str(llm.invoke(prompt).content).strip()
     except Exception:  # noqa: BLE001 - LLM/network failure => treat as no channel
         return None
     token = (raw.split() or [""])[0]
@@ -177,7 +178,7 @@ def run_preview(channel_name: str) -> Tuple[str, str]:
     """Run only the cheap first nodes for the free preview: (display_name, niche).
     Stops before the paid work. Blocking.
     """
-    state = {
+    state: GrowthState = {
         "channel_name": channel_name,
         "channel_stats": None,
         "niche": None,
@@ -187,7 +188,7 @@ def run_preview(channel_name: str) -> Tuple[str, str]:
     }
     state = channel_analyzer(state)
     state = content_researcher(state)
-    stats = state.get("channel_stats") or {}
+    stats: dict = state.get("channel_stats") or {}
     return (stats.get("display_name") or channel_name, state.get("niche") or "unknown")
 
 
@@ -260,7 +261,7 @@ def classify_intent(message: str) -> dict:
     """
     prompt = f"{_INTENT_SYSTEM_PROMPT}\n\nUser message: {message}\n\nJSON:"
     try:
-        raw = llm.invoke(prompt).content.strip()
+        raw = str(llm.invoke(prompt).content).strip()
         data = _parse_intent_json(raw)
         intent = data.get("intent")
         params = data.get("params")
@@ -304,7 +305,7 @@ def execute_job(job: dict) -> str:
     user_id = job.get("user_id")
 
     if intent == "growth_report":
-        channel = params.get("channel_name")
+        channel = params.get("channel_name") or ""
         niche, report = run_growth_pipeline(channel)
         return f"Full growth strategy report for {channel} (niche: {niche})\n\n{report}"
 
@@ -340,7 +341,7 @@ def execute_job(job: dict) -> str:
         return create_clip(user_id=user_id)
 
     if intent == "recap":
-        return generate_recap(user_id, llm=llm)
+        return generate_recap(user_id or "", llm=llm)
 
     return "Sorry, I couldn't run that request."
 
@@ -561,7 +562,7 @@ def build_menu_card() -> dict:
     """Custom card: main menu with one button per service."""
 
     def _menu_button(label: str, menu: str, *, primary: bool = False) -> dict:
-        btn = {
+        btn: dict = {
             "type": "button",
             "label": label,
             "action": {"selection": {"menu": menu}},
@@ -1053,7 +1054,7 @@ async def _handle_reactive_offer_action(
     if setting == "slow_mode":
         kwargs["slow_mode_wait_seconds"] = 30
 
-    result = await asyncio.to_thread(update_chat_settings, **kwargs)
+    result = await asyncio.to_thread(lambda: update_chat_settings(**kwargs))  # type: ignore[arg-type]
 
     if result == NEEDS_CONNECT:
         job = {"intent": "chat_settings", "params": {setting: True}, "user_id": user_id}
@@ -1296,9 +1297,8 @@ async def _handle_chat_setting_click(
 
     now_on = bool(current.get(kwarg, False))
     new_value = not now_on
-    result = await asyncio.to_thread(
-        update_chat_settings, **{kwarg: new_value, "user_id": user_id}
-    )
+    kw = {kwarg: new_value, "user_id": user_id}
+    result = await asyncio.to_thread(lambda: update_chat_settings(**kw))  # type: ignore[arg-type]
 
     if result == NEEDS_CONNECT:
         job = {
@@ -1707,7 +1707,7 @@ async def _resume_after_connect(
         ctx, sender, _chat("✅ Twitch connected — picking up where you left off…")
     )
     await _open_feature(
-        ctx, sender, user_id, job.get("intent"), job.get("params") or {}
+        ctx, sender, user_id, job.get("intent") or "", job.get("params") or {}
     )
 
 

@@ -268,7 +268,7 @@ def setup_channel(
         # token. Signal the agent to send the connect prompt.
         return NEEDS_CONNECT
     except requests.HTTPError as exc:
-        resp = exc.response
+        resp = exc.response  # type: ignore[assignment]
         detail = resp.text.strip() if resp is not None else str(exc)
         return f"Error talking to Twitch (HTTP {getattr(resp, 'status_code', '?')}): {detail}"
     except Exception as exc:  # noqa: BLE001 - surface any failure as a friendly string
@@ -321,7 +321,7 @@ def send_announcement(
     except NotConnectedError:
         return NEEDS_CONNECT
     except requests.HTTPError as exc:
-        resp = exc.response
+        resp = exc.response  # type: ignore[assignment]
         detail = resp.text.strip() if resp is not None else str(exc)
         return f"Error talking to Twitch (HTTP {getattr(resp, 'status_code', '?')}): {detail}"
     except Exception as exc:  # noqa: BLE001 - surface any failure as a friendly string
@@ -357,7 +357,7 @@ def get_chat_settings(user_id: "str | None" = None) -> "dict | str":
     except NotConnectedError:
         return NEEDS_CONNECT
     except requests.HTTPError as exc:
-        resp = exc.response
+        resp = exc.response  # type: ignore[assignment]
         detail = resp.text.strip() if resp is not None else str(exc)
         return f"Error talking to Twitch (HTTP {getattr(resp, 'status_code', '?')}): {detail}"
     except Exception as exc:  # noqa: BLE001 - surface any failure as a friendly string
@@ -424,7 +424,7 @@ def update_chat_settings(
     except NotConnectedError:
         return NEEDS_CONNECT
     except requests.HTTPError as exc:
-        resp = exc.response
+        resp = exc.response  # type: ignore[assignment]
         detail = resp.text.strip() if resp is not None else str(exc)
         return f"Error talking to Twitch (HTTP {getattr(resp, 'status_code', '?')}): {detail}"
     except Exception as exc:  # noqa: BLE001 - surface any failure as a friendly string
@@ -465,7 +465,7 @@ def find_raid_candidates(
         resp = requests.get(
             f"{HELIX_BASE}/streams",
             headers=_auth_headers(token),
-            params={"game_id": game_id, "first": 100, "type": "live"},
+            params={"game_id": game_id, "first": "100", "type": "live"},
             timeout=30,
         )
         resp.raise_for_status()
@@ -497,7 +497,7 @@ def find_raid_candidates(
     except NotConnectedError:
         return NEEDS_CONNECT
     except requests.HTTPError as exc:
-        resp = exc.response
+        resp = exc.response  # type: ignore[assignment]
         detail = resp.text.strip() if resp is not None else str(exc)
         return f"Error talking to Twitch (HTTP {getattr(resp, 'status_code', '?')}): {detail}"
     except Exception as exc:  # noqa: BLE001 - surface any failure as a friendly string
@@ -596,7 +596,7 @@ def start_raid(target_broadcaster_id: str, user_id: "str | None" = None) -> str:
     except NotConnectedError:
         return NEEDS_CONNECT
     except requests.HTTPError as exc:
-        resp = exc.response
+        resp = exc.response  # type: ignore[assignment]
         detail = resp.text.strip() if resp is not None else str(exc)
         return f"Error talking to Twitch (HTTP {getattr(resp, 'status_code', '?')}): {detail}"
     except Exception as exc:  # noqa: BLE001 - surface any failure as a friendly string
@@ -637,7 +637,7 @@ def find_and_raid(
                 token, my_id, login, target["broadcaster_id"]
             )
         except requests.HTTPError as exc:
-            resp = exc.response
+            resp = exc.response  # type: ignore[assignment]
             detail = resp.text.strip() if resp is not None else str(exc)
             return f"Error talking to Twitch (HTTP {getattr(resp, 'status_code', '?')}): {detail}"
         except Exception as exc:  # noqa: BLE001
@@ -709,7 +709,7 @@ def create_clip(user_id: "str | None" = None) -> str:
     except NotConnectedError:
         return NEEDS_CONNECT
     except requests.HTTPError as exc:
-        resp = exc.response
+        resp = exc.response  # type: ignore[assignment]
         detail = resp.text.strip() if resp is not None else str(exc)
         return f"Error talking to Twitch (HTTP {getattr(resp, 'status_code', '?')}): {detail}"
     except Exception as exc:  # noqa: BLE001 - surface any failure as a friendly string

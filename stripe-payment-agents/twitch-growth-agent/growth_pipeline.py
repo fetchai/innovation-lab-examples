@@ -37,7 +37,7 @@ class GrowthState(TypedDict):
 llm = ChatOpenAI(
     model="asi1",
     base_url="https://api.asi1.ai/v1",
-    api_key=os.getenv("ASI_ONE_API_KEY"),
+    api_key=os.getenv("ASI_ONE_API_KEY"),  # type: ignore[arg-type]
     temperature=0.4,
 )
 
@@ -65,7 +65,7 @@ def channel_analyzer(state: GrowthState) -> GrowthState:
     channel = state["channel_name"]
     token = get_twitch_token()
     headers = {
-        "Client-ID": os.getenv("TWITCH_CLIENT_ID"),
+        "Client-ID": os.getenv("TWITCH_CLIENT_ID") or "",
         "Authorization": f"Bearer {token}",
     }
 
@@ -138,7 +138,7 @@ def content_researcher(state: GrowthState) -> GrowthState:
         f"Channel data:\n{stats}"
     )
     response = llm.invoke(prompt)
-    state["niche"] = response.content.strip()
+    state["niche"] = str(response.content).strip()
     return state
 
 
@@ -163,7 +163,7 @@ def gap_identifier(state: GrowthState) -> GrowthState:
     competitors = state["competitors"]
 
     competitor_text = "\n".join(
-        f"- {c['title']}: {c['snippet'][:300]}" for c in competitors
+        f"- {c['title']}: {c['snippet'][:300]}" for c in (competitors or [])
     )
     prompt = (
         "You are a Twitch growth strategist. Compare the target channel to the "
@@ -177,7 +177,7 @@ def gap_identifier(state: GrowthState) -> GrowthState:
     )
     response = llm.invoke(prompt)
     gaps = [
-        line.strip() for line in response.content.strip().splitlines() if line.strip()
+        line.strip() for line in str(response.content).strip().splitlines() if line.strip()
     ]
     state["gaps"] = gaps
     return state
@@ -190,8 +190,8 @@ def strategy_generator(state: GrowthState) -> GrowthState:
     gaps = state["gaps"]
     competitors = state["competitors"]
 
-    competitor_names = ", ".join(c["title"] for c in competitors)
-    gaps_text = "\n".join(gaps)
+    competitor_names = ", ".join(c["title"] for c in (competitors or []))
+    gaps_text = "\n".join(gaps or [])
     prompt = (
         "You are a senior Twitch growth consultant. Write a clear, actionable "
         "growth strategy report for the channel below. Use markdown with these "
@@ -205,14 +205,14 @@ def strategy_generator(state: GrowthState) -> GrowthState:
         "in the report (e.g. 'approximately', 'reportedly'). Do NOT assume the "
         "channel is inactive or has no audience just because the Twitch API "
         "fields are sparse.\n\n"
-        f"Channel: {stats.get('display_name')}\n"
+        f"Channel: {(stats or {}).get('display_name')}\n"
         f"Niche: {niche}\n"
         f"Stats: {stats}\n"
         f"Competitors: {competitor_names}\n"
         f"Identified gaps:\n{gaps_text}\n"
     )
     response = llm.invoke(prompt)
-    state["final_report"] = response.content.strip()
+    state["final_report"] = str(response.content).strip()
     return state
 
 
