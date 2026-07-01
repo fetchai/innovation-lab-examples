@@ -177,7 +177,9 @@ def gap_identifier(state: GrowthState) -> GrowthState:
     )
     response = llm.invoke(prompt)
     gaps = [
-        line.strip() for line in str(response.content).strip().splitlines() if line.strip()
+        line.strip()
+        for line in str(response.content).strip().splitlines()
+        if line.strip()
     ]
     state["gaps"] = gaps
     return state
