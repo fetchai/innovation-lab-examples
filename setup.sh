@@ -87,7 +87,18 @@ else
     echo "[2/4] Virtual environment already exists."
 fi
 
-source .venv/bin/activate
+VENV_ACTIVATE=""
+if [[ -f ".venv/bin/activate" ]]; then
+    VENV_ACTIVATE=".venv/bin/activate"
+elif [[ -f ".venv/Scripts/activate" ]]; then
+    VENV_ACTIVATE=".venv/Scripts/activate"
+else
+    echo "Error: Could not find a virtual environment activation script."
+    echo "Expected .venv/bin/activate or .venv/Scripts/activate."
+    exit 1
+fi
+
+source "$VENV_ACTIVATE"
 
 if [[ -f "requirements.txt" ]]; then
     echo "[3/4] Installing dependencies..."
@@ -118,7 +129,7 @@ echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "To activate the environment:"
-echo "  cd $EXAMPLE && source .venv/bin/activate"
+echo "  cd $EXAMPLE && source $VENV_ACTIVATE"
 echo ""
 
 if [[ -n "$ENTRY_FILE" ]]; then
