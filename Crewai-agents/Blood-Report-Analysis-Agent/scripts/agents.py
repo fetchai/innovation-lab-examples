@@ -4,10 +4,13 @@ from crewai_tools import (
     FileReadTool,
     SerperDevTool,
     WebsiteSearchTool,
-    PDFSearchTool
+    PDFSearchTool,
 )
 import os
-os.environ["SERPER_API_KEY"] = "b924f60ae1564e450f297dc464410ff7190abb85"  
+
+os.environ["SERPER_API_KEY"] = "b924f60ae1564e450f297dc464410ff7190abb85"
+
+
 class BloodReportAgents:
     def blood_report_analyst(self):
         return Agent(
@@ -24,12 +27,9 @@ class BloodReportAgents:
                 "You are adept at translating complex medical data into clear, actionable insights for healthcare "
                 "professionals and patients alike."
             ),
-            tools=[
-                PDFSearchTool(),
-                DirectoryReadTool(directory="input")
-            ],
+            tools=[PDFSearchTool(), DirectoryReadTool(directory="input")],
             allow_delegation=False,
-            verbose=True
+            verbose=True,
         )
 
     def health_advisor(self):
@@ -53,8 +53,8 @@ class BloodReportAgents:
                 SerperDevTool(),
                 WebsiteSearchTool(),
                 FileReadTool(),
-                DirectoryReadTool(directory="output")
+                DirectoryReadTool(directory="output"),
             ],
             allow_delegation=False,
-            verbose=True
+            verbose=True,
         )

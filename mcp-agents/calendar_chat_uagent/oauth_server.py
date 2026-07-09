@@ -29,13 +29,17 @@ load_dotenv()
 AGENTVERSE_API_KEY = os.getenv("AGENTVERSE_API_KEY")
 STORAGE_URL = os.getenv("AGENTVERSE_URL", "https://agentverse.ai") + "/v1/storage"
 
-print(f"🔑 API Key loaded: {AGENTVERSE_API_KEY[:20] + '…' if AGENTVERSE_API_KEY else 'None'}")
+print(
+    f"🔑 API Key loaded: {AGENTVERSE_API_KEY[:20] + '…' if AGENTVERSE_API_KEY else 'None'}"
+)
 print(f"🌐 Storage URL: {STORAGE_URL}")
 
 _storage: ExternalStorage | None = None
 if AGENTVERSE_API_KEY:
     try:
-        _storage = ExternalStorage(api_token=AGENTVERSE_API_KEY, storage_url=STORAGE_URL)
+        _storage = ExternalStorage(
+            api_token=AGENTVERSE_API_KEY, storage_url=STORAGE_URL
+        )
         print("🔐 ExternalStorage initialised successfully")
     except Exception as err:
         print(f"⚠️  ExternalStorage init failed: {err}")
@@ -46,6 +50,7 @@ else:
 # ---------------------------------------------------------------------------
 # Helper for persisting the OAuth code in the agent's local storage JSON file
 # ---------------------------------------------------------------------------
+
 
 def save_oauth_code_to_agent_storage(session_id: str, auth_code: str) -> bool:
     """Save OAuth code into the agent*_data.json under `calendar_chat_sessions`."""
@@ -62,7 +67,9 @@ def save_oauth_code_to_agent_storage(session_id: str, auth_code: str) -> bool:
 
         # calendar_chat_sessions is a JSON-serialised string in the storage JSON
         sessions_str = storage_data.get("calendar_chat_sessions", "{}")
-        sessions = json.loads(sessions_str) if isinstance(sessions_str, str) else sessions_str
+        sessions = (
+            json.loads(sessions_str) if isinstance(sessions_str, str) else sessions_str
+        )
 
         if session_id in sessions:
             sessions[session_id]["oauth_code"] = auth_code
@@ -80,6 +87,7 @@ def save_oauth_code_to_agent_storage(session_id: str, auth_code: str) -> bool:
     except Exception as e:
         print(f"⚠️  Failed to save OAuth code to agent storage: {e}")
         return False
+
 
 # ---------------------------------------------------------------------------
 # HTML pages returned to the browser
@@ -118,6 +126,7 @@ ERROR_PAGE = """<!DOCTYPE html><body><h2 style='color:#dc3545;font-family:sans-s
 # HTTP handler
 # ---------------------------------------------------------------------------
 
+
 class OAuthCallbackHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         parsed = urllib.parse.urlparse(self.path)
@@ -129,13 +138,17 @@ class OAuthCallbackHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Content-type", "text/html")
             self.end_headers()
             self.wfile.write(SUCCESS_PAGE_TEMPLATE.encode("utf-8"))
-            print(f"\n🎉 Authorization code received for session {state}: {code[:10]}…\n")
+            print(
+                f"\n🎉 Authorization code received for session {state}: {code[:10]}…\n"
+            )
 
             # 1️⃣ Upload to Agentverse asset storage
             stored_externally = False
             if _storage and state:
                 try:
-                    _storage.create_asset(name=state, content=code.encode(), mime_type="text/plain")
+                    _storage.create_asset(
+                        name=state, content=code.encode(), mime_type="text/plain"
+                    )
                     print("💾 Code uploaded to Agentverse asset", state)
                     stored_externally = True
                 except Exception as up_err:
@@ -148,15 +161,20 @@ class OAuthCallbackHandler(http.server.SimpleHTTPRequestHandler):
                     try:
                         with open(f"calendar_oauth_code_{state}.txt", "w") as f:
                             f.write(code)
-                        print(f"💾 Code saved locally to calendar_oauth_code_{state}.txt as final fallback")
+                        print(
+                            f"💾 Code saved locally to calendar_oauth_code_{state}.txt as final fallback"
+                        )
                     except Exception as local_err:
                         print("⚠️  Failed to save code locally:", local_err)
 
             # Notify the calendar_chat_agent REST endpoint so it can finish the flow automatically
             try:
                 import requests as _req
+
                 payload = {"session_id": state, "auth_code": code}
-                resp = _req.post("http://localhost:8089/oauth/callback", json=payload, timeout=3)
+                resp = _req.post(
+                    "http://localhost:8089/oauth/callback", json=payload, timeout=3
+                )
                 print("➡️  Posted code to chat agent – status", resp.status_code)
             except Exception as notify_err:
                 print("⚠️  Could not notify chat agent:", notify_err)
@@ -170,9 +188,11 @@ class OAuthCallbackHandler(http.server.SimpleHTTPRequestHandler):
         # Suppress the default noisy HTTP request logs from http.server
         pass
 
+
 # ---------------------------------------------------------------------------
 # Server entrypoint
 # ---------------------------------------------------------------------------
+
 
 def start_oauth_server():
     port = 8080
@@ -184,5 +204,6 @@ def start_oauth_server():
         except KeyboardInterrupt:
             print("\n🛑 OAuth server stopped")
 
+
 if __name__ == "__main__":
-    start_oauth_server() 
+    start_oauth_server()

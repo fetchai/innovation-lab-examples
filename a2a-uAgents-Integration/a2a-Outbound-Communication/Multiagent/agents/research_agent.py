@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
+
 class ResearchAgentExecutor(AgentExecutor):
     """Research agent that specializes in information gathering and analysis."""
 
@@ -26,9 +27,9 @@ class ResearchAgentExecutor(AgentExecutor):
             raise ValueError("ASI1_API_KEY environment variable is not set")
         self.model = os.getenv("ASI1_MODEL", "asi1-mini")
         self.headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'Authorization': f'Bearer {self.api_key}'
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
         }
         self.system_prompt = """You are a Research Specialist AI agent. Your role is to:
 1. Conduct thorough research on any given topic
@@ -62,18 +63,22 @@ Be thorough, accurate, and professional in your research approach.
                 "model": self.model,
                 "messages": [
                     {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": f"Research Request: {message_content}"}
+                    {"role": "user", "content": f"Research Request: {message_content}"},
                 ],
                 "max_tokens": 1500,
                 "temperature": 0.3,
-                "stream": False
+                "stream": False,
             }
 
-            logger.info(f"Sending request to {self.url} with payload: {json.dumps(payload, indent=2)}")
-            response = await self.http_client.post(self.url, headers=self.headers, json=payload)
+            logger.info(
+                f"Sending request to {self.url} with payload: {json.dumps(payload, indent=2)}"
+            )
+            response = await self.http_client.post(
+                self.url, headers=self.headers, json=payload
+            )
             logger.info(f"Received response: {response.status_code}")
             response.raise_for_status()
-            research_result = response.json()['choices'][0]['message']['content']
+            research_result = response.json()["choices"][0]["message"]["content"]
 
             formatted_response = f"""🔍 Research Agent Analysis
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -88,7 +93,9 @@ Be thorough, accurate, and professional in your research approach.
 
         except Exception as e:
             logger.error(f"Research error: {e}", exc_info=True)
-            await event_queue.enqueue_event(new_agent_text_message(f"❌ Research error: {str(e)}"))
+            await event_queue.enqueue_event(
+                new_agent_text_message(f"❌ Research error: {str(e)}")
+            )
 
     @override
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:

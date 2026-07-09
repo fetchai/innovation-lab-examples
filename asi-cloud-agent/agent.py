@@ -24,9 +24,7 @@ if not ASI_CLOUD_API_KEY:
 
 client = OpenAI(
     api_key=ASI_CLOUD_API_KEY,
-    base_url=os.getenv(
-        "ASICLOUD_BASE_URL", "https://inference.asicloud.cudos.org/v1"
-    ),
+    base_url=os.getenv("ASICLOUD_BASE_URL", "https://inference.asicloud.cudos.org/v1"),
 )
 
 MODEL_NAME = "asi1-mini"
@@ -43,7 +41,7 @@ Ask for clarification when inputs are ambiguous.
 Respect user preferences and mention limitations or safety considerations when relevant.
 """
 
-agent = Agent(name="asi_agent",port=8000,mailbox=True)
+agent = Agent(name="asi_agent", port=8000, mailbox=True)
 chat_proto = Protocol(spec=chat_protocol_spec)
 
 
@@ -131,4 +129,3 @@ agent.include(chat_proto, publish_manifest=True)
 
 if __name__ == "__main__":
     agent.run()
-

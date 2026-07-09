@@ -3,6 +3,7 @@ import os
 import requests
 from langchain.tools import tool
 
+
 class SearchTools:
     @tool("Search the internet")
     def search_internet(query):
@@ -77,7 +78,9 @@ class SearchTools:
         }
         response = requests.request("POST", url, headers=headers, data=payload)
         if "organic" not in response.json():
-            return "Sorry, I couldn't find cab services. Please check your Serper API key."
+            return (
+                "Sorry, I couldn't find cab services. Please check your Serper API key."
+            )
         results = response.json()["organic"]
         string = []
         for result in results[:3]:
@@ -186,6 +189,3 @@ class SearchTools:
             )
         except KeyError:
             return f"Error processing weather data for {location}."
-        
-
-        

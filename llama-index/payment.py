@@ -4,14 +4,16 @@ from uuid import uuid4
 from uagents import Context
 from uagents_core.contrib.protocols.payment import Funds, RequestPayment
 
-from config import STRIPE_AMOUNT_CENTS, STRIPE_CURRENCY
+from config import STRIPE_AMOUNT_CENTS
 from stripe_payments import (
     create_embedded_checkout_session,
     format_price,
 )
 
 
-async def request_payment_from_user(ctx: Context, user_address: str, description: str | None = None):
+async def request_payment_from_user(
+    ctx: Context, user_address: str, description: str | None = None
+):
     """Create a Stripe embedded checkout and send RequestPayment to the user."""
     desc = description or f"RAG document ingestion — {format_price()}"
 
@@ -27,11 +29,13 @@ async def request_payment_from_user(ctx: Context, user_address: str, description
         ctx.storage.set(f"pending_stripe:{user_address}", checkout)
 
         payment_request = RequestPayment(
-            accepted_funds=[Funds(
-                currency="USD",
-                amount=f"{STRIPE_AMOUNT_CENTS / 100:.2f}",
-                payment_method="stripe",
-            )],
+            accepted_funds=[
+                Funds(
+                    currency="USD",
+                    amount=f"{STRIPE_AMOUNT_CENTS / 100:.2f}",
+                    payment_method="stripe",
+                )
+            ],
             recipient=str(ctx.agent.address),
             deadline_seconds=300,
             reference=checkout["checkout_session_id"],

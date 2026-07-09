@@ -1,16 +1,24 @@
 import os
 from typing import Dict, List
-from uagents_adapter import SingleA2AAdapter, A2AAgentConfig, a2a_servers # Import from your fixed adapter
-from competitor_analysis_executor import CompetitorAnalysisExecutor # NEW: Import the new executor
+from uagents_adapter import (
+    SingleA2AAdapter,
+    A2AAgentConfig,
+    a2a_servers,
+)  # Import from your fixed adapter
+from competitor_analysis_executor import (
+    CompetitorAnalysisExecutor,
+)  # NEW: Import the new executor
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
 
+
 class CompetitorAnalysisSystem:
     """
     Manages the setup and execution of the A2A Competitor Analysis agent.
     """
+
     def __init__(self):
         self.coordinator = None
         self.agent_configs: List[A2AAgentConfig] = []
@@ -26,17 +34,21 @@ class CompetitorAnalysisSystem:
             A2AAgentConfig(
                 name="competitor_analysis_specialist",
                 description="AI Agent for comprehensive competitor analysis and market intelligence.",
-                url="http://localhost:10020", # The URL where the A2A server for this agent will run
-                port=10020, # The port for the A2A server
+                url="http://localhost:10020",  # The URL where the A2A server for this agent will run
+                port=10020,  # The port for the A2A server
                 specialties=[
-                    "competitor analysis", "market intelligence", "SWOT analysis",
-                    "strategic recommendations", "industry research", "product comparison"
+                    "competitor analysis",
+                    "market intelligence",
+                    "SWOT analysis",
+                    "strategic recommendations",
+                    "industry research",
+                    "product comparison",
                 ],
-                priority=3
+                priority=3,
             )
         ]
         self.executors = {
-            "competitor_analysis_specialist": CompetitorAnalysisExecutor() # NEW: Use the new executor
+            "competitor_analysis_specialist": CompetitorAnalysisExecutor()  # NEW: Use the new executor
         }
         print("✅ Competitor Analysis Agent configuration created")
 
@@ -53,19 +65,21 @@ class CompetitorAnalysisSystem:
         Creates the SingleA2AAdapter (uAgent coordinator) for the competitor analysis agent.
         """
         print("🤖 Creating Competitor Analysis Coordinator...")
-        
+
         # Get the executor instance
         competitor_executor = self.executors.get("competitor_analysis_specialist")
         if competitor_executor is None:
-            raise ValueError("CompetitorAnalysisExecutor not found in executors dictionary.")
+            raise ValueError(
+                "CompetitorAnalysisExecutor not found in executors dictionary."
+            )
 
         self.coordinator = SingleA2AAdapter(
             agent_executor=competitor_executor,
             name="competitor-analysis-coordinator",
             description="Coordinator for routing competitor analysis queries to the specialist agent.",
-            port=8200, # The port for the uAgent coordinator
+            port=8200,  # The port for the uAgent coordinator
             mailbox=True,
-            timeout=2000
+            timeout=2000,
         )
         print("✅ Competitor Analysis Coordinator created!")
         return self.coordinator
@@ -80,7 +94,9 @@ class CompetitorAnalysisSystem:
             self.start_individual_a2a_servers()
             coordinator = self.create_coordinator()
             self.running = True
-            print(f"🎯 Starting Competitor Analysis coordinator on port {coordinator.port}...")
+            print(
+                f"🎯 Starting Competitor Analysis coordinator on port {coordinator.port}..."
+            )
             coordinator.run()
         except KeyboardInterrupt:
             print("👋 Shutting down Competitor Analysis system...")
@@ -89,12 +105,15 @@ class CompetitorAnalysisSystem:
             print(f"❌ Error during system startup: {e}")
             self.running = False
 
+
 def main():
     """
     Main function to run the Competitor Analysis A2A system.
     """
     # Set the UAGENT_MESSAGE_TIMEOUT environment variable
-    os.environ["UAGENT_MESSAGE_TIMEOUT"] = os.getenv("UAGENT_MESSAGE_TIMEOUT", "300") # Default to 300 seconds (5 minutes)
+    os.environ["UAGENT_MESSAGE_TIMEOUT"] = os.getenv(
+        "UAGENT_MESSAGE_TIMEOUT", "300"
+    )  # Default to 300 seconds (5 minutes)
 
     try:
         system = CompetitorAnalysisSystem()
@@ -103,6 +122,7 @@ def main():
         print("👋 Competitor Analysis system shutdown complete!")
     except Exception as e:
         print(f"❌ An error occurred: {e}")
+
 
 if __name__ == "__main__":
     main()

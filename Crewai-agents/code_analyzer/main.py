@@ -8,8 +8,11 @@ from uagents_adapter import CrewaiRegisterTool
 from agents.code_agents import CodeAgents
 from tasks.code_tasks import CodeTasks
 
+
 class CodeAnalyzerCrew:
-    def __init__(self, code_snippet="", language="python", error_log="", code_requirements=""):
+    def __init__(
+        self, code_snippet="", language="python", error_log="", code_requirements=""
+    ):
         self.code_snippet = code_snippet
         self.language = language
         self.error_log = error_log
@@ -18,10 +21,16 @@ class CodeAnalyzerCrew:
     def validate_inputs(self):
         """Validate input parameters."""
         if not self.code_snippet and not self.code_requirements:
-            raise ValueError("Either code_snippet or code_requirements must be provided")
+            raise ValueError(
+                "Either code_snippet or code_requirements must be provided"
+            )
         if not self.language:
             raise ValueError("Language must be specified")
-        if self.language.lower() not in ["python", "javascript", "java",]:  
+        if self.language.lower() not in [
+            "python",
+            "javascript",
+            "java",
+        ]:
             raise ValueError(f"Unsupported language: {self.language}")
 
     def run(self):
@@ -36,12 +45,23 @@ class CodeAnalyzerCrew:
 
         task_list = []
         if self.code_requirements:
-            write_task = tasks.write_task(writer_agent, self.code_requirements, self.language)
+            write_task = tasks.write_task(
+                writer_agent, self.code_requirements, self.language
+            )
             task_list.append(write_task)
         if self.code_snippet:
-            analyze_task = tasks.analyze_task(analyzer_agent, self.code_snippet, self.language)
-            debug_task = tasks.debug_task(debug_agent, self.code_snippet, self.language, self.error_log)
-            fix_task = tasks.fix_task(fixer_agent, self.code_snippet, self.language, debug_task.expected_output)
+            analyze_task = tasks.analyze_task(
+                analyzer_agent, self.code_snippet, self.language
+            )
+            debug_task = tasks.debug_task(
+                debug_agent, self.code_snippet, self.language, self.error_log
+            )
+            fix_task = tasks.fix_task(
+                fixer_agent,
+                self.code_snippet,
+                self.language,
+                debug_task.expected_output,
+            )
             task_list.extend([analyze_task, debug_task, fix_task])
 
         crew = Crew(
@@ -59,8 +79,11 @@ class CodeAnalyzerCrew:
             self.code_snippet = inputs.get("code_snippet", self.code_snippet)
             self.language = inputs.get("language", self.language)
             self.error_log = inputs.get("error_log", self.error_log)
-            self.code_requirements = inputs.get("code_requirements", self.code_requirements)
+            self.code_requirements = inputs.get(
+                "code_requirements", self.code_requirements
+            )
         return self.run()
+
 
 def main():
     """Main function to demonstrate Code Analyzer with CrewAI adapter."""
@@ -112,9 +135,11 @@ def main():
     try:
         while True:
             import time
+
             time.sleep(1)
     except KeyboardInterrupt:
         print("\nExiting...")
+
 
 if __name__ == "__main__":
     main()

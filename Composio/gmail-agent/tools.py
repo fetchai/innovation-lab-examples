@@ -24,7 +24,10 @@ def get_gmail_auth_url(user_email: str):
         composio = Composio(api_key=os.getenv("COMPOSIO_API_KEY", ""))
         auth_config_id = os.getenv("GMAIL_AUTH_CONFIG_ID")
         if not auth_config_id:
-            return {"success": False, "error": "Gmail Auth Config ID not found. Please set GMAIL_AUTH_CONFIG_ID in your .env file"}
+            return {
+                "success": False,
+                "error": "Gmail Auth Config ID not found. Please set GMAIL_AUTH_CONFIG_ID in your .env file",
+            }
         connection_request = composio.connected_accounts.initiate(
             user_id=user_email,
             auth_config_id=auth_config_id,
@@ -74,7 +77,9 @@ def get_gmail_draft_tools_for_user(user_email: str):
 
 def get_gmail_thread_fetch_tools_for_user(user_email: str):
     composio_lc = get_composio_lc()
-    return composio_lc.tools.get(user_id=user_email, tools=["GMAIL_FETCH_MESSAGE_BY_THREAD_ID"])
+    return composio_lc.tools.get(
+        user_id=user_email, tools=["GMAIL_FETCH_MESSAGE_BY_THREAD_ID"]
+    )
 
 
 def get_gmail_profile_tools_for_user(user_email: str):
@@ -99,5 +104,3 @@ def get_gmail_list_drafts_tools_for_user(user_email: str):
 def get_gmail_message_by_id_tools_for_user(user_email: str):
     # Deprecated: removed fetch message by ID feature per request
     return []
-
-

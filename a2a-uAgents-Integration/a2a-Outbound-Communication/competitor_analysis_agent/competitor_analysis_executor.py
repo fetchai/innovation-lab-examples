@@ -1,7 +1,5 @@
 import asyncio
 from textwrap import dedent
-from typing import List
-from uuid import uuid4
 import dotenv
 
 from a2a.server.agent_execution import AgentExecutor, RequestContext
@@ -27,8 +25,8 @@ competitor_analysis_agno_agent = Agent(
             enable_crawl=True,
             enable_mapping=True,
             formats=["markdown", "links", "html"],
-            search_params={"limit": 1}, # REDUCED: Limit search results to 1
-            limit=1, # REDUCED: Limit crawl depth/pages to 1
+            search_params={"limit": 1},  # REDUCED: Limit search results to 1
+            limit=1,  # REDUCED: Limit crawl depth/pages to 1
         ),
         ReasoningTools(),
     ],
@@ -89,7 +87,7 @@ competitor_analysis_agno_agent = Agent(
         "**MANDATORY TABLES TO INCLUDE:**",
         "- Market Segmentation Table",
         "- Market Leaders Table",
-        "- Challengers Table", 
+        "- Challengers Table",
         "- SWOT Analysis Tables (for each top competitor)",
         "- Feature Comparison Matrix",
         "- Pricing Comparison Table",
@@ -231,10 +229,12 @@ competitor_analysis_agno_agent = Agent(
     markdown=True,
 )
 
+
 class CompetitorAnalysisExecutor(AgentExecutor):
     """
     AgentExecutor wrapper for the agno.agent competitor analysis agent.
     """
+
     def __init__(self):
         self.agent = competitor_analysis_agno_agent
 
@@ -250,35 +250,54 @@ class CompetitorAnalysisExecutor(AgentExecutor):
                 if isinstance(part.root, TextPart):
                     message_content = part.root.text
                     break
-        
+
         if not message_content:
-            await event_queue.enqueue_event(new_agent_text_message("Error: No message content received."))
+            await event_queue.enqueue_event(
+                new_agent_text_message("Error: No message content received.")
+            )
             return
 
         message: Message = Message(role="user", content=message_content)
-        print(f"DEBUG: [CompetitorAnalysisExecutor] Received message: {message.content}")
-        
+        print(
+            f"DEBUG: [CompetitorAnalysisExecutor] Received message: {message.content}"
+        )
+
         try:
-            print("DEBUG: [CompetitorAnalysisExecutor] Starting agno agent run with timeout...")
+            print(
+                "DEBUG: [CompetitorAnalysisExecutor] Starting agno agent run with timeout..."
+            )
             # Set a generous timeout for the agno agent's execution, as it involves web searches/crawling
-            result: RunOutput = await asyncio.wait_for(self.agent.arun(message), timeout=300) # 5 minutes timeout
-            print(f"DEBUG: [CompetitorAnalysisExecutor] Agno agent finished run. Response content type: {type(result.content)}")
-            
-            response_text = str(result.content) 
+            result: RunOutput = await asyncio.wait_for(
+                self.agent.arun(message), timeout=300
+            )  # 5 minutes timeout
+            print(
+                f"DEBUG: [CompetitorAnalysisExecutor] Agno agent finished run. Response content type: {type(result.content)}"
+            )
+
+            response_text = str(result.content)
             await event_queue.enqueue_event(new_agent_text_message(response_text))
             print("DEBUG: [CompetitorAnalysisExecutor] Event enqueued successfully.")
 
         except asyncio.TimeoutError:
             error_message = "Agno agent execution timed out. The analysis might be too complex or require more time."
             print(f"❌ {error_message}")
-            await event_queue.enqueue_event(new_agent_text_message(f"Error: {error_message}. Please try again or simplify your query."))
+            await event_queue.enqueue_event(
+                new_agent_text_message(
+                    f"Error: {error_message}. Please try again or simplify your query."
+                )
+            )
         except Exception as e:
             error_message = f"Error during agno agent execution: {e}"
             print(f"❌ {error_message}")
             import traceback
+
             traceback.print_exc()
-            await event_queue.enqueue_event(new_agent_text_message(f"Error: {error_message}. Please check logs for details."))
-        
+            await event_queue.enqueue_event(
+                new_agent_text_message(
+                    f"Error: {error_message}. Please check logs for details."
+                )
+            )
+
         print("DEBUG: [CompetitorAnalysisExecutor] execute method finished.")
 
     @override

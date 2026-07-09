@@ -45,7 +45,9 @@ def _expires_at() -> int:
     return int(time.time()) + secs
 
 
-def create_checkout_session(user_address: str, chat_session_id: str, description: str) -> dict:
+def create_checkout_session(
+    user_address: str, chat_session_id: str, description: str
+) -> dict:
     """Create a Stripe embedded checkout session.
 
     Returns a dict with:

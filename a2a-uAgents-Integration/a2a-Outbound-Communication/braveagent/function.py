@@ -1,6 +1,7 @@
 from typing import Dict, List
 from uagents_adapter import SingleA2AAdapter, A2AAgentConfig, a2a_servers
-from brave.agent import BraveSearchAgentExecutor  
+from brave.agent import BraveSearchAgentExecutor
+
 
 class BraveSearchAgent:
     def __init__(self):
@@ -17,13 +18,17 @@ class BraveSearchAgent:
                 description="AI Agent for web and news search using Brave Search API",
                 url="http://localhost:10020",
                 port=10020,
-                specialties=["web search", "news", "information retrieval", "local business", "site-specific lookup"],
-                priority=3
+                specialties=[
+                    "web search",
+                    "news",
+                    "information retrieval",
+                    "local business",
+                    "site-specific lookup",
+                ],
+                priority=3,
             )
         ]
-        self.executors = {
-            "brave_search_specialist": BraveSearchAgentExecutor()
-        }
+        self.executors = {"brave_search_specialist": BraveSearchAgentExecutor()}
         print("✅ Brave Search Agent configuration created")
 
     def start_individual_a2a_servers(self):
@@ -36,13 +41,15 @@ class BraveSearchAgent:
         # Use a valid agent_executor, e.g., the BraveSearchAgentExecutor or a coordinator logic
         brave_executor = self.executors.get("brave_search_specialist")
         if brave_executor is None:
-            raise ValueError("BraveSearchAgentExecutor not found in executors dictionary.")
+            raise ValueError(
+                "BraveSearchAgentExecutor not found in executors dictionary."
+            )
         self.coordinator = SingleA2AAdapter(
             agent_executor=brave_executor,
             name="brave-search-coordinator",
             description="Coordinator for routing Brave Search queries",
             port=8200,
-            mailbox=True
+            mailbox=True,
         )
         print("✅ Brave Coordinator created!")
         return self.coordinator
@@ -63,6 +70,7 @@ class BraveSearchAgent:
             print(f"❌ Error: {e}")
             self.running = False
 
+
 def main():
     try:
         system = BraveSearchAgent()
@@ -71,6 +79,7 @@ def main():
         print("👋 Brave system shutdown complete!")
     except Exception as e:
         print(f"❌ Error: {e}")
+
 
 if __name__ == "__main__":
     main()

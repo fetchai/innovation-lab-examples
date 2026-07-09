@@ -23,16 +23,16 @@ from typing import Optional
 
 @dataclass
 class SearchInput:
-    location: str                          # e.g. "Austin, TX" or zip "78701"
-    listing_type: str = "for_sale"         # for_sale | for_rent | sold
+    location: str  # e.g. "Austin, TX" or zip "78701"
+    listing_type: str = "for_sale"  # for_sale | for_rent | sold
     min_price: Optional[int] = None
     max_price: Optional[int] = None
     min_beds: Optional[int] = None
     max_beds: Optional[int] = None
     min_sqft: Optional[int] = None
     max_sqft: Optional[int] = None
-    property_type: Optional[list] = None   # ["single_family", "condo", "townhouse"]
-    past_days: int = 30                    # only listings from last N days
+    property_type: Optional[list] = None  # ["single_family", "condo", "townhouse"]
+    past_days: int = 30  # only listings from last N days
 
 
 def _normalize_property_types(property_types: Optional[list]) -> Optional[list]:
@@ -65,7 +65,9 @@ def fetch_listings(search: SearchInput) -> pd.DataFrame:
     city, state, zip_code, beds, baths, square_feet, listing_type, site_name.
     """
     print(f" Searching for properties in: {search.location}")
-    print(f"   Type: {search.listing_type} | Budget: ${search.min_price or 0:,} - ${search.max_price or '∞'}")
+    print(
+        f"   Type: {search.listing_type} | Budget: ${search.min_price or 0:,} - ${search.max_price or '∞'}"
+    )
     normalized_property_types = _normalize_property_types(search.property_type)
 
     properties = scrape_property(

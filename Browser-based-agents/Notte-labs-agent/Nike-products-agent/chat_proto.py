@@ -18,12 +18,12 @@ from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
 )
 
-from nike_scraper import get_nike_info_enhanced, NikeScrapeRequest, NikeScrapeResponse
+from nike_scraper import get_nike_info_enhanced, NikeScrapeRequest
 
 # Replace the AI Agent Address with one of the LLMs that support StructuredOutput
 # OpenAI Agent: agent1q0h70caed8ax769shpemapzkyk65uscw4xwk6dc4t3emvp5jdcvqs9xs32y
 # Claude.ai Agent: agent1qvk7q2av3e2y5gf5s90nfzkc8a48q3wdqeevwrtgqfdl0k78rspd6f2l4dx
-AI_AGENT_ADDRESS = 'agent1qtlpfshtlcxekgrfcpmv7m9zpajuwu7d5jfyachvpa4u3dkt6k0uwwp2lct'
+AI_AGENT_ADDRESS = "agent1qtlpfshtlcxekgrfcpmv7m9zpajuwu7d5jfyachvpa4u3dkt6k0uwwp2lct"
 
 if not AI_AGENT_ADDRESS:
     raise ValueError("AI_AGENT_ADDRESS not set")
@@ -69,7 +69,9 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
     ctx.storage.set(str(ctx.session), sender)
     await ctx.send(
         sender,
-        ChatAcknowledgement(timestamp=datetime.utcnow(), acknowledged_msg_id=msg.msg_id),
+        ChatAcknowledgement(
+            timestamp=datetime.utcnow(), acknowledged_msg_id=msg.msg_id
+        ),
     )
 
     for item in msg.content:
@@ -110,7 +112,12 @@ async def handle_structured_output_response(
         return
 
     # Check for empty or clearly invalid output from LLM
-    if not msg.output or "<UNKNOWN>" in str(msg.output) or not isinstance(msg.output, dict) or not msg.output.get('action'):
+    if (
+        not msg.output
+        or "<UNKNOWN>" in str(msg.output)
+        or not isinstance(msg.output, dict)
+        or not msg.output.get("action")
+    ):
         await ctx.send(
             session_sender,
             create_text_chat(
@@ -123,7 +130,7 @@ async def handle_structured_output_response(
         # Parse the structured output from the LLM
         try:
             request = NikeScrapeRequest.parse_obj(msg.output)
-        except Exception as p_err: # Catch Pydantic validation errors or others
+        except Exception as p_err:  # Catch Pydantic validation errors or others
             ctx.logger.error(f"Error parsing LLM output: {msg.output}. Error: {p_err}")
             await ctx.send(
                 session_sender,
@@ -132,14 +139,14 @@ async def handle_structured_output_response(
                 ),
             )
             return
-        
+
         # Get the Nike information based on the structured request
         nike_response = await get_nike_info_enhanced(request=request)
-        
+
         # Send the response back to the user
         chat_message = create_text_chat(nike_response.results)
         await ctx.send(session_sender, chat_message)
-        
+
     except Exception as err:
         ctx.logger.error(f"Error processing Nike request: {err}")
         await ctx.send(

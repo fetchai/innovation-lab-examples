@@ -32,17 +32,17 @@ When users ask for events in a specific location (e.g., "San Francisco", "New Yo
 - Location + Event Type: "San Francisco concert", "New York music"
 - Be specific: Include city names in keywords
 - Don't rely on countryCode alone for location filtering
-"""
+""",
 )
 
 agent = Agent(
     name="events-finder-mcp-agent",
     seed="events-finder-mcp-agent",
     port=8000,
-    mailbox=True
+    mailbox=True,
 )
 for protocol in mcp_adapter.protocols:
     agent.include(protocol, publish_manifest=True)
 
 if __name__ == "__main__":
-    mcp_adapter.run(agent) 
+    mcp_adapter.run(agent)

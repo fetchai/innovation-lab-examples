@@ -26,16 +26,24 @@ def extract_gmail_response(intermediate_steps: List) -> Dict[str, Any]:
                     except Exception:
                         parsed = None
             if parsed and isinstance(parsed, dict):
-                resp = parsed.get('data', {}).get('response_data', {})
-                email_id = resp.get('id', email_id)
-                thread_id = resp.get('threadId', thread_id)
-                labels = resp.get('labelIds', labels) or labels
+                resp = parsed.get("data", {}).get("response_data", {})
+                email_id = resp.get("id", email_id)
+                thread_id = resp.get("threadId", thread_id)
+                labels = resp.get("labelIds", labels) or labels
     except Exception:
         pass
     return {"email_id": email_id, "thread_id": thread_id, "labels": labels}
 
 
-def format_success_markdown(recipient: str, sender_email: str, subject: str, body: str, email_id: str, thread_id: str, labels: List[str]) -> str:
+def format_success_markdown(
+    recipient: str,
+    sender_email: str,
+    subject: str,
+    body: str,
+    email_id: str,
+    thread_id: str,
+    labels: List[str],
+) -> str:
     return f"""✅ **Email sent successfully to {recipient}!**
 
 **Email Details:**
@@ -46,32 +54,38 @@ def format_success_markdown(recipient: str, sender_email: str, subject: str, bod
 **Gmail Response:**
 - **Email ID:** `{email_id}`
 - **Thread ID:** `{thread_id}`
-- **Labels:** {', '.join(labels) if labels else 'N/A'}
+- **Labels:** {", ".join(labels) if labels else "N/A"}
 - **Status:** ✅ Sent successfully"""
 
 
-def format_reply_success_markdown(recipient: str, body: str, thread_id: str, message_id: str | None) -> str:
+def format_reply_success_markdown(
+    recipient: str, body: str, thread_id: str, message_id: str | None
+) -> str:
     return f"""✅ **Replied successfully**
 
 **Reply Details:**
 - **To:** {recipient}
 - **Thread ID:** `{thread_id}`
-- **Message ID:** `{message_id or 'N/A'}`
-- **Body:** {body[:500]}{'...' if body and len(body) > 500 else ''}
+- **Message ID:** `{message_id or "N/A"}`
+- **Body:** {body[:500]}{"..." if body and len(body) > 500 else ""}
 """
 
 
-def format_trash_success_markdown(message_id: str, thread_id: str | None, labels: List[str] | None) -> str:
+def format_trash_success_markdown(
+    message_id: str, thread_id: str | None, labels: List[str] | None
+) -> str:
     return f"""🗑️ **Moved to Trash**
 
 **Email:**
 - **Message ID:** `{message_id}`
-- **Thread ID:** `{thread_id or 'N/A'}`
-- **Labels:** {', '.join(labels or []) if labels else 'TRASH'}
+- **Thread ID:** `{thread_id or "N/A"}`
+- **Labels:** {", ".join(labels or []) if labels else "TRASH"}
 """
 
 
-def format_contacts_markdown(connections: List[Dict[str, Any]], next_page_token: str | None) -> str:
+def format_contacts_markdown(
+    connections: List[Dict[str, Any]], next_page_token: str | None
+) -> str:
     lines = ["👥 **Contacts**\n"]
     for idx, c in enumerate(connections, start=1):
         names = []
@@ -85,14 +99,18 @@ def format_contacts_markdown(connections: List[Dict[str, Any]], next_page_token:
                     emails.append(e.get("value"))
         except Exception:
             pass
-        lines.append(f"- {idx}. **Name:** {', '.join(names) if names else '(unknown)'}  - **Emails:** {', '.join(emails) if emails else '(none)'}")
+        lines.append(
+            f"- {idx}. **Name:** {', '.join(names) if names else '(unknown)'}  - **Emails:** {', '.join(emails) if emails else '(none)'}"
+        )
     if next_page_token:
         lines.append("")
         lines.append(f"Next page token: `{next_page_token}`")
     return "\n".join(lines)
 
 
-def format_people_search_markdown(results: List[Dict[str, Any]], next_page_token: str | None) -> str:
+def format_people_search_markdown(
+    results: List[Dict[str, Any]], next_page_token: str | None
+) -> str:
     lines = ["🔎 **People Search Results**\n"]
     for idx, p in enumerate(results, start=1):
         names = []
@@ -126,7 +144,9 @@ def _format_ts(ts_val: Any) -> str:
         if ts_val is None or ts_val == "":
             return "(no time)"
         # If already an ISO-like string, return as-is
-        if isinstance(ts_val, str) and ("T" in ts_val or ts_val.isalpha() or ":" in ts_val):
+        if isinstance(ts_val, str) and (
+            "T" in ts_val or ts_val.isalpha() or ":" in ts_val
+        ):
             return ts_val
         # If numeric string (ms or s)
         if isinstance(ts_val, str) and ts_val.isdigit():
@@ -147,7 +167,9 @@ def _format_ts(ts_val: Any) -> str:
     return str(ts_val)
 
 
-def format_thread_messages_markdown(messages: List[Dict[str, Any]], next_page_token: str | None) -> str:
+def format_thread_messages_markdown(
+    messages: List[Dict[str, Any]], next_page_token: str | None
+) -> str:
     header = "🧵 **Thread Messages**\n"
     # Include thread header when available
     thread_id_hdr = None
@@ -156,14 +178,18 @@ def format_thread_messages_markdown(messages: List[Dict[str, Any]], next_page_to
         thread_id_hdr = first.get("threadId") or first.get("thread_id")
     lines = [header]
     if thread_id_hdr:
-        lines.append(f"Here are the details of the email thread with ID {thread_id_hdr}:\n")
+        lines.append(
+            f"Here are the details of the email thread with ID {thread_id_hdr}:\n"
+        )
     if not messages:
         lines.append("(no messages found)")
     for idx, m in enumerate(messages, start=1):
         subject = m.get("subject") or "(no subject)"
         sender = m.get("sender") or m.get("from") or "(unknown sender)"
         to_email = m.get("to") or m.get("recipient") or "(unknown recipient)"
-        ts = _format_ts(m.get("messageTimestamp") or m.get("timestamp") or m.get("internalDate"))
+        ts = _format_ts(
+            m.get("messageTimestamp") or m.get("timestamp") or m.get("internalDate")
+        )
         body_text = m.get("messageText") or ""
         if not body_text:
             preview_obj = m.get("preview") or {}
@@ -194,7 +220,9 @@ def format_profile_markdown(profile: Dict[str, Any]) -> str:
     )
 
 
-def format_drafts_list_markdown(drafts: List[Dict[str, Any]], next_page_token: str | None) -> str:
+def format_drafts_list_markdown(
+    drafts: List[Dict[str, Any]], next_page_token: str | None
+) -> str:
     lines = ["📝 **Drafts**\n"]
     for idx, d in enumerate(drafts, start=1):
         draft_id = d.get("id") or d.get("draftId") or ""
@@ -238,12 +266,14 @@ def format_single_message_markdown(message: Dict[str, Any]) -> str:
     )
 
 
-def format_draft_created_markdown(draft_id: str, thread_id: str | None, to_email: str, subject: str) -> str:
+def format_draft_created_markdown(
+    draft_id: str, thread_id: str | None, to_email: str, subject: str
+) -> str:
     return f"""📝 **Draft created**
 
 **Draft Details:**
 - **Draft ID:** `{draft_id}`
-- **Thread ID:** `{thread_id or 'N/A'}`
+- **Thread ID:** `{thread_id or "N/A"}`
 - **To:** {to_email}
 - **Subject:** {subject}
 """
@@ -263,7 +293,9 @@ def format_draft_deleted_markdown(draft_id: str) -> str:
 """
 
 
-def format_fetched_emails_markdown(messages: List[Dict[str, Any]], next_page_token: str | None, estimate: int) -> str:
+def format_fetched_emails_markdown(
+    messages: List[Dict[str, Any]], next_page_token: str | None, estimate: int
+) -> str:
     lines = ["📥 **Fetched Emails (latest)**\n"]
     for idx, m in enumerate(messages, start=1):
         subject = m.get("subject") or "(no subject)"
@@ -287,5 +319,3 @@ def format_fetched_emails_markdown(messages: List[Dict[str, Any]], next_page_tok
     if next_page_token:
         lines.append(f"Next page token: `{next_page_token}`")
     return "\n".join(lines)
-
-

@@ -37,7 +37,9 @@ else:
 
 JWKS_URL = os.getenv("JWKS_URL", f"{_DEFAULT_APP_BASE}/.well-known/jwks.json")
 JWT_ISSUER = os.getenv("JWT_ISSUER", f"{_DEFAULT_APP_BASE}")
-SKYFIRE_TOKENS_API_URL = os.getenv("SKYFIRE_TOKENS_API_URL", f"{_DEFAULT_API_BASE}/api/v1/tokens/charge")
+SKYFIRE_TOKENS_API_URL = os.getenv(
+    "SKYFIRE_TOKENS_API_URL", f"{_DEFAULT_API_BASE}/api/v1/tokens/charge"
+)
 
 SELLER_ACCOUNT_ID = os.getenv("SELLER_ACCOUNT_ID", "")  # used as JWT audience
 JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", SELLER_ACCOUNT_ID or "")
@@ -50,8 +52,10 @@ JWT_ALGORITHM = "ES256"
 
 # -------- Helpers to expose configured IDs --------
 
+
 def get_skyfire_service_id() -> Optional[str]:
     return SELLER_SERVICE_ID or None
+
 
 def get_seller_account_id() -> Optional[str]:
     return SELLER_ACCOUNT_ID or (JWT_AUDIENCE or None)
@@ -59,10 +63,12 @@ def get_seller_account_id() -> Optional[str]:
 
 # -------- Internal JWKS helpers --------
 
+
 async def _fetch_json(session: aiohttp.ClientSession, url: str) -> dict[str, Any]:
     async with session.get(url, timeout=20) as resp:
         resp.raise_for_status()
         return await resp.json()
+
 
 def _jwk_by_kid(jwks: dict[str, Any], kid: str):
     for k in jwks.get("keys", []) or []:
@@ -72,6 +78,7 @@ def _jwk_by_kid(jwks: dict[str, Any], kid: str):
 
 
 # -------- Public verification & charging --------
+
 
 async def verify_token_claims(token: str, logger) -> bool:
     """
@@ -105,7 +112,9 @@ async def verify_token_claims(token: str, logger) -> bool:
         if SELLER_SERVICE_ID:
             ssi = claims.get("ssi")
             if ssi != SELLER_SERVICE_ID:
-                raise JWTError(f"Service mismatch: token.ssi={ssi}, expected={SELLER_SERVICE_ID}")
+                raise JWTError(
+                    f"Service mismatch: token.ssi={ssi}, expected={SELLER_SERVICE_ID}"
+                )
 
         logger.info("Skyfire token verified OK")
         return True
@@ -188,4 +197,6 @@ async def verify_and_charge(
     if not ok:
         return False
 
-    return await charge_token(token, amount_usdc, logger, idempotency_key=idempotency_key)
+    return await charge_token(
+        token, amount_usdc, logger, idempotency_key=idempotency_key
+    )

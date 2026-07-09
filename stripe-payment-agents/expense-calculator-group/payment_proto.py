@@ -1,4 +1,5 @@
 """Payment protocol (seller role). Same pattern as stripe-horoscope-agent."""
+
 from __future__ import annotations
 
 from typing import Awaitable, Callable

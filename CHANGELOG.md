@@ -4,6 +4,9 @@ All notable changes to this repository are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- Fixed security vulnerabilities in Flask frontend, agent timeouts, and exception suppression (PR #137)
+
 ### Added
 
 - `stripe-payment-agents/twitch-growth-agent/`: Twitch channel growth copilot built on the Fetch.ai uAgents framework. Integrates ASI:One LLM (intent classification, LangGraph 5-node growth pipeline, announcement drafting), Stripe embedded checkout (in-chat one-time unlock), Twitch Helix API (chat settings, announcements, raids, clips), and EventSub WebSocket (reactive copilot that monitors live stream events and proactively suggests actions).

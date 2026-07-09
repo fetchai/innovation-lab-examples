@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
-import os, json, logging
+import os
+import json
+import logging
 from dotenv import load_dotenv
 from fastmcp import FastMCP
 from google.oauth2.credentials import Credentials
@@ -11,7 +13,6 @@ from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request as GoogleRequest
 from googleapiclient.discovery import build
 from datetime import datetime, timezone, timedelta
-from typing import Any, Dict, List
 
 load_dotenv()
 
@@ -65,14 +66,18 @@ class CalendarAuth:
         self._flow.fetch_token(code=code)
         creds = self._flow.credentials
         with open(self.tokens_path, "w", encoding="utf-8") as f:
-            json.dump({
-                "token": creds.token,
-                "refresh_token": creds.refresh_token,
-                "token_uri": creds.token_uri,
-                "client_id": creds.client_id,
-                "client_secret": creds.client_secret,
-                "scopes": creds.scopes,
-            }, f, indent=2)
+            json.dump(
+                {
+                    "token": creds.token,
+                    "refresh_token": creds.refresh_token,
+                    "token_uri": creds.token_uri,
+                    "client_id": creds.client_id,
+                    "client_secret": creds.client_secret,
+                    "scopes": creds.scopes,
+                },
+                f,
+                indent=2,
+            )
 
     def service(self):
         if self._service:
@@ -134,6 +139,7 @@ def list_calendars() -> str:
     except Exception as e:
         return json.dumps({"success": False, "error": str(e)})
 
+
 # ---------------------------------------------------------------------------
 # New tool: list_events (primary calendar by default, date or range support)
 # ---------------------------------------------------------------------------
@@ -147,7 +153,9 @@ def _parse_date_span(date: str) -> tuple[str, str]:
     if date in ("today", ""):  # default
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     elif date == "tomorrow":
-        start = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        start = (now + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
     else:
         try:
             # Expect YYYY-MM-DD format
@@ -165,7 +173,9 @@ def _parse_date_span(date: str) -> tuple[str, str]:
 
 
 @mcp.tool()
-def list_events(calendar_id: str = "primary", date: str = "", max_results: int = 20) -> str:
+def list_events(
+    calendar_id: str = "primary", date: str = "", max_results: int = 20
+) -> str:
     """List events for a given date (default today) in the specified calendar.
 
     Args:
@@ -174,7 +184,12 @@ def list_events(calendar_id: str = "primary", date: str = "", max_results: int =
         max_results: Limit number of events returned (default 20).
     """
     try:
-        logger.info("🛠️ list_events called: calendar_id=%s date=%s max_results=%s", calendar_id, date or "today", max_results)
+        logger.info(
+            "🛠️ list_events called: calendar_id=%s date=%s max_results=%s",
+            calendar_id,
+            date or "today",
+            max_results,
+        )
         service = calendar_auth.service()
 
         time_min, time_max = _parse_date_span(date)
@@ -215,6 +230,7 @@ def list_events(calendar_id: str = "primary", date: str = "", max_results: int =
     except Exception as e:
         logger.error("❌ list_events failed: %s", e)
         return json.dumps({"success": False, "error": str(e)})
+
 
 # ---------------------------------------------------------------------------
 # Additional tools: create, update, delete, search events and free/busy
@@ -357,14 +373,16 @@ def get_free_busy(
 @mcp.tool()
 def get_current_time() -> str:
     now = datetime.now(timezone.utc)
-    return json.dumps({
-        "success": True,
-        "now": now.isoformat(),
-        "date": now.strftime("%Y-%m-%d"),
-        "time": now.strftime("%H:%M:%S"),
-    })
+    return json.dumps(
+        {
+            "success": True,
+            "now": now.isoformat(),
+            "date": now.strftime("%Y-%m-%d"),
+            "time": now.strftime("%H:%M:%S"),
+        }
+    )
 
 
 if __name__ == "__main__":
     port = int(os.getenv("CALENDAR_MCP_PORT", "8081"))
-    mcp.run("sse", host="0.0.0.0", port=port) 
+    mcp.run("sse", host="0.0.0.0", port=port)

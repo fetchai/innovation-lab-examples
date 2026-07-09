@@ -82,7 +82,13 @@ def load_state(ctx: Context, sender: str) -> dict:
     except Exception:
         return {}
 
-    allowed_keys = {"awaiting_sign", "awaiting_payment", "pending_stripe", "sign", "expires_at"}
+    allowed_keys = {
+        "awaiting_sign",
+        "awaiting_payment",
+        "pending_stripe",
+        "sign",
+        "expires_at",
+    }
     return {k: state.get(k) for k in allowed_keys if k in state}
 
 
@@ -94,4 +100,3 @@ def save_state(ctx: Context, sender: str, state: dict) -> None:
 
 def clear_state(ctx: Context, sender: str) -> None:
     ctx.storage.set(state_key(sender), "{}")
-

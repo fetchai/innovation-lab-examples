@@ -19,8 +19,14 @@ from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
 from config import (
-    qclient, async_qclient, embed_model, llm,
-    CHUNK_SIZE, CHUNK_OVERLAP, SIMILARITY_TOP_K, CHAT_MEMORY_TOKEN_LIMIT,
+    qclient,
+    async_qclient,
+    embed_model,
+    llm,
+    CHUNK_SIZE,
+    CHUNK_OVERLAP,
+    SIMILARITY_TOP_K,
+    CHAT_MEMORY_TOKEN_LIMIT,
 )
 
 URL_PATTERN = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
@@ -37,6 +43,7 @@ def _collection_name(sender: str) -> str:
 
 # ── SSRF protection ───────────────────────────────────────────────────
 
+
 def _validate_url(url: str) -> str:
     """Validate URL scheme and resolve hostname to reject private/loopback IPs."""
     parsed = urlparse(url)
@@ -49,7 +56,9 @@ def _validate_url(url: str) -> str:
 
     # Resolve hostname and check all resulting IPs
     try:
-        addr_infos = socket.getaddrinfo(hostname, parsed.port or 443, proto=socket.IPPROTO_TCP)
+        addr_infos = socket.getaddrinfo(
+            hostname, parsed.port or 443, proto=socket.IPPROTO_TCP
+        )
     except socket.gaierror as e:
         raise ValueError(f"Cannot resolve hostname '{hostname}': {e}") from e
 
@@ -70,6 +79,7 @@ def _sanitize_filename(fname: str) -> str:
 
 
 # ── Document download ─────────────────────────────────────────────────
+
 
 def download_document(url: str) -> str:
     """Download a document URL to a temp directory. Returns the local file path."""
@@ -125,6 +135,7 @@ def download_document(url: str) -> str:
 
 # ── Ingestion ─────────────────────────────────────────────────────────
 
+
 def _is_collection_not_found(exc: Exception) -> bool:
     """Check if an exception indicates a missing Qdrant collection."""
     if isinstance(exc, UnexpectedResponse) and exc.status_code == 404:
@@ -145,7 +156,9 @@ def clear_collection(collection_name: str):
         raise
 
 
-def ingest_document(file_path: str, collection_name: str, *, cleanup: bool = False) -> int:
+def ingest_document(
+    file_path: str, collection_name: str, *, cleanup: bool = False
+) -> int:
     """Ingest a local file into a Qdrant collection. Wipes old data first. Returns chunk count."""
     clear_collection(collection_name)
 
@@ -176,6 +189,7 @@ def ingest_document(file_path: str, collection_name: str, *, cleanup: bool = Fal
 
 
 # ── Agentic RAG (ReAct agent) ────────────────────────────────────────
+
 
 def _build_agent_for_sender(sender: str) -> tuple[ReActAgent, ChatMemoryBuffer]:
     """Build a fresh ReAct agent backed by the user's Qdrant collection."""
@@ -245,7 +259,11 @@ async def query_agent(sender: str, query: str) -> tuple[str, list[dict]]:
             tool_outputs.append(event.tool_output)
 
     result = await handler
-    answer = result.response.content if hasattr(result.response, "content") else str(result.response)
+    answer = (
+        result.response.content
+        if hasattr(result.response, "content")
+        else str(result.response)
+    )
 
     # Extract source nodes from query engine tool outputs
     citations = []
@@ -253,12 +271,14 @@ async def query_agent(sender: str, query: str) -> tuple[str, list[dict]]:
         raw = tool_output.raw_output
         source_nodes = getattr(raw, "source_nodes", None) or []
         for node in source_nodes:
-            citations.append({
-                "page": node.node.metadata.get("page_label", "N/A"),
-                "file": node.node.metadata.get("file_name", "unknown"),
-                "score": node.score if node.score is not None else 0.0,
-                "excerpt": node.node.get_content().strip().replace("\n", " ")[:300],
-            })
+            citations.append(
+                {
+                    "page": node.node.metadata.get("page_label", "N/A"),
+                    "file": node.node.metadata.get("file_name", "unknown"),
+                    "score": node.score if node.score is not None else 0.0,
+                    "excerpt": node.node.get_content().strip().replace("\n", " ")[:300],
+                }
+            )
 
     return answer, citations
 
@@ -308,7 +328,9 @@ def format_response_with_citations(answer: str, citations: list[dict]) -> str:
     ]
 
     for i, c in enumerate(shown, 1):
-        score_pct = int(c["score"] * 100) if isinstance(c["score"], float) else int(c["score"])
+        score_pct = (
+            int(c["score"] * 100) if isinstance(c["score"], float) else int(c["score"])
+        )
         badge = _confidence_badge(score_pct)
         excerpt = _clean_excerpt(c["excerpt"])
 
