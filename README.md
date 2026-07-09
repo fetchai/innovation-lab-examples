@@ -158,6 +158,7 @@ innovation-lab-examples/
 |---------|-------------|------------|------------|
 | [contributors/community_agent](contributors/community_agent/) | AI community growth agent for events and hackathons | Python, uAgents, ASI:One, Tavily | 🟡 Intermediate |
 | [contributors/news-summarizer-agent](contributors/news-summarizer-agent/) | Fetches top headlines for a topic via NewsAPI and summarizes them with ASI:One, via Chat Protocol | Python, uAgents, NewsAPI, ASI:One | 🟡 Intermediate |
+| contributors/workspace-context-provider | Hybrid AI workspace context provider that indexes local codebases and exposes them through a Streamlit RAG interface and an MCP server for IDE integration | Python, Streamlit, FastMCP, ChromaDB, Sentence Transformers, Watchdog, ASI API | 🟡 Intermediate |
 
 ### 🌐 Web3 & Blockchain
 
