@@ -9,6 +9,7 @@ AGENTS = {
     "search": "http://127.0.0.1:8001",
     "info": "http://127.0.0.1:8002"
 }
+AGENT_REQUEST_TIMEOUT = 5
 
 @app.route('/')
 def index():
@@ -24,7 +25,11 @@ def search_products():
         
         # Call search agent with POST request
         payload = {"query": query}
-        response = requests.post(f"{AGENTS['search']}/search", json=payload)
+        response = requests.post(
+            f"{AGENTS['search']}/search",
+            json=payload,
+            timeout=AGENT_REQUEST_TIMEOUT
+        )
         response.raise_for_status()
         
         # Agent returns JSON directly
@@ -65,7 +70,11 @@ def get_product_info():
         
         # Call info agent with POST request
         payload = {"barcode": barcode}
-        response = requests.post(f"{AGENTS['info']}/product", json=payload)
+        response = requests.post(
+            f"{AGENTS['info']}/product",
+            json=payload,
+            timeout=AGENT_REQUEST_TIMEOUT
+        )
         response.raise_for_status()
         
         # Agent returns JSON directly
@@ -111,7 +120,7 @@ def health_check():
     
     for agent_name, agent_url in AGENTS.items():
         try:
-            response = requests.get(f"{agent_url}/health", timeout=5)
+            response = requests.get(f"{agent_url}/health", timeout=AGENT_REQUEST_TIMEOUT)
             if response.status_code == 200:
                 # Health endpoint returns JSON directly
                 health_data = response.json()
@@ -128,4 +137,4 @@ if __name__ == '__main__':
     print("Available endpoints:")
     print("- Main interface: http://127.0.0.1:5000")
     print("- Health check: http://127.0.0.1:5000/health")
-    app.run(host='127.0.0.1', port=5000, debug=True) 
+    app.run(host='127.0.0.1', port=5000, debug=True)
