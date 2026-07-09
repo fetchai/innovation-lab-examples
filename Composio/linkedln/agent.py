@@ -436,11 +436,17 @@ class LinkedInAgent:
 
 Each post will automatically generate professional content and a relevant image! 🖼️"""
 
-# Initialize LinkedInAgent
-linkedin_agent = LinkedInAgent(
-    user_id="",
-    auth_config_id=os.getenv("LINKEDIN_AUTH_CONFIG_ID")
-)
+# Session management for multiple users
+user_sessions: Dict[str, LinkedInAgent] = {}
+
+def get_user_agent(sender: str) -> LinkedInAgent:
+    """Retrieve or create a LinkedInAgent instance for the given sender."""
+    if sender not in user_sessions:
+        user_sessions[sender] = LinkedInAgent(
+            user_id="",
+            auth_config_id=os.getenv("LINKEDIN_AUTH_CONFIG_ID")
+        )
+    return user_sessions[sender]
 
 def extract_user_id_from_query(text: str) -> str:
     """Extract LinkedIn username from query"""
@@ -474,15 +480,17 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
 
     print(f"📥 Received query: {text}")
 
+    # Retrieve or create user-specific agent
+    user_agent = get_user_agent(sender)
     # Check if this is a help request
     if text.lower().strip() in ["help", "what can i do", "available operations", "permissions", "scopes"]:
-        response = linkedin_agent.get_available_operations()
+        response = user_agent.get_available_operations()
     elif text.lower().strip() in ["blog examples", "examples", "blog post examples"]:
-        response = linkedin_agent.get_blog_examples()
+        response = user_agent.get_blog_examples()
     else:
         # Check for auth completion
-        if linkedin_agent.connection_request and not linkedin_agent.is_authenticated():
-            if linkedin_agent.complete_auth():
+        if user_agent.connection_request and not user_agent.is_authenticated():
+            if user_agent.complete_auth():
                 response = "✅ LinkedIn authentication completed! Try: create post, delete post, or get info"
             else:
                 response = "⏳ Authentication not completed. Please complete auth flow."
@@ -491,15 +499,15 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             if "connect" in text.lower() or "authenticate" in text.lower():
                 user_id = extract_user_id_from_query(text)
                 if user_id:
-                    linkedin_agent.user_id = user_id
+                    user_agent.user_id = user_id
                     print(f"🔐 Setting user ID to: {user_id}")
-                    result = linkedin_agent.process_query(text)
+                    result = user_agent.process_query(text)
                     response = result.get("result", "Authentication initiated")
                 else:
                     response = "❌ Please provide LinkedIn username. Example: 'connect to LinkedIn gautammanak1'"
             else:
                 # Process query
-                result = linkedin_agent.process_query(text)
+                result = user_agent.process_query(text)
                 if result.get("success"):
                     response = result.get("result", "Action completed")
                 else:
