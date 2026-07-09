@@ -1,0 +1,63 @@
+{
+  "name": "mcp-restaurant-booking",
+  "version": "1.0.0",
+  "description": "MCP server for restaurant booking with AI-powered recommendations",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "agent": "tsx src/agent/cli.ts",
+    "start": "node dist/index.js",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "type-check": "tsc --noEmit",
+    "format:check": "prettier --check src/**/*.ts",
+    "format": "prettier --write src/**/*.ts",
+    "quality": "npm run type-check && npm run lint && npm run format:check",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:unit": "jest --testPathPattern='(googleMapsService|restaurantRecommendationService|bookingService).test'"
+  },
+  "keywords": [
+    "mcp",
+    "restaurant",
+    "booking",
+    "ai",
+    "google-maps"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@googlemaps/google-maps-services-js": "^3.4.2",
+    "@googlemaps/places": "^2.1.0",
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "axios": "^1.6.0",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "form-data": "^4.0.4",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.24.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@microsoft/eslint-formatter-sarif": "^3.1.0",
+    "@types/express": "^5.0.3",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "audit-ci": "^7.1.0",
+    "eslint": "^9.32.0",
+    "globals": "^15.12.0",
+    "jest": "^29.7.0",
+    "jest-junit": "^16.0.0",
+    "prettier": "^3.6.2",
+    "prettier-eslint": "^16.4.2",
+    "ts-jest": "^29.4.0",
+    "tsx": "^4.6.0",
+    "typescript": "^5.3.0"
+  }
+}
