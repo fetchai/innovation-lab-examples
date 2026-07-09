@@ -1,0 +1,4 @@
+uagents
+aiohttp
+python-dotenv
+requests
