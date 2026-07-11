@@ -10,7 +10,7 @@ This guide explains how to add agents in a consistent, review-friendly format.
 1. Fork the repository and clone your fork.
 2. Create a feature branch from `main`.
 3. Keep changes focused (one feature/fix per PR).
-4. Use `./setup.sh <example-folder>` to quickly test any example locally.
+4. Use `./setup.sh <example-folder>` on macOS/Linux/Git Bash/WSL or `.\setup.ps1 <example-folder>` on Windows PowerShell to quickly test any example locally.
 
 ```bash
 git checkout -b feat/short-description
