@@ -21,6 +21,8 @@ Whether you're building your first agent or architecting multi-agent systems wit
 
 ## ⚡ Quickstart — Run Your First Example in Under 2 Minutes
 
+### macOS/Linux/Git Bash/WSL
+
 ```bash
 # 1. Clone the repo
 git clone https://github.com/fetchai/innovation-lab-examples.git
@@ -41,10 +43,50 @@ cp .env.example .env
 python agents/alice/agent.py
 ```
 
-Or use the **automated setup script** from the repo root:
+### Windows PowerShell
+
+```powershell
+# 1. Clone the repo
+git clone https://github.com/fetchai/innovation-lab-examples.git
+cd innovation-lab-examples
+
+# 2. Pick an example (e.g. the hackathon quickstarter)
+cd fetch-hackathon-quickstarter
+
+# 3. Create a virtual environment and install dependencies
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+# 4. Set up environment variables
+Copy-Item .env.example .env
+# Edit .env with your API keys
+
+# 5. Run the agent
+python agents/alice/agent.py
+```
+
+### Automated setup helpers
+
+Use the Bash helper from the repo root on macOS/Linux/Git Bash/WSL:
 
 ```bash
 ./setup.sh fetch-hackathon-quickstarter
+```
+
+Use the PowerShell helper from the repo root on native Windows PowerShell:
+
+```powershell
+.\setup.ps1 fetch-hackathon-quickstarter
+
+# Optional: run the detected entry file after setup
+.\setup.ps1 fetch-hackathon-quickstarter -Run
+```
+
+If PowerShell blocks local script execution, allow scripts for the current shell process only, then rerun the helper:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
 > **Prerequisites:** Python 3.10+, pip, and git. Some examples require API keys (ASI:One, OpenAI, Stripe, etc.) — check each example's `.env.example`.
@@ -61,7 +103,8 @@ innovation-lab-examples/
 ├── SECURITY.md                # Vulnerability reporting
 ├── ISSUES_GUIDE.md            # How to file issues
 ├── LICENSE                    # Apache 2.0
-├── setup.sh                   # Quickstart setup script
+├── setup.sh                   # Bash quickstart setup script (macOS/Linux/Git Bash/WSL)
+├── setup.ps1                  # Windows PowerShell quickstart setup script
 ├── Dockerfile                 # Run any example in Docker
 ├── docker-compose.yml         # Docker Compose support
 ├── contributors/              # Community-submitted agent examples (start here!)
@@ -192,6 +235,10 @@ Or use Docker Compose:
 
 ```bash
 EXAMPLE=fetch-hackathon-quickstarter docker compose up
+```
+
+```powershell
+$env:EXAMPLE="fetch-hackathon-quickstarter"; docker compose up
 ```
 
 > Several examples also include their own `Dockerfile` and `docker-compose.yml` for custom setups.
