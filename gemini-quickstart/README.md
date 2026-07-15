@@ -54,7 +54,7 @@ Fetch and analyze information from URLs
 - Deep thinking mode
 - Summarization and analysis
 
-### 7. [Document Q&A Agent](./07-document-qa-agent/) - Coming Soon
+### 7. Document Q&A Agent - Coming Soon
 Chat with documents using embeddings and RAG
 - Text/URL document upload
 - Semantic search with embeddings
@@ -62,19 +62,19 @@ Chat with documents using embeddings and RAG
 - Retrieval Augmented Generation
 - Per-user document storage
 
-### 8. [Multimodal Agent](./08-multimodal-agent/) - Coming Soon
+### 8. Multimodal Agent - Coming Soon
 Build an agent that handles text, images, and more
 - Image analysis capabilities
 - Multi-format responses
 - Real-world use cases
 
-### 9. [MCP Integration](./09-mcp-integration/) - Coming Soon
+### 9. MCP Integration - Coming Soon
 Add real-world actions to your agent
 - File operations
 - API calls
 - Code execution
 
-### 10. [Multi-Agent Workflow](./10-multi-agent-workflow/) - Coming Soon
+### 10. Multi-Agent Workflow - Coming Soon
 Create agents that work together
 - Agent-to-agent communication
 - Specialized agent roles

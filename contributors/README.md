@@ -107,3 +107,4 @@ Your pull request must pass:
 | Agent | Description |
 |-------|-------------|
 | [community_agent](./community_agent/) | AI community growth agent for events, conferences, and hackathons |
+| [gemini-research-agent](./gemini-research-agent/) | Multi-agent research and summarization assistant powered by Google Gemini |
