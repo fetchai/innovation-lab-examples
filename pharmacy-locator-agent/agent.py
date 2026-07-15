@@ -22,9 +22,6 @@ import httpx
 from dotenv import load_dotenv
 from uagents import Agent, Context, Protocol
 
-
-load_dotenv()
-
 from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
     ChatMessage,
@@ -32,6 +29,7 @@ from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
 )
 
+load_dotenv()
 ASI_ONE_API_KEY = (os.getenv("ASI_ONE_API_KEY") or "").strip()
 
 
