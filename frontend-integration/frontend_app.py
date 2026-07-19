@@ -118,7 +118,7 @@ def health_check():
                 health_status[agent_name] = {"status": "healthy", "url": agent_url, "agent_info": health_data}
             else:
                 health_status[agent_name] = {"status": "unhealthy", "url": agent_url}
-        except:
+        except requests.RequestException:
             health_status[agent_name] = {"status": "offline", "url": agent_url}
     
     return jsonify(health_status)
