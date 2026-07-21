@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from config import CRAWL4AI_BASE
 
 SEASON_URLS = [
+    "https://www.mlh.com/seasons/2027/events",
     "https://www.mlh.com/seasons/2026/events",
     "https://www.mlh.com/seasons/2025/events",
 ]
