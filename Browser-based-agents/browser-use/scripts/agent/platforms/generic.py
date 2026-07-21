@@ -13,8 +13,8 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from langchain_openai import ChatOpenAI
 from browser_use import Agent, Browser, BrowserProfile
+from browser_use.llm import ChatOpenAI
 from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL
 
 
