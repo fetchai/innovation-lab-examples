@@ -28,6 +28,45 @@ def _get_llm():
     )
 
 
+BOT_CHECK_KEYWORDS = ("turnstile", "cloudflare", "verify you are human", "captcha")
+BOT_CHECK_REPEAT_THRESHOLD = 3  # consecutive identical actions on a bot-check page
+
+
+def _make_bot_check_watchdog():
+    """
+    Detects the "stuck retrying the same action on a CAPTCHA/anti-bot page"
+    failure mode (e.g. MLH's Cloudflare Turnstile on sign-in) and tells the
+    agent to stop instead of burning all its steps in a blind retry loop.
+
+    Returns (new_step_callback, should_stop_callback, state) — state["stopped_reason"]
+    is set to "blocked_by_bot_check" if the watchdog triggered the stop.
+    """
+    state = {"last_action_sig": None, "repeat_count": 0, "stopped_reason": None}
+
+    def new_step_callback(browser_state_summary, agent_output, step_number):
+        try:
+            dom_text = browser_state_summary.dom_state.llm_representation()
+        except Exception:
+            dom_text = ""
+        page_text = f"{browser_state_summary.title} {dom_text}".lower()
+        is_bot_check_page = any(kw in page_text for kw in BOT_CHECK_KEYWORDS)
+
+        action_sig = str(getattr(agent_output, "action", None))
+        if is_bot_check_page and action_sig == state["last_action_sig"]:
+            state["repeat_count"] += 1
+        else:
+            state["repeat_count"] = 0
+        state["last_action_sig"] = action_sig
+
+    async def should_stop_callback() -> bool:
+        if state["repeat_count"] >= BOT_CHECK_REPEAT_THRESHOLD:
+            state["stopped_reason"] = "blocked_by_bot_check"
+            return True
+        return False
+
+    return new_step_callback, should_stop_callback, state
+
+
 async def register(
     event_url: str,
     profile,
@@ -41,7 +80,20 @@ async def register(
     """
     task = _build_task(event_url, profile, answers, event_title)
 
-    browser = Browser(browser_profile=BrowserProfile(headless=headless))
+    # MLH and similar event pages embed many cross-origin iframes (ads, social
+    # widgets, video embeds) whose DOM content otherwise gets serialized into
+    # every step's prompt — this alone can blow past asi1-mini's 262k context
+    # window before the agent ever takes an action. Keep same-origin iframes
+    # (registration forms are often same-origin) but drop cross-origin ones.
+    browser = Browser(
+        browser_profile=BrowserProfile(
+            headless=headless,
+            cross_origin_iframes=False,
+            max_iframes=10,
+        )
+    )
+
+    new_step_callback, should_stop_callback, watchdog_state = _make_bot_check_watchdog()
 
     try:
         agent = Agent(
@@ -49,9 +101,24 @@ async def register(
             llm=_get_llm(),
             browser=browser,
             max_failures=3,
-            use_vision=True,
+            use_vision=False,
+            max_clickable_elements_length=20000,
+            register_new_step_callback=new_step_callback,
+            register_should_stop_callback=should_stop_callback,
         )
         result = await agent.run(max_steps=25)
+
+        if watchdog_state["stopped_reason"] == "blocked_by_bot_check":
+            return {
+                "success": False,
+                "message": (
+                    "Registration blocked by an anti-bot challenge (e.g. Cloudflare "
+                    "Turnstile) on the sign-in/registration page — this cannot be "
+                    "completed by an automated browser."
+                ),
+                "final_url": "",
+            }
+
         success = _check_result(result)
         return {
             "success": success,
