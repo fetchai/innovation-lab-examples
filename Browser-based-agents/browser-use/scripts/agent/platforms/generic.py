@@ -166,8 +166,9 @@ Standard fields to fill:
 
 Instructions:
 1. Go to {event_url}
-2. Find and click the registration/apply/RSVP button
-3. If a sign-in is required with email, use {profile.luma_email or profile.email}
+2. If a sign-in wall blocks you from even reaching the registration/RSVP form, sign in
+   with {profile.luma_email or profile.email}
+3. Find and click the registration/apply/RSVP/"Request to Join" button
 4. Fill in all form fields using the information above
 5. For any checkbox asking to agree to terms or conditions, check it
 6. For any question not listed above, give a reasonable answer based on:
@@ -175,7 +176,26 @@ Instructions:
    - Skills: {', '.join(profile.skills[:5])}
    - Bio: {profile.bio[:200] if profile.bio else 'Software engineer interested in AI'}
 7. Submit the form
-8. Confirm that registration was successful
+
+Registration is COMPLETE as soon as you see any confirmation that the submission went
+through — e.g. "You're in", "Request sent", "Registered", "Pending approval/host review",
+"You have already registered"/"You're already registered"/"already RSVP'd"/"already signed
+up", a confirmation modal, toast, or a redirect away from the form. As soon as you see any
+of these, call done with success=true immediately — do not do anything else.
+
+IMPORTANT: If a submit/join button click doesn't seem to visibly react, do NOT assume it
+failed and click it again. First re-read the current page/modal text for any of the
+confirmation phrases above — clicks can take a moment to register, and re-clicking a form
+that already submitted can trigger duplicate-submission or verification popups. Only retry
+the click if there is no confirmation text AND no popup/overlay is present.
+
+IMPORTANT: Some platforms (e.g. Luma) show an OPTIONAL "verify your email to manage your
+registration" sign-in/one-time-code prompt AFTER the registration is already submitted.
+This step is NOT required to complete registration — it only unlocks managing/viewing the
+RSVP later, and you have no way to read the verification code from the user's inbox. If
+this prompt appears after you've already submitted the form, ignore/dismiss it and call
+done with success=true immediately — do NOT guess or attempt to enter a verification code,
+and do NOT treat an unresolved sign-in/OTP prompt as a failure.
 
 Do NOT proceed if the event requires payment — stop and report that.
 Do NOT fill in credit card or payment information.
@@ -184,7 +204,31 @@ Do NOT fill in credit card or payment information.
 
 
 def _check_result(result) -> bool:
-    """Check if browser-use completed successfully."""
+    """
+    Check if browser-use completed successfully.
+
+    Prefer the agent's own explicit success/failure call to `done` — it has
+    direct access to the actual page state (e.g. an "already registered"
+    confirmation) and our task instructions tell it exactly what counts as
+    done. The judge model only sees the trajectory after the fact and scores
+    it against literal instruction-following (every optional field filled,
+    every question answered) rather than whether the registration itself
+    went through, which produces false negatives on real successes (verified
+    against this exact event: the agent correctly called done(success=True)
+    after seeing "You have already registered", but the judge failed it for
+    skipping the GitHub/Location fields).
+    """
+    successful = result.is_successful()
+    if successful is not None:
+        return successful
+
+    # Agent never called `done` (e.g. the bot-check watchdog stopped it) —
+    # fall back to the judge's verdict if one was produced.
+    validated = result.is_validated()
+    if validated is not None:
+        return validated
+
+    # Last resort: neither produced a verdict.
     result_str = str(result).lower()
     failure_signals = ["failed", "error", "could not", "unable", "payment required"]
     success_signals = ["success", "registered", "submitted", "confirmed", "applied", "rsvp"]
