@@ -1,18 +1,26 @@
 """
 Interactive CLI to create/update your hackathon registration profile.
 Run once: python scripts/agent/create_profile.py
+Pass --agent-address <address> to save this profile to Supabase under that
+uAgents address instead of the local JSON file (useful for testing the
+production chat-bot storage path without going through the bot itself).
 """
 
-import sys, os
+import sys, os, argparse
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from agent.profile import UserProfile, save_profile, DEFAULT_PROFILE_PATH
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--agent-address", help="Save to Supabase under this agent address instead of the local file")
+args = parser.parse_args()
 
 def prompt(label, default=""):
     val = input(f"{label}{f' [{default}]' if default else ''}: ").strip()
     return val if val else default
 
 print("\n=== Hackathon Registration Profile Setup ===\n")
-print(f"This will save to {DEFAULT_PROFILE_PATH}\n")
+print(f"This will save to Supabase (agent_address={args.agent_address})\n" if args.agent_address
+      else f"This will save to {DEFAULT_PROFILE_PATH}\n")
 
 p = UserProfile(
     first_name     = prompt("First name"),
@@ -38,7 +46,10 @@ p = UserProfile(
     devpost_password = prompt("Devpost password (optional)"),
 )
 
-save_profile(p)
-print(f"\n✅ Profile saved to {DEFAULT_PROFILE_PATH}")
+save_profile(p, agent_address=args.agent_address)
+if args.agent_address:
+    print(f"\n✅ Profile saved to Supabase (agent_address={args.agent_address})")
+else:
+    print(f"\n✅ Profile saved to {DEFAULT_PROFILE_PATH}")
 print("\nYou can now register for events with:")
 print("  python scripts/agent/register.py --event aiewf-hackathon-2026 --dry-run")

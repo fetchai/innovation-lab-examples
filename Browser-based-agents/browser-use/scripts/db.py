@@ -18,8 +18,16 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://wnapvpzjwvechlpglrun.supabase.co")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", os.environ.get("SUPABASE_ANON_KEY", ""))
+# SUPABASE_KEY above is the `anon` key — fine for tables like `events` that
+# are meant to be publicly readable/writable. Tables holding per-user data
+# (e.g. hackathon_profiles, which includes plaintext platform passwords) are
+# locked down with RLS to service_role only, so they need this separate key
+# instead. Get it from Supabase dashboard > Settings > API > service_role,
+# and NEVER expose it to a browser/client — server-side use only.
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", os.environ.get("SUPABASE_SERVICE_ROLE_KEY", ""))
 
 _client = None
+_service_client = None
 
 
 _DB_RETRIES = 5
@@ -38,6 +46,26 @@ def get_client(force_new: bool = False):
             print(f"  [DB] supabase-py init failed ({e}), will use REST fallback")
             _client = "rest"
     return _client
+
+
+def get_service_client(force_new: bool = False):
+    """
+    Client authenticated with the service_role key, which bypasses RLS.
+    Use ONLY for tables that are intentionally locked down to service_role
+    (e.g. hackathon_profiles) — never for anything a browser/client will
+    also need to reach, and never share this key outside the backend.
+    """
+    global _service_client
+    if _service_client is None or force_new:
+        from supabase import create_client
+        if not SUPABASE_SERVICE_KEY:
+            raise ValueError(
+                "SUPABASE_SERVICE_KEY not set — required for per-user tables "
+                "like hackathon_profiles. Get it from Supabase dashboard > "
+                "Settings > API > service_role, and add it to .env (never commit it)."
+            )
+        _service_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    return _service_client
 
 
 def _with_retry(fn, label: str):
