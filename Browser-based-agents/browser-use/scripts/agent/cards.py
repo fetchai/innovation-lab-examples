@@ -21,13 +21,26 @@ def welcome_card() -> dict:
     return copy.deepcopy(_TEMPLATES["welcome"])
 
 
-def event_list_card(events: list[dict], subtitle: str = "") -> dict:
-    """Build a list card from a list of scored/ranked event dicts."""
+def event_list_card(events: list[dict], subtitle: str = "", offset: int = 0, limit: int = 10) -> dict:
+    """Build a list card from a slice of scored/ranked event dicts.
+
+    `offset`/`limit` page through `events` so "View all" can render the next
+    batch as the same card/list UI instead of a plain text dump.
+    """
     card = copy.deepcopy(_TEMPLATES["event_list"])
     card["root"]["subtitle"] = subtitle or f"{len(events)} events found"
 
-    items = [_build_event_item(ev) for ev in events[:5]]  # cap at 5 in list
+    page = events[offset:offset + limit]
+    items = [_build_event_item(ev) for ev in page]
     card["root"]["children"][0]["items"] = items
+
+    remaining = len(events) - (offset + limit)
+    buttons = card["root"]["children"][1]["children"]
+    if remaining <= 0:
+        # No more pages left — drop the "View all" button.
+        card["root"]["children"][1]["children"] = [
+            b for b in buttons if b.get("action", {}).get("selection", {}).get("action") != "view_all"
+        ]
     return card
 
 
