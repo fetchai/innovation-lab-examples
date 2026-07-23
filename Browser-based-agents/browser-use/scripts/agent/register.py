@@ -50,8 +50,13 @@ async def register_for_event(
     slug: str | None = None,
     url: str | None = None,
     profile: UserProfile | None = None,
+    profile_path: str | None = None,
+    agent_address: str | None = None,
     headless: bool = False,
     dry_run: bool = False,
+    get_otp: "callable | None" = None,
+    get_field_input: "callable | None" = None,
+    interactive: bool = True,
 ) -> dict:
     """
     Register a user for a hackathon.
@@ -59,14 +64,30 @@ async def register_for_event(
     Args:
         slug        : event slug from our DB (looks up event automatically)
         url         : direct registration URL (skips DB lookup)
-        profile     : UserProfile (loads from ~/.hackathon_profile.json if None)
+        profile     : UserProfile (loads from ~/.hackathon_profile.json, or from
+                      Supabase if agent_address is given, if None)
+        profile_path: path the profile was loaded from — newly-learned fields
+                      (see get_field_input) are saved back here. Ignored if
+                      agent_address is set.
+        agent_address: uAgents sender address identifying which user's profile
+                      to load/save in Supabase (production chat UI usage) —
+                      newly-learned fields are saved back to that user's row.
         headless    : run browser headlessly (default False — show browser)
         dry_run     : generate answers but don't open browser
+        get_otp     : optional callable to supply a sign-in one-time code (see platforms/generic.py)
+        get_field_input: optional callable to supply values for form fields the
+                      profile has no answer for, e.g. T-shirt size (see platforms/generic.py)
+        interactive : if True (default), blocks in this call to collect any missing-field
+                      answers and resumes immediately (CLI usage). If False, returns early
+                      with needs_field_input=True and a "_resume_state" handle instead of
+                      blocking — pass that to resume_registration() once answers are ready
+                      (chat UI usage, since a chat message handler can't block waiting for a
+                      reply that arrives as a separate later message — see platforms/generic.py).
 
     Returns dict with: success, message, event_title, answers_preview
     """
     if profile is None:
-        profile = load_profile()
+        profile = load_profile(profile_path, agent_address=agent_address)
 
     # Step 1: load event from DB
     event = _load_event(slug=slug, url=url)
@@ -119,16 +140,48 @@ async def register_for_event(
         profile=profile,
         answers=answers,
         headless=headless,
+        get_otp=get_otp,
+        get_field_input=get_field_input,
+        profile_path=profile_path,
+        agent_address=agent_address,
+        interactive=interactive,
     )
 
     result["event_title"] = event_title
     result["event_url"] = event_url
     result["answers_preview"] = answers
 
-    status = "✅ Success" if result.get("success") else "❌ Failed"
+    if result.get("success") and result.get("already_registered"):
+        status = "ℹ️  Already registered"
+    elif result.get("success"):
+        status = "✅ Success"
+    else:
+        status = "❌ Failed"
     print(f"\n[REGISTER] {status}: {result.get('message','')}")
 
     return result
+
+
+async def resume_registration(
+    resume_state: dict,
+    answers: dict[str, str],
+    profile: UserProfile,
+    profile_path: str | None = None,
+    agent_address: str | None = None,
+) -> dict:
+    """
+    Continue a registration previously paused by register_for_event(interactive=False)
+    with needs_field_input=True — see platforms/generic.py's register()/resume_registration()
+    for the full explanation of why this exists (chat message handlers can't block waiting
+    for a reply that arrives as a separate later message).
+
+    Returns the same shape register_for_event() would: either the final
+    {"success", "message", ...} result, or another {"needs_field_input": True,
+    "missing_fields": [...], "_resume_state": {...}} if yet another round of
+    unknown fields comes up.
+    """
+    from agent.platforms.generic import resume_registration as generic_resume
+    return await generic_resume(resume_state, answers, profile, profile_path, agent_address=agent_address)
 
 
 async def _run_browser(
@@ -138,6 +191,11 @@ async def _run_browser(
     profile: UserProfile,
     answers: dict,
     headless: bool,
+    get_otp: "callable | None" = None,
+    get_field_input: "callable | None" = None,
+    profile_path: str | None = None,
+    agent_address: str | None = None,
+    interactive: bool = True,
 ) -> dict:
     """Route to the right platform handler."""
 
@@ -160,6 +218,11 @@ async def _run_browser(
         answers=answers,
         event_title=event_title,
         headless=headless,
+        get_otp=get_otp,
+        get_field_input=get_field_input,
+        profile_path=profile_path,
+        agent_address=agent_address,
+        interactive=interactive,
     )
 
 
@@ -227,6 +290,7 @@ def main():
     parser.add_argument("--event", help="Event slug from our database")
     parser.add_argument("--url", help="Direct registration URL")
     parser.add_argument("--profile", help="Path to profile JSON file")
+    parser.add_argument("--agent-address", help="Load/save profile from Supabase under this agent address instead of a local file")
     parser.add_argument("--headless", action="store_true", help="Run browser headlessly")
     parser.add_argument("--dry-run", action="store_true", help="Generate answers only, don't open browser")
     args = parser.parse_args()
@@ -234,11 +298,13 @@ def main():
     if not args.event and not args.url:
         parser.error("Provide --event <slug> or --url <registration-url>")
 
-    profile = load_profile(args.profile)
+    profile = load_profile(args.profile, agent_address=args.agent_address)
     result = asyncio.run(register_for_event(
         slug=args.event,
         url=args.url,
         profile=profile,
+        profile_path=args.profile,
+        agent_address=args.agent_address,
         headless=args.headless,
         dry_run=args.dry_run,
     ))

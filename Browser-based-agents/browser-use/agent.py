@@ -36,11 +36,18 @@ from uagents_core.utils.registration import (
     register_chat_agent,
     RegistrationRequestCredentials,
 )
+from uagents_core.contrib.protocols.chat.cards import (
+    create_card_content,
+    FormCardPayload,
+    FormField,
+    FormFieldOption,
+    CtaAction,
+)
 
 from agent.qa import ask
 from agent.parse import parse_question
 from agent.answer_gen import generate_answers
-from agent.profile import load_profile
+from agent.profile import load_profile, save_profile
 from agent.cards import (
     welcome_card,
     event_list_card,
@@ -130,6 +137,44 @@ def card_msg(card: dict, label: str = "") -> ChatMessage:
             },
         ),
     ])
+
+def form_card_msg(payload: FormCardPayload, label: str = "") -> ChatMessage:
+    """Official uagents_core FormCardPayload — a real multi-field form with a submit action."""
+    return ChatMessage(timestamp=_now(), msg_id=_mid(), content=[
+        TextContent(type="text", text=label),
+        create_card_content(payload, card_id=uuid4()),
+    ])
+
+def missing_fields_form(missing_fields: list[dict], ev: dict) -> FormCardPayload:
+    """
+    Build a single form asking for every field the registration form needs
+    that the profile doesn't cover (e.g. T-shirt size, dietary restrictions),
+    so the human answers all of them in one submission instead of one at a
+    time. Field values come back keyed by `field_name` merged into the submit
+    button's `selection` dict — see _handle_action's "submit_missing_fields".
+    """
+    fields = []
+    for f in missing_fields:
+        name = f.get("field_name") or "field"
+        options = f.get("options") or []
+        note = f.get("note") or ""
+        fields.append(FormField(
+            name=name,
+            kind="select" if options else "text",
+            label=name.replace("_", " ").title(),
+            required=True,
+            options=[FormFieldOption(value=o, label=o) for o in options] if options else None,
+            placeholder=(note[:80] or None) if not options else None,
+        ))
+    return FormCardPayload(
+        title=f"A few details for {ev.get('title', 'this event')}",
+        fields=fields,
+        submit_cta=CtaAction(
+            label="Submit and continue registration",
+            selection={"action": "submit_missing_fields", "event_slug": ev.get("slug", "")},
+            primary=True,
+        ),
+    )
 
 def ack(msg_id) -> ChatAcknowledgement:
     return ChatAcknowledgement(timestamp=_now(), acknowledged_msg_id=msg_id)
@@ -246,7 +291,8 @@ async def _handle_text(ctx: Context, sender: str, sess: dict, text: str):
             return
 
         subtitle = _subtitle(prefs, len(results))
-        await ctx.send(sender, card_msg(event_list_card(results, subtitle), "Here are your top matches:"))
+        sess["results_shown"] = 10
+        await ctx.send(sender, card_msg(event_list_card(results, subtitle, limit=10), "Here are your top matches:"))
 
 
 async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
@@ -271,7 +317,7 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
             await ctx.send(sender, text_msg("Event not found. Can't start registration."))
             return
         sess["last_event"] = ev
-        profile   = load_profile()
+        profile   = load_profile(agent_address=sender)
         questions = _parse_qs(ev.get("questions"))
         answers   = generate_answers(questions, profile, ev.get("title",""), ev.get("description_summary",""))
         await ctx.send(sender, card_msg(registration_confirm_card(ev, answers), "Ready to register:"))
@@ -281,23 +327,34 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
         if not ev:
             await ctx.send(sender, text_msg("Session expired. Search for the event again."))
             return
+        profile = load_profile(agent_address=sender)
         await ctx.send(sender, text_msg("🚀 Opening browser to complete registration..."))
         try:
             from agent.register import register_for_event
-            result = await register_for_event(slug=ev.get("slug"), profile=load_profile(), headless=False)
-            if result.get("success"):
-                await ctx.send(sender, text_msg(
-                    f"✅ **Registration submitted!**\n\n"
-                    f"Event: {ev.get('title','')}\n"
-                    f"{result.get('message','')}\n\nCheck your email for confirmation.", end=True,
-                ))
-            else:
-                await ctx.send(sender, text_msg(
-                    f"⚠️ Registration may need manual completion.\n\n"
-                    f"{result.get('message','')}\n\nVisit: {ev.get('external_url','')}"
-                ))
+            result = await register_for_event(slug=ev.get("slug"), profile=profile, agent_address=sender, headless=False, interactive=False)
         except Exception as e:
-            await ctx.send(sender, text_msg(f"❌ Registration failed: {e}"))
+            result = {"success": False, "message": str(e)}
+        await _handle_registration_result(ctx, sender, sess, ev, profile, result)
+
+    elif action == "submit_missing_fields":
+        pending = sess.get("pending_field_request")
+        if not pending:
+            await ctx.send(sender, text_msg("Nothing pending to submit — try registering again."))
+            return
+        answers = {
+            k: (v if isinstance(v, str) else str(v))
+            for k, v in sel.items()
+            if k not in ("action", "event_slug") and v not in (None, "")
+        }
+        ev, profile = pending["event"], pending["profile"]
+        await ctx.send(sender, text_msg("Got it — thanks! 🚀 Continuing registration..."))
+        try:
+            from agent.register import resume_registration
+            result = await resume_registration(pending["resume_state"], answers, profile, agent_address=sender)
+        except Exception as e:
+            result = {"success": False, "message": str(e)}
+        sess.pop("pending_field_request", None)
+        await _handle_registration_result(ctx, sender, sess, ev, profile, result)
 
     elif action == "refine":
         await ctx.send(sender, text_msg(
@@ -310,17 +367,61 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
 
     elif action == "view_all":
         results = sess.get("last_results", [])
-        extra = results[5:15]
-        if extra:
-            lines = [f"{i+6}. {ev.get('title',''):50s}  {(ev.get('city') or '?')[:25]}"
-                     for i, ev in enumerate(extra)]
-            await ctx.send(sender, text_msg(
-                f"**More results ({len(results)} total):**\n\n" + "\n".join(lines) +
-                "\n\nAsk me about any of these by name for full details."
+        offset = sess.get("results_shown", 10)
+        page = results[offset:offset + 10]
+        if page:
+            sess["results_shown"] = offset + 10
+            subtitle = f"Showing {offset + 1}-{min(offset + len(page), len(results))} of {len(results)} events"
+            await ctx.send(sender, card_msg(
+                event_list_card(results, subtitle, offset=offset, limit=10),
+                "More matches:",
             ))
         else:
             await ctx.send(sender, text_msg("No more results. Try a different search."))
 
+
+async def _handle_registration_result(ctx: Context, sender: str, sess: dict, ev: dict, profile, result: dict) -> None:
+    """
+    Report a register_for_event()/resume_registration() outcome, or — if the
+    form needs info the profile doesn't have — send a form asking for all of
+    it at once and stash the live browser session (kept alive by
+    interactive=False) so submit_missing_fields can resume it later. The
+    browser only ever gets this far without submitting anything (see
+    platforms/generic.py's FIELD_INPUT_REQUIRED protocol), so no partial/
+    guessed registration is at risk of going through in the meantime.
+    """
+    if result.get("needs_field_input"):
+        missing = result.get("missing_fields") or []
+        sess["pending_field_request"] = {
+            "resume_state": result["_resume_state"],
+            "event": ev,
+            "profile": profile,
+        }
+        await ctx.send(sender, form_card_msg(
+            missing_fields_form(missing, ev),
+            f"Just need a few things {ev.get('title', 'this event')} asks for that aren't in your profile yet:",
+        ))
+        return
+
+    title = ev.get("title") or "this event"
+
+    if result.get("success") and result.get("already_registered"):
+        await ctx.send(sender, text_msg(
+            f"ℹ️ Looks like you're already registered for **{title}** — no action needed!",
+            end=True,
+        ))
+    elif result.get("success"):
+        await ctx.send(sender, text_msg(
+            f"✅ You're all set — registration for **{title}** went through. "
+            f"Keep an eye on your inbox for a confirmation email.",
+            end=True,
+        ))
+    else:
+        await ctx.send(sender, text_msg(
+            f"⚠️ I wasn't able to finish registering you for **{title}** automatically.\n\n"
+            f"{result.get('message','')}\n\n"
+            f"You can finish it yourself here: {ev.get('external_url','')}"
+        ))
 
 
 # ── Formatting ────────────────────────────────────────────────────────────────
