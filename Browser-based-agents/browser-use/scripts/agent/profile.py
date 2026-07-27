@@ -1,24 +1,27 @@
 """
 User profile for hackathon registration.
 
-Production storage is Supabase (table `hackathon_profiles`), keyed by
-`agent_address` — the uAgents sender address of whoever is chatting with the
-deployed bot (see agent.py's `_sess(sender)`). That address is already
-authenticated by the uAgents messaging layer, so it doubles as a per-user id
-without a separate login step, and keeps one user's profile from ever being
-read or overwritten by another user's chat session.
+Supabase (table `hackathon_profiles`) is the SOLE source of truth for profile
+data. Production/chat usage keys rows by `agent_address` — the uAgents sender
+address of whoever is chatting with the deployed bot (see agent.py's
+`_sess(sender)`); that address is already authenticated by the uAgents
+messaging layer, so it doubles as a per-user id without a separate login
+step. Solo CLI usage (create_profile.py, register.py) with no `agent_address`
+now ALSO reads/writes Supabase, under the fixed key `LOCAL_AGENT_ADDRESS`
+(env-overridable) — there is no independent local-only profile store anymore,
+so CLI runs and the chat bot can never see divergent data for the same
+logical row.
 
-A local JSON file (~/.hackathon_profile.json or a custom path) is still
-supported for solo CLI usage (create_profile.py, register.py --profile) where
-there's no chat sender to key off of. Pass `agent_address` to use Supabase
-instead; pass `path`/nothing to use the local file. The two are independent
-stores — profiles are not auto-synced between them.
+A local JSON file is only ever used if you explicitly pass `path` — an
+offline/import escape hatch, not a parallel source of truth. It is never read
+or written implicitly.
 
 Usage:
     from agent.profile import UserProfile, load_profile, save_profile
 
-    profile = load_profile()                     # local file (CLI/dev use)
+    profile = load_profile()                     # Supabase, key=LOCAL_AGENT_ADDRESS (CLI/dev use)
     profile = load_profile(agent_address=sender)  # Supabase (production, per-user)
+    profile = load_profile(path="/tmp/x.json")    # explicit local file — offline use only
 
     profile = UserProfile(            # or create inline
         first_name="Aditya",
@@ -35,6 +38,11 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
 DEFAULT_PROFILE_PATH = Path.home() / ".hackathon_profile.json"
+
+# Fixed Supabase row key used by solo CLI usage (no chat sender to key off
+# of). Override via env if you want a different personal key than the shared
+# default — but note it's still a DB row, not a local file.
+LOCAL_AGENT_ADDRESS = os.environ.get("LOCAL_AGENT_ADDRESS", "local-cli-default")
 
 _PROFILES_TABLE = "hackathon_profiles"
 
@@ -67,9 +75,12 @@ class UserProfile:
     proud_project: str = ""        # "What AI project are you most proud of?"
     what_to_build: str = ""        # "What do you want to build?" — overridden per event
     why_this_event: str = ""       # "Why do you want to attend?" — overridden per event
-    looking_for_job: bool = False
+    # None = never asked/unknown — must NOT be treated as False. See answer_gen.py,
+    # which only auto-answers these from the profile when they're actually set,
+    # and otherwise routes the question to the human instead of guessing "no".
+    looking_for_job: bool | None = None
     team_members: str = ""         # "Name (email), Name (email)" or empty for solo
-    needs_visa: bool = False
+    needs_visa: bool | None = None
 
     # Auth credentials (used for platform logins — stored locally only, never in DB)
     cerebralvalley_email: str = ""
@@ -105,35 +116,42 @@ class UserProfile:
 
 def load_profile(path: str | Path | None = None, agent_address: str | None = None) -> UserProfile:
     """
-    Load a profile. If `agent_address` is given, loads that user's row from
-    Supabase (returns an empty profile if they have none yet). Otherwise
-    loads from the local JSON file, returning an empty profile if it doesn't
-    exist.
-    """
-    if agent_address:
-        return _load_profile_remote(agent_address)
+    Load a profile from Supabase — the single source of truth. Reads the row
+    keyed by `agent_address` if given, else the fixed `LOCAL_AGENT_ADDRESS`
+    key used by solo CLI usage. Returns an empty profile if that row doesn't
+    exist yet.
 
-    fpath = Path(path) if path else DEFAULT_PROFILE_PATH
-    if not fpath.exists():
-        print(f"  [PROFILE] No profile found at {fpath}. Using empty profile.")
-        print(f"  [PROFILE] Run save_profile() to create one.")
-        return UserProfile()
-    with open(fpath) as f:
-        data = json.load(f)
-    return UserProfile(**{k: v for k, v in data.items() if k in UserProfile.__dataclass_fields__})
+    Only reads the local JSON file if `path` is explicitly passed — an
+    offline/import escape hatch, never the implicit default.
+    """
+    if path:
+        fpath = Path(path)
+        if not fpath.exists():
+            print(f"  [PROFILE] No profile found at {fpath}. Using empty profile.")
+            return UserProfile()
+        with open(fpath) as f:
+            data = json.load(f)
+        return UserProfile(**{k: v for k, v in data.items() if k in UserProfile.__dataclass_fields__})
+
+    return _load_profile_remote(agent_address or LOCAL_AGENT_ADDRESS)
 
 
 def save_profile(profile: UserProfile, path: str | Path | None = None, agent_address: str | None = None) -> None:
-    """Save a profile. If `agent_address` is given, upserts to Supabase (keyed
-    by that address) instead of writing the local JSON file."""
-    if agent_address:
-        _save_profile_remote(agent_address, profile)
+    """Save a profile to Supabase — the single source of truth. Upserts the
+    row keyed by `agent_address` if given, else the fixed `LOCAL_AGENT_ADDRESS`
+    key used by solo CLI usage.
+
+    Only writes the local JSON file if `path` is explicitly passed — an
+    offline/import escape hatch, never the implicit default.
+    """
+    if path:
+        fpath = Path(path)
+        with open(fpath, "w") as f:
+            json.dump(asdict(profile), f, indent=2)
+        print(f"  [PROFILE] Saved to {fpath}")
         return
 
-    fpath = Path(path) if path else DEFAULT_PROFILE_PATH
-    with open(fpath, "w") as f:
-        json.dump(asdict(profile), f, indent=2)
-    print(f"  [PROFILE] Saved to {fpath}")
+    _save_profile_remote(agent_address or LOCAL_AGENT_ADDRESS, profile)
 
 
 def _load_profile_remote(agent_address: str) -> UserProfile:
@@ -175,6 +193,10 @@ def _save_profile_remote(agent_address: str, profile: UserProfile) -> None:
         print(f"  [PROFILE] Supabase save failed for {agent_address[:12]}...: {e}")
 
 
+def _tri_state(val: bool | None) -> str:
+    return "unknown" if val is None else ("yes" if val else "no")
+
+
 def profile_to_context(profile: UserProfile) -> str:
     """Render profile as a readable context string for LLM prompts."""
     lines = [
@@ -190,8 +212,9 @@ def profile_to_context(profile: UserProfile) -> str:
         f"Twitter: {profile.twitter_handle}",
         f"Bio: {profile.bio}",
         f"Proud project: {profile.proud_project}",
-        f"Looking for job: {'yes' if profile.looking_for_job else 'no'}",
+        f"Looking for job: {_tri_state(profile.looking_for_job)}",
         f"Team members: {profile.team_members or 'solo'}",
+        f"Needs visa sponsorship: {_tri_state(profile.needs_visa)}",
         f"T-shirt size: {profile.tshirt_size}",
     ]
     if profile.custom_fields:

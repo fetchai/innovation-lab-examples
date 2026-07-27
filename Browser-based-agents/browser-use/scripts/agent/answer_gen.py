@@ -76,9 +76,14 @@ def generate_answers(
         elif "location" in q_lower or "where are you" in q_lower:
             answers[question_text] = profile.location_str()
         elif "looking for a job" in q_lower or "seeking" in q_lower:
-            answers[question_text] = "yes" if profile.looking_for_job else "no"
+            # None = never asked — leave unanswered rather than defaulting to "no"; the
+            # NEVER GUESS rule in platforms/generic.py's task prompt then makes the
+            # browser agent stop and ask the human instead of picking a default.
+            if profile.looking_for_job is not None:
+                answers[question_text] = "yes" if profile.looking_for_job else "no"
         elif "visa" in q_lower:
-            answers[question_text] = "yes" if profile.needs_visa else "no"
+            if profile.needs_visa is not None:
+                answers[question_text] = "yes" if profile.needs_visa else "no"
         elif "team" in q_lower and "member" in q_lower:
             answers[question_text] = profile.team_members or "Solo"
         elif "proud" in q_lower and profile.proud_project:
