@@ -176,6 +176,43 @@ def missing_fields_form(missing_fields: list[dict], ev: dict) -> FormCardPayload
         ),
     )
 
+def onboarding_form() -> FormCardPayload:
+    """
+    Core profile fields needed before any registration can go through —
+    asked once and reused across every event. Per-event specifics (T-shirt
+    size, dietary needs, etc.) still come through missing_fields_form at
+    registration time rather than being front-loaded here.
+
+    Also reused for "edit profile": FormField has no way to prefill an
+    existing value, so required fields must be re-entered every time this
+    form is shown. Optional fields left blank are NOT cleared — see
+    submit_onboarding's partial-update merge, which only overwrites fields
+    the user actually filled in.
+    """
+    return FormCardPayload(
+        title="Set up your profile",
+        fields=[
+            FormField(name="first_name", kind="text", label="First name", required=True),
+            FormField(name="last_name", kind="text", label="Last name", required=True),
+            FormField(name="email", kind="email", label="Email", required=True),
+            FormField(name="linkedin_url", kind="text", label="LinkedIn URL", required=False),
+            FormField(name="github_url", kind="text", label="GitHub URL", required=False),
+            FormField(
+                name="skills", kind="text", label="Skills", required=False,
+                placeholder="e.g. Python, LLMs, React (comma-separated)",
+            ),
+        ],
+        submit_cta=CtaAction(
+            label="Save profile",
+            selection={"action": "submit_onboarding"},
+            primary=True,
+        ),
+    )
+
+def _needs_onboarding(profile) -> bool:
+    """A profile is usable for registration once it has at least a name and email."""
+    return not (profile.first_name and profile.last_name and profile.email)
+
 def ack(msg_id) -> ChatAcknowledgement:
     return ChatAcknowledgement(timestamp=_now(), acknowledged_msg_id=msg_id)
 
@@ -257,6 +294,13 @@ async def _handle_text(ctx: Context, sender: str, sess: dict, text: str):
         await ctx.send(sender, card_msg(welcome_card(), "Hi! I'm Hackrawl — your hackathon search assistant."))
         return
 
+    if text.lower().strip() in {"edit profile", "my profile", "update profile", "profile"}:
+        await ctx.send(sender, form_card_msg(
+            onboarding_form(),
+            "Your profile — required fields need to be re-entered; leave optional ones blank to keep what's saved:",
+        ))
+        return
+
     parsed = parse_question(text)
     intent = parsed.get("intent", "search")
 
@@ -317,10 +361,37 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
             await ctx.send(sender, text_msg("Event not found. Can't start registration."))
             return
         sess["last_event"] = ev
-        profile   = load_profile(agent_address=sender)
+        profile = load_profile(agent_address=sender)
+        if _needs_onboarding(profile):
+            sess["pending_onboarding"] = {"action": "register", "event_slug": slug}
+            await ctx.send(sender, form_card_msg(
+                onboarding_form(),
+                "Before I register you, I need a few basics — I'll reuse these for every event:",
+            ))
+            return
         questions = _parse_qs(ev.get("questions"))
         answers   = generate_answers(questions, profile, ev.get("title",""), ev.get("description_summary",""))
         await ctx.send(sender, card_msg(registration_confirm_card(ev, answers), "Ready to register:"))
+
+    elif action == "submit_onboarding":
+        profile = load_profile(agent_address=sender)
+        updates = {
+            k: v for k, v in sel.items()
+            if k not in ("action", "event_slug") and v not in (None, "")
+        }
+        if isinstance(updates.get("skills"), str):
+            updates["skills"] = [s.strip() for s in updates["skills"].split(",") if s.strip()]
+        for k, v in updates.items():
+            if hasattr(profile, k):
+                setattr(profile, k, v)
+        save_profile(profile, agent_address=sender)
+
+        pending = sess.pop("pending_onboarding", None)
+        if pending:
+            await ctx.send(sender, text_msg("✅ Profile saved — continuing..."))
+            await _handle_action(ctx, sender, sess, {"action": pending["action"], "event_slug": pending.get("event_slug", "")})
+        else:
+            await ctx.send(sender, text_msg("✅ Profile saved. Say 'edit profile' anytime to update it."))
 
     elif action == "confirm_register":
         ev = sess.get("last_event")
