@@ -487,6 +487,12 @@ async def _handle_registration_result(ctx: Context, sender: str, sess: dict, ev:
             f"Keep an eye on your inbox for a confirmation email.",
             end=True,
         ))
+    elif result.get("registration_closed"):
+        await ctx.send(sender, text_msg(
+            f"🚫 Registration for **{title}** appears to be closed — {result.get('message','')}\n\n"
+            f"You can double-check here: {ev.get('external_url','')}",
+            end=True,
+        ))
     else:
         await ctx.send(sender, text_msg(
             f"⚠️ I wasn't able to finish registering you for **{title}** automatically.\n\n"

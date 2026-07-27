@@ -100,31 +100,59 @@ def _make_watchdogs():
 
 async def _resume_after_stuck_select(agent) -> "AgentHistoryList":
     """
-    Recover from a detected stuck-select loop by switching the agent from
-    clicking to keyboard navigation, which tends to work against custom
-    combobox/listbox widgets even when pointer clicks silently don't land.
+    Recover from a detected stuck-repeat loop (same action, zero visible DOM
+    change, several times in a row). This covers two different situations —
+    give the agent guidance for both, since the watchdog can't tell which one
+    it hit:
+      1. Trying to SET a value in a custom dropdown/combobox and pointer
+         clicks aren't landing — switch to keyboard navigation.
+      2. Trying to CLEAR/blank a field that's on the DO NOT GUESS "leave
+         unknown" list, and it keeps appearing to still have content — this
+         is almost always a stale element index after a re-render, not the
+         page actively re-populating it, and it is NOT a reason to keep
+         retrying or to treat the field as unresolvable-the-task.
     """
     agent.add_new_task(
         "Your last several attempts to interact with some field produced NO visible change to "
-        "the page at all — not a wrong selection, literally nothing changed. Clicking is not "
-        "working for that specific widget. STOP clicking on it entirely — do not click it again "
-        "even once more.\n\n"
-        "Instead, use the keyboard: click ONCE on the field itself to focus it (not on an option "
-        "inside an already-open list, and not more than once), then use send_keys to press "
-        "ArrowDown one or more times to move through the options — re-read the page after each "
-        "press to see which option is now highlighted/focused — and press Enter once the option "
-        "you want is highlighted. If the field is a searchable/typeahead combobox, you can "
-        "instead type the option's name to filter to it, then press Enter.\n\n"
-        "Once that field is correctly set, continue the original registration task exactly as "
-        "instructed before — fill in anything remaining, submit the form, and call done once "
-        "you see a confirmation."
+        "the page at all — not a wrong selection, literally nothing changed. STOP repeating "
+        "that exact action — do not do it again even once more. Which of these matches what "
+        "you were doing?\n\n"
+        "CASE 1 — you were trying to SELECT a value in a dropdown/combobox: switch to the "
+        "keyboard. Click ONCE on the field itself to focus it (not an option inside an "
+        "already-open list, and not more than once), then use send_keys to press ArrowDown one "
+        "or more times to move through the options — re-read the page after each press to see "
+        "which option is now highlighted — and press Enter once the option you want is "
+        "highlighted. If it's a searchable/typeahead combobox, you can instead type the option's "
+        "name to filter to it, then press Enter.\n\n"
+        "CASE 2 — you were trying to CLEAR/blank a field that belongs on your UNKNOWN "
+        "(DO NOT GUESS) list, and it keeps appearing to still show content: STOP trying "
+        "immediately, right now, without even one more attempt. Ask yourself: does your UNKNOWN "
+        "list (including this field) have ANY entries at all? If yes — and it does, since this "
+        "field is one — you are never going to submit this form, so this field's on-page value "
+        "literally does not matter anymore. Do not verify it, do not retry clearing it, do not "
+        "take a screenshot to check. Just note it in your FIELD_INPUT_REQUIRED report exactly as "
+        "you already had it and move directly to calling done — clearing was never required for "
+        "a field you're reporting as unknown, only for one you'd otherwise be about to submit "
+        "with a leftover accidental value in it (which isn't your situation here).\n\n"
+        "Either way: once that field is resolved (per whichever case applies), continue the "
+        "original registration task exactly as instructed before. If your UNKNOWN list is empty, "
+        "keep filling in anything remaining and submit once ready. If your UNKNOWN list still has "
+        "one or more fields on it, do NOT click submit at all — go straight to calling done with "
+        "the FIELD_INPUT_REQUIRED format from the original instructions."
     )
     return await agent.run(max_steps=_resumed_max_steps(agent))
 
 
 OTP_REQUIRED_SENTINEL = "OTP_REQUIRED"
 FIELD_INPUT_REQUIRED_SENTINEL = "FIELD_INPUT_REQUIRED"
+REGISTRATION_CLOSED_SENTINEL = "REGISTRATION_CLOSED"
 MAX_FIELD_INPUT_ROUNDS = 3  # cap how many rounds of unknown-field batches we'll stop-and-ask for
+# 25 was too tight in practice: a single unreliable custom widget (e.g. a toggle
+# checkbox the agent can't visually confirm) can burn the whole budget before the
+# agent ever reaches FIELD_INPUT_REQUIRED, so the user never even gets asked about
+# the real missing fields — see the reboot-agent-code-jul30-2026 dry run that
+# needed ~30 steps just to give up on a stuck consent checkbox and report the rest.
+INITIAL_STEP_BUDGET = 40
 RESUME_STEP_BUDGET = 25  # extra steps granted to a resumed run (see _resumed_max_steps)
 
 
@@ -224,7 +252,15 @@ async def register(
             register_new_step_callback=new_step_callback,
             register_should_stop_callback=should_stop_callback,
         )
-        result = await agent.run(max_steps=25)
+        result = await agent.run(max_steps=INITIAL_STEP_BUDGET)
+
+        if _is_registration_closed(result):
+            return {
+                "success": False,
+                "registration_closed": True,
+                "message": _summarize_result(result),
+                "final_url": "",
+            }
 
         if watchdog_state["stopped_reason"] == "blocked_by_bot_check":
             return {
@@ -353,6 +389,14 @@ def _needs_otp(result) -> bool:
     return _leading_sentinel(final_text) == OTP_REQUIRED_SENTINEL
 
 
+def _is_registration_closed(result) -> bool:
+    """Whether the agent stopped because the event's registration/RSVP is closed."""
+    if result.is_successful():
+        return False
+    final_text = result.final_result() or ""
+    return _leading_sentinel(final_text) == REGISTRATION_CLOSED_SENTINEL
+
+
 async def _resume_with_otp(agent, result, get_otp) -> "AgentHistoryList":
     """
     Prompt for the OTP code that was emailed to the user, feed it back into
@@ -467,10 +511,13 @@ async def _apply_field_answers_and_resume(agent, profile, answers: dict[str, str
     registrations never have to ask again), then feed them all into the SAME
     browser session in one go and let the agent finish the form.
     """
+    _BOOL_FIELDS = {"looking_for_job", "needs_visa"}
     for field_name, value in answers.items():
         if not value:
             continue
-        if hasattr(profile, field_name):
+        if field_name in _BOOL_FIELDS:
+            setattr(profile, field_name, value.strip().lower() in ("yes", "true", "y"))
+        elif hasattr(profile, field_name):
             setattr(profile, field_name, value)
         else:
             profile.custom_fields[field_name] = value
@@ -559,7 +606,9 @@ Standard fields to fill:
   - GitHub: {profile.github_url}
   - Twitter / X: {profile.twitter_handle}
   - Location / City: {profile.location_str()}
-  - T-shirt size: {profile.tshirt_size or '(not known — see the NEVER GUESS rule below)'}
+  - Company / employer / organization: {profile.company_or_school or '(not known — see the DO NOT GUESS rule below)'}
+  - Role / title: {profile.role or '(not known — see the DO NOT GUESS rule below)'}
+  - T-shirt size: {profile.tshirt_size or '(not known — see the DO NOT GUESS rule below)'}
 """
     if profile.custom_fields:
         standard += "  - " + "\n  - ".join(
@@ -571,40 +620,104 @@ Standard fields to fill:
 {standard}
 {f'Custom question answers:{chr(10)}{answers_text}' if answers_text else ''}
 
-RULE — NEVER GUESS THESE FIELDS (read this before you fill in anything):
-If the form asks for T-shirt/apparel size, dietary restrictions/food preference, allergies,
-pronouns, gender, phone number, emergency contact, or any other specific personal fact/
-preference that is NOT derivable from the "Standard fields" above and NOT something you can
-reasonably infer from role/skills/bio — you must NOT fill it in, guess a value, or pick a
-default option "just to move on." This applies even if the field is marked required. Instead:
-leave that field blank/unselected, note down its name + visible options, and continue to the
-rest of the form as normal (do not stop). There may be more than one such field — note ALL of
-them as you go. This rule OVERRIDES step 6 below wherever the two would conflict.
+RULE — DO NOT GUESS. This is a hard per-field checklist, not a short list of exceptions —
+apply it to EVERY field on the form, one at a time, before you type or select anything:
+
+  Does this field have a WORD-FOR-WORD match above — either (a) a "Standard fields" entry with
+  an actual value (not the "(not known...)" placeholder), or (b) an exact question match in
+  "Custom question answers"?
+    - YES → type/select exactly that value.
+    - NO  → leave it BLANK/unselected. Note down its exact visible label + options. Move on.
+      There is no third option. Do not invent, infer, derive, or improvise a value for it no
+      matter how plausible it seems, and no matter whether it's marked required. Concretely
+      forbidden: guessing a company/employer from an email domain, guessing a project
+      description from the event's theme or your read of the event, guessing dietary/allergy/
+      pronoun/gender/phone/emergency-contact/T-shirt-size answers, guessing job-seeking or visa
+      status from role/location, picking one side of a solo/group, yes/no, or any other
+      few-option choice just because it seems like a common/default/harmless pick. A field
+      having only 2-3 options, or seeming low-stakes, is NOT permission to guess between them —
+      the checklist above is the ONLY thing that grants permission to fill a field, and "picking
+      the first/most common/most harmless-looking option" is exactly the kind of guess this rule
+      forbids. "Sounds reasonable" is never a reason to fill a field in.
+
+This rule applies to every question the form asks, full stop — it OVERRIDES anything below
+that could be read as license to improvise (there is no such license).
 
 Instructions:
 1. Go to {event_url}
+1a. CHECK FOR CLOSED REGISTRATION FIRST, before trying anything else: look at the page (and,
+    if there's a register/apply/RSVP/"Request to Join" button, its current text and whether it's
+    disabled/greyed out) for any indication that registration is no longer open — e.g. the button
+    itself says "Registration Closed", "Applications Closed", "Sold Out", "Closed", "No longer
+    accepting responses", "Event has ended", is disabled/unclickable, or the page has replacement
+    text to that effect instead of a live registration form. If you see this, STOP immediately —
+    do not click around looking for another way in, do not try scrolling for a hidden form, do
+    not treat it as a login wall or a loading state. Call done with success=false right away, with
+    your ENTIRE response formatted EXACTLY as:
+      {REGISTRATION_CLOSED_SENTINEL}
+      <one line stating exactly what the page/button said, e.g. "Button reads 'Registration
+      Closed'.">
+    Only proceed to step 2 if you do NOT see any such indication.
 2. If a sign-in wall blocks you from even reaching the registration/RSVP form, sign in
    with {profile.luma_email or profile.email}
-3. Find and click the registration/apply/RSVP/"Request to Join" button
-4. Fill in all form fields using the information above — EXCEPT any field covered by the
-   NEVER GUESS rule above, which you must leave alone and note down instead.
-5. For any checkbox asking to agree to terms or conditions, check it
-6. For any remaining question not listed above and not covered by the NEVER GUESS rule, give
-   a reasonable answer based on:
-   - Role: {profile.role}
-   - Skills: {', '.join(profile.skills[:5])}
-   - Bio: {profile.bio[:200] if profile.bio else 'Software engineer interested in AI'}
-7. Once you've gone through every remaining field on the form and are ready to submit, check
-   whether you noted any fields under the NEVER GUESS rule above:
-   - If you noted ONE OR MORE such fields: do NOT click submit/"Request to Join"/apply. Stop
-     here and call done with success=false, with your ENTIRE response formatted EXACTLY as:
+3. Find and click the registration/apply/RSVP/"Request to Join" button. If clicking it (or
+   anything after) reveals a closed/no-longer-accepting-responses state you couldn't see before
+   (this can happen even when step 1a's check looked clear), apply step 1a's protocol right then
+   instead of continuing.
+4. SURVEY FIRST, FILL SECOND: before typing or selecting anything, READ ONLY — look at the
+   form and sort every visible field into exactly one of two lists — MATCHED (a word-for-word
+   Standard field with a real value, or an exact Custom question answer) or UNKNOWN (everything
+   else, per the DO NOT GUESS checklist above). Write this classification down in your
+   memory/reasoning before your first action on the form. The survey step involves ZERO clicks,
+   types, or clears — it is purely reading what's already on the page. A freshly-loaded form's
+   fields start empty; that is their correct, already-desired state for anything on your UNKNOWN
+   list, so there is nothing to reset or clear before you've even started. If a field looks like
+   it already has unexpected content before you've touched it, that's real information to note,
+   not a cue to defensively clear things "to be safe."
+5. Fill in ONLY the fields on your MATCHED list, one at a time, moving straight from survey to
+   filling — don't clear anything first. Do NOT type into, select an option for, or otherwise
+   touch any field on the UNKNOWN list — not a blank string, not "N/A", not even a defensive
+   clear "just in case." For each UNKNOWN field, just note its exact visible label + options and
+   leave it completely untouched — untouched means untouched, not "touched once to clear it."
+6. If you realize AFTER typing that a field you filled actually belongs on the UNKNOWN list
+   (a mistake): whether you need to clear it depends on what happens next, so check that first —
+     - If this means your UNKNOWN list now has ANY entries at all (this one or any other), you
+       are going to call done with FIELD_INPUT_REQUIRED per step 9 and never touch submit. In
+       that case the field's on-page value doesn't matter anymore — do NOT spend any actions
+       trying to clear it, do NOT try to verify it looks blank, just add it to your UNKNOWN
+       notes as-is and move on immediately. Clearing it is pure wasted effort when nothing is
+       ever going to be submitted.
+     - ONLY if fixing this one mistake would make your UNKNOWN list completely empty (i.e. every
+       other field is genuinely MATCHED and you are actually about to submit) is it worth
+       clearing: in that case, ONE plain input action with text="" and clear=True, do NOT use
+       JavaScript/`evaluate` (it has previously wiped out other correctly-filled fields as
+       collateral damage), and do not loop trying to re-verify it worked — one attempt, then move
+       on regardless of how it looks, since a value that shouldn't be there is still better than
+       burning your whole step budget confirming it.
+7. For any checkbox asking to agree to terms or conditions, check it
+8. THE MOMENT your UNKNOWN list has one or more entries, the submit/"Request to Join"/apply
+   button is off-limits for the REST of this task — do not activate it, not even once, not even
+   "to see if it's really required" or "to check what validation error shows." This means by ANY
+   method: the click action on it, a JS `evaluate` call that does `.click()` or `.submit()` on
+   it or its form, dispatching a synthetic click/submit event, pressing Enter/Space while it's
+   focused, or any other way of triggering it — there is no technique that is exempt just
+   because it isn't literally the click action. Activating it by ANY means is still the exact
+   guess-about-how-the-form-will-react and exact silent-submission risk this rule exists to
+   prevent, and it wastes steps you don't have to spare. There is nothing left to discover by
+   triggering it — skip straight to calling done per step 9 below instead of touching it at all,
+   by any method.
+9. Once you've gone through every remaining field on the form and are ready to submit, check
+   whether you noted any fields under the DO NOT GUESS rule above:
+   - If you noted ONE OR MORE such fields: do NOT click submit/"Request to Join"/apply — not
+     even once, per step 8 above. Stop here and call done with success=false immediately, with
+     your ENTIRE response formatted EXACTLY as:
        {FIELD_INPUT_REQUIRED_SENTINEL}
        <a single JSON array on the following line(s), nothing else, one entry per field, e.g.:
        [{{"field_name": "tshirt_size", "options": ["XS","S","M","L","XL"], "note": "shown after affiliation"}}]>
      Use the exact visible option text in "options" for a dropdown/select field, or an empty
      list [] for free text. Include every field you noted, not just the first one.
-   - If you noted NO such fields, proceed to step 8 and submit normally.
-8. Submit the form
+   - If you noted NO such fields, proceed to step 10 and submit normally.
+10. Submit the form
 
 Registration is COMPLETE as soon as you see any confirmation that the submission went
 through — e.g. "You're in", "Request sent", "Registered", "Pending approval/host review",
@@ -631,17 +744,27 @@ AGAIN — leave it alone and move on to the next field. Only click an option tha
 selected. If you're ever unsure whether a click landed, re-read the current state before
 clicking that same widget again — never click a widget "just to double check" or "to be safe."
 
-IMPORTANT: This applies to ANY field, not just dropdowns — if an action on a specific field
-(click, type, or JS-evaluate) does not produce the change you wanted after 2 attempts using
-DIFFERENT approaches (e.g. plain click then JS-evaluate, or type then JS-evaluate), STOP
-attempting that field. Do not repeat the exact same action a 3rd, 4th, 5th... time hoping it
-works — if it silently failed twice with different methods, it will keep silently failing.
-This is a UI interaction problem, not a missing-information problem, so do NOT use the
-FIELD_INPUT_REQUIRED protocol for it — you already know the intended value. If the field is
-optional or not obviously required, leave it as-is (blank or whatever it currently holds) and
-move on to the rest of the form. If it's a genuinely required field blocking submission,
-call done with success=false and briefly report which field is stuck and what value you were
-trying to enter, rather than spending the rest of your step budget on it.
+IMPORTANT: This applies to ANY field, not just dropdowns — HARD CAP: 3 total attempts on the
+exact same element, no exceptions. Count every action targeting that specific element — click,
+type, JS-evaluate, all of it counts toward the SAME running total, not a separate count per
+method. State the running count explicitly in your memory each time you act on it ("attempt
+2/3 on this element"). The instant the count reaches 3 without the change you wanted actually
+sticking, STOP touching that element completely — do not take a 4th action on it under any
+circumstances, even if you've just thought of a method you haven't tried yet, even if you're
+sure this next one will work. Trying a 4th, 5th, 6th... time is exactly the failure this cap
+exists to prevent, and "I have a new idea" is not an exemption from a hard cap.
+Once you've hit the cap on a field:
+  - This is a UI interaction problem, not a missing-information problem, so do NOT use the
+    FIELD_INPUT_REQUIRED protocol for it — you already know the intended value, the widget is
+    just unreliable.
+  - If the field is optional or not obviously required, leave it as-is (blank, or whatever it
+    currently holds) and move on to the rest of the form.
+  - If it's a genuinely required field blocking submission (this includes a stuck "I agree to
+    terms" checkbox — being unable to confirm it's checked means you can't confirm the form is
+    submittable, so treat it as blocking): call done with success=false immediately and briefly
+    report which field is stuck and what you were trying to do, rather than spending the rest of
+    your step budget on it. Do not attempt to submit anyway "to see what happens" — that's
+    covered by the separate submit-button rule above and applies here too.
 
 IMPORTANT: Some platforms (e.g. Luma) show an OPTIONAL "verify your email to manage your
 registration" sign-in/one-time-code prompt AFTER the registration is already submitted.
@@ -702,7 +825,7 @@ def _summarize_result(result) -> str:
 
     # Strip our own internal protocol sentinel lines if one ever leaks
     # through here instead of being caught upstream (e.g. FIELD_INPUT_REQUIRED).
-    sentinels = {OTP_REQUIRED_SENTINEL, FIELD_INPUT_REQUIRED_SENTINEL}
+    sentinels = {OTP_REQUIRED_SENTINEL, FIELD_INPUT_REQUIRED_SENTINEL, REGISTRATION_CLOSED_SENTINEL}
     lines = [line for line in text.splitlines() if line.strip().upper() not in sentinels]
     cleaned = "\n".join(lines).strip() or text
 
