@@ -484,8 +484,29 @@ def _parse_field_requests(final_text: str) -> list[dict]:
     _build_task for the exact JSON-array wire format expected).
     """
     body = "\n".join(final_text.splitlines()[1:]).strip()
+    # The model doesn't reliably keep its response to JUST the sentinel +
+    # JSON array as instructed — it sometimes appends trailing prose after
+    # the array (e.g. "Filled MATCHED fields: ..."). Extract just the array
+    # itself (first '[' through its bracket-matched ']') instead of assuming
+    # the whole remaining body is valid JSON, which fails outright on any
+    # trailing text and silently drops every field.
+    start = body.find("[")
+    if start == -1:
+        return []
+    depth = 0
+    end = None
+    for i, ch in enumerate(body[start:], start):
+        if ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                end = i
+                break
+    if end is None:
+        return []
     try:
-        parsed = json.loads(body)
+        parsed = json.loads(body[start:end + 1])
     except Exception:
         return []
     if not isinstance(parsed, list):
@@ -543,8 +564,22 @@ async def _apply_field_answers_and_resume(agent, profile, answers: dict[str, str
         "whatever value it currently holds (even if blank or wrong), and move on — do not spend "
         "more than one more attempt on it. Getting the form submitted matters far more than that "
         "one field being perfect.\n"
-        "3. Fill in any remaining fields, submit the form, and call done once you see a "
-        "confirmation, exactly as instructed before."
+        "3. IMPORTANT — check your ORIGINAL survey from before this message for any field you had "
+        "correctly identified as UNKNOWN per the DO NOT GUESS rule that is NOT one of the field "
+        "values given above. These fields were deliberately left unresolved on purpose (not every "
+        "unknown field necessarily gets an answer in this round) — the DO NOT GUESS rule still "
+        "applies to them exactly as before: do not fill them in, do not invent a value, do not "
+        "submit the form.\n"
+        "   - If ANY such field remains: do NOT click submit. Call done with success=false, with "
+        f"your ENTIRE response formatted EXACTLY as before: the sentinel line "
+        f"\"{FIELD_INPUT_REQUIRED_SENTINEL}\" followed by a JSON array — and re-list each such "
+        "field using the SAME real field_name, options, and note text you found for it during your "
+        "original survey (never an empty or placeholder entry — if you can't recall a field's "
+        "exact details, re-read the form to find it again rather than submitting a blank entry).\n"
+        "   - Only if NO such fields remain (every field you'd ever flagged as unknown now has a "
+        "real value, either from this message or already filled before): fill in anything trivial "
+        "still remaining, submit the form, and call done once you see a confirmation, exactly as "
+        "instructed before."
     )
 
     return await agent.run(max_steps=_resumed_max_steps(agent))

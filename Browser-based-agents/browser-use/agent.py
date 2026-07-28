@@ -46,7 +46,7 @@ from uagents_core.contrib.protocols.chat.cards import (
 
 from agent.qa import ask
 from agent.parse import parse_question
-from agent.answer_gen import generate_answers
+from agent.answer_gen import generate_answers, classify_and_generate_field_answers
 from agent.profile import load_profile, save_profile
 from agent.cards import (
     welcome_card,
@@ -157,14 +157,18 @@ def missing_fields_form(missing_fields: list[dict], ev: dict) -> FormCardPayload
     for f in missing_fields:
         name = f.get("field_name") or "field"
         options = f.get("options") or []
-        note = f.get("note") or ""
+        note = (f.get("note") or "").strip()
+        # The full question (`note`) goes in the label, not a placeholder —
+        # placeholders get clipped short by the card renderer AND disappear
+        # the moment the user starts typing, so a truncated placeholder was
+        # leaving the user unable to even read what they were being asked.
+        # The label persists and isn't length-limited by us.
         fields.append(FormField(
             name=name,
             kind="select" if options else "text",
-            label=name.replace("_", " ").title(),
+            label=note or name.replace("_", " ").title(),
             required=True,
             options=[FormFieldOption(value=o, label=o) for o in options] if options else None,
-            placeholder=(note[:80] or None) if not options else None,
         ))
     return FormCardPayload(
         title=f"A few details for {ev.get('title', 'this event')}",
@@ -463,6 +467,37 @@ async def _handle_registration_result(ctx: Context, sender: str, sess: dict, ev:
     """
     if result.get("needs_field_input"):
         missing = result.get("missing_fields") or []
+
+        # Some "unknown" fields are open-ended opinion/interest questions about
+        # this event (e.g. "what would you build?") rather than facts about the
+        # person — those are safe for the AI to answer, so the human is only
+        # ever nudged for genuinely personal fields. See
+        # classify_and_generate_field_answers's docstring for the exact split.
+        # Only attempt this once per event per chat session (via the
+        # _autofill_retried flag below) — if a retry still comes back needing
+        # input, just show the human whatever's left rather than looping.
+        slug = ev.get("slug", "")
+        auto_answers = {} if sess.get("_autofill_retried") == slug else classify_and_generate_field_answers(
+            missing, profile, ev.get("title", ""), ev.get("description_summary", ""),
+        )
+        if auto_answers:
+            # Feeding these into the already-running session via a mid-task
+            # "resume" message doesn't reliably work in practice — the agent
+            # has been observed reporting a field as still-unknown even right
+            # after being given its answer. Close this session and start a
+            # fresh attempt with the answers included from the very first
+            # prompt instead — the same path already trusted for pre-crawled
+            # question answers.
+            await result["_resume_state"]["browser"].close()
+            sess["_autofill_retried"] = slug
+            from agent.register import register_for_event
+            result = await register_for_event(
+                slug=slug, profile=profile, agent_address=sender,
+                headless=False, interactive=False, extra_answers=auto_answers,
+            )
+            await _handle_registration_result(ctx, sender, sess, ev, profile, result)
+            return
+
         sess["pending_field_request"] = {
             "resume_state": result["_resume_state"],
             "event": ev,

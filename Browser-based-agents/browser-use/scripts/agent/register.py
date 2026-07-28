@@ -57,6 +57,7 @@ async def register_for_event(
     get_otp: "callable | None" = None,
     get_field_input: "callable | None" = None,
     interactive: bool = True,
+    extra_answers: dict[str, str] | None = None,
 ) -> dict:
     """
     Register a user for a hackathon.
@@ -83,6 +84,13 @@ async def register_for_event(
                       blocking — pass that to resume_registration() once answers are ready
                       (chat UI usage, since a chat message handler can't block waiting for a
                       reply that arrives as a separate later message — see platforms/generic.py).
+        extra_answers: additional {question_text: answer} pairs merged into the
+                      generated answers before the browser ever starts — e.g. AI-generated
+                      answers for open-ended questions discovered on a previous attempt
+                      against this same event (see agent.py's use of
+                      answer_gen.classify_and_generate_field_answers). Feeding these in from
+                      the start is more reliable than trying to inject them into an
+                      already-running session via resume_registration().
 
     Returns dict with: success, message, event_title, answers_preview
     """
@@ -113,6 +121,8 @@ async def register_for_event(
     # Step 2: generate answers
     print(f"\n[REGISTER] Generating answers with ASI:One...")
     answers = generate_answers(questions, profile, event_title, event_desc)
+    if extra_answers:
+        answers.update(extra_answers)
 
     print(f"\n[REGISTER] Answers preview:")
     for q, a in answers.items():

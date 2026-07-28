@@ -155,3 +155,117 @@ Return ONLY a JSON object mapping question number to answer:
     except Exception as e:
         print(f"  [ANSWERS] LLM generation failed: {e}")
         return {}
+
+
+def classify_and_generate_field_answers(
+    missing_fields: list[dict],
+    profile: UserProfile,
+    event_title: str = "",
+    event_description: str = "",
+) -> dict[str, str]:
+    """
+    For fields platforms/generic.py's DO NOT GUESS protocol left unanswered
+    (no match anywhere in the profile), decide which are safe for the AI to
+    answer on the user's behalf vs which must be asked of the human, and
+    generate answers for the safe ones — so the human is only ever nudged
+    for things that are genuinely about them, not for every single unknown
+    field indiscriminately.
+
+    Safe to auto-answer ("opinion"): open-ended, forward-looking questions
+    about what the person wants to explore/build/try/discuss AT THIS EVENT
+    (e.g. "what would you build/break/prove?", "which topic interests you
+    most?"). These aren't facts about the person — they're a
+    personalized-sounding answer generated from role/skills/bio, exactly
+    like the LLM generation generate_answers() already does above for
+    open-ended questions that were pre-crawled ahead of time. Generating
+    one here is not a "guess" in the sense the DO NOT GUESS rule forbids;
+    it's the same kind of authentic-voice answer, just discovered live.
+
+    NOT safe ("personal_fact", always left for the human): anything asking
+    for a specific fact about the person that isn't in their profile —
+    current employer/company, job title, a specific tool/software they
+    personally use, dietary/allergy/accessibility needs, contact info, a
+    yes/no personal status (visa, job-seeking), or any choice describing
+    them specifically rather than their intent for this event.
+
+    Returns {question_text: answer} — keyed by the field's original question
+    (its "note"), the SAME key format generate_answers() above already uses
+    for "Custom question answers" — for ONLY the fields classified "opinion".
+    Callers should feed this into a FRESH registration attempt (merged into
+    the `answers` passed to register_for_event) rather than trying to
+    inject it into an already-running browser session via a mid-task
+    "resume" message: in practice the agent doesn't reliably act on new
+    values handed to it mid-session (it's been observed reporting a field
+    as still-unknown even immediately after being given its answer), while
+    it reliably fills in "Custom question answers" when they're part of the
+    task from the very first prompt.
+    """
+    if not missing_fields:
+        return {}
+
+    fields_list = "\n".join(
+        f"{i+1}. field_name=\"{f.get('field_name','')}\" question=\"{f.get('note','')}\""
+        + (f" options={f.get('options')}" if f.get("options") else "")
+        for i, f in enumerate(missing_fields)
+    )
+
+    prompt = f"""You are helping {profile.full_name()} register for a hackathon/event.
+
+User profile:
+{profile_to_context(profile)}
+
+Event: {event_title}
+{f'About: {event_description[:500]}' if event_description else ''}
+
+The registration form asked some questions that don't match anything in this
+person's profile. For EACH one, decide:
+  - "opinion": an open-ended, forward-looking question about what they want to
+    explore/build/try/discuss AT THIS EVENT (e.g. "what would you like to
+    build?", "which topic are you most interested in?"). Safe to answer in
+    the person's authentic voice based on their role/skills/bio — this is
+    NOT a fact you'd need to already know about them.
+  - "personal_fact": asks for a specific fact ABOUT the person that isn't in
+    their profile — current employer/company, job title, a specific tool/
+    software they personally use, dietary/allergy/accessibility needs,
+    contact info, a yes/no personal status (e.g. visa, job-seeking), or any
+    choice that describes them specifically rather than their intent for
+    this event. NEVER guess these — always ask the human.
+
+Questions:
+{fields_list}
+
+For every question classified "opinion", write a concise (1-2 sentence),
+authentic, first-person answer matching their background and this event's
+theme. If it has options, your answer must be exactly one of the given
+options, verbatim (case-sensitive match).
+
+Return ONLY a JSON object:
+{{"1": {{"type": "opinion", "answer": "..."}}, "2": {{"type": "personal_fact", "answer": null}}, ...}}"""
+
+    try:
+        resp = httpx.post(
+            f"{ASI_ONE_BASE_URL}/chat/completions",
+            json={
+                "model": ASI_ONE_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 1000,
+                "temperature": 0.5,
+            },
+            headers={"Authorization": f"Bearer {ASI_ONE_API_KEY}"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        content = resp.json()["choices"][0]["message"]["content"].strip()
+        content = re.sub(r"^```(?:json)?\s*", "", content).rstrip("```").strip()
+        classified = json.loads(content)
+
+        result = {}
+        for i, f in enumerate(missing_fields):
+            entry = classified.get(str(i + 1)) or {}
+            question = f.get("note") or f.get("field_name") or ""
+            if entry.get("type") == "opinion" and entry.get("answer") and question:
+                result[question] = str(entry["answer"])
+        return result
+    except Exception as e:
+        print(f"  [ANSWERS] Field classification/generation failed: {e}")
+        return {}
