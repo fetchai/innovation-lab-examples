@@ -32,12 +32,25 @@ SCROLL_JS = """
     }
 """
 
-MONTH_ABBRS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
-MONTH_MAP = {m: i+1 for i, m in enumerate(MONTH_ABBRS)}
+MONTH_ABBRS = [
+    "JAN",
+    "FEB",
+    "MAR",
+    "APR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AUG",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DEC",
+]
+MONTH_MAP = {m: i + 1 for i, m in enumerate(MONTH_ABBRS)}
 
 # Regex to find date range in link text e.g. "JUN 12 - 18" or "FEB 28 - MAR 01"
 DATE_RE = re.compile(
-    r'(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{1,2})\s*[-–]\s*(?:(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+)?(\d{1,2})'
+    r"(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+(\d{1,2})\s*[-–]\s*(?:(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\s+)?(\d{1,2})"
 )
 
 
@@ -47,7 +60,8 @@ def fetch_all_events() -> list[dict]:
     seen: set[str] = set()
 
     for season_url in SEASON_URLS:
-        year = int(re.search(r'/seasons/(\d{4})/', season_url).group(1))
+        year_match = re.search(r"/seasons/(\d{4})/", season_url)
+        year = int(year_match.group(1)) if year_match else 0
         print(f"[MLH] Fetching {season_url}")
 
         result = _fetch_result(season_url)
@@ -84,9 +98,14 @@ def fetch_all_events() -> list[dict]:
         detail = _fetch_mlh_detail(ev["external_url"])
         if detail:
             ev["description"] = detail.get("description") or ev.get("description")
-            ev["description_summary"] = detail.get("description_summary") or ev.get("description_summary")
+            ev["description_summary"] = detail.get("description_summary") or ev.get(
+                "description_summary"
+            )
             if detail.get("llm_data"):
-                ev["llm_extracted"] = {**(ev.get("llm_extracted") or {}), **detail["llm_data"]}
+                ev["llm_extracted"] = {
+                    **(ev.get("llm_extracted") or {}),
+                    **detail["llm_data"],
+                }
 
     print(f"[MLH] Done. Total unique events: {len(all_events)}")
     return all_events
@@ -102,8 +121,8 @@ def _parse_event(href: str, text: str, year: int) -> dict | None:
     date_str = m.group(0)
 
     # Split text around the date to get name and location
-    before = text[:m.start()].strip()
-    after = text[m.end():].strip()
+    before = text[: m.start()].strip()
+    after = text[m.end() :].strip()
 
     # Determine event name and location from context
     # Format 1 (digital): "Event NameDATE_RANGELocation, WorldwideDigital"
@@ -119,16 +138,21 @@ def _parse_event(href: str, text: str, year: int) -> dict | None:
         tags.append("high-school")
 
     # Clean up location from after-date text
-    location_raw = re.sub(r'(Digital|In-Person|DIVERSITY|HIGH SCHOOL)', '', after).strip().rstrip(",").strip()
+    location_raw = (
+        re.sub(r"(Digital|In-Person|DIVERSITY|HIGH SCHOOL)", "", after)
+        .strip()
+        .rstrip(",")
+        .strip()
+    )
     # Remove the country suffix pattern like ", US" or ", CA" at end
-    city = re.sub(r',\s*[A-Z]{2}\s*$', '', location_raw).strip()
+    city = re.sub(r",\s*[A-Z]{2}\s*$", "", location_raw).strip()
 
     # Determine the event name.
     # For in-person events the link text starts with "City, StateEvent Name",
     # so we strip the city prefix from `before` if it matches the parsed city.
     name = before.strip()
     if is_in_person and city and name.startswith(city):
-        name = name[len(city):].strip()
+        name = name[len(city) :].strip()
     # Also strip bare "City, State" prefix patterns (comma-separated location at start)
     if is_in_person and not name:
         name = before.strip()
@@ -139,6 +163,8 @@ def _parse_event(href: str, text: str, year: int) -> dict | None:
     # Build dates
     start_month = MONTH_MAP.get(start_month_str, 1)
     end_month = MONTH_MAP.get(end_month_str or start_month_str, start_month)
+    start_dt: str | None
+    end_dt: str | None
     try:
         start_dt = datetime(year, start_month, int(start_day)).isoformat()
         end_dt = datetime(year, end_month, int(end_day)).isoformat()
@@ -197,7 +223,11 @@ def _fetch_mlh_detail(url: str) -> dict | None:
         text = re.sub(r"\s+", " ", text).strip()
 
         # Find the main description block (usually after event title and date)
-        desc_match = re.search(r'About\s+(?:the\s+)?[Ee]vent(.{100,1500}?)(?:Schedule|Judges|Sponsors|FAQ|$)', text, re.DOTALL)
+        desc_match = re.search(
+            r"About\s+(?:the\s+)?[Ee]vent(.{100,1500}?)(?:Schedule|Judges|Sponsors|FAQ|$)",
+            text,
+            re.DOTALL,
+        )
         description = desc_match.group(1).strip() if desc_match else None
 
         if not description and raw_md:
@@ -243,6 +273,11 @@ def _make_slug(name: str, href: str) -> str:
 
 
 def _detect_source(url: str) -> str:
-    if "events.mlh.io" in url or "organize.mlh.io" in url or "mlh.io" in url or "mlh.com" in url:
+    if (
+        "events.mlh.io" in url
+        or "organize.mlh.io" in url
+        or "mlh.io" in url
+        or "mlh.com" in url
+    ):
         return "mlh"
     return "external"

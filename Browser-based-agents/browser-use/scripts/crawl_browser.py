@@ -36,8 +36,8 @@ SOURCE_CONFIGS: dict[str, dict] = {
         "link_path_prefix": "/events/",
         "extra_headers": {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/120.0.0.0 Safari/537.36",
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0.0.0 Safari/537.36",
         },
         "extract_instruction": (
             "Extract all Ethereum/Web3 hackathon events from this ETHGlobal page. "
@@ -108,7 +108,9 @@ def fetch_all_events(source: str) -> list[dict]:
                     if event["slug"] not in seen_slugs:
                         seen_slugs.add(event["slug"])
                         all_events.append(event)
-                print(f"  [BROWSER:{source}] Links extracted {len(link_events)} events from {url}")
+                print(
+                    f"  [BROWSER:{source}] Links extracted {len(link_events)} events from {url}"
+                )
                 continue
 
         # Strategy 2: LLM extraction on a focused text slice
@@ -182,22 +184,24 @@ def _extract_from_links(result: dict, source: str, path_prefix: str) -> list[dic
             continue
         title = link.get("text", "").strip()
         slug = _derive_slug(title, href, source)
-        events.append({
-            "id": f"{source}:{slug}",
-            "source": source,
-            "slug": slug,
-            "event_url": href,
-            "external_url": href,
-            "external_source": source,
-            "title": title or slug,
-            "description": None,
-            "description_summary": None,
-            "start_datetime": None,
-            "end_datetime": None,
-            "city": None,
-            "llm_extracted": {},
-            "crawled_at": datetime.now(timezone.utc).isoformat(),
-        })
+        events.append(
+            {
+                "id": f"{source}:{slug}",
+                "source": source,
+                "slug": slug,
+                "event_url": href,
+                "external_url": href,
+                "external_source": source,
+                "title": title or slug,
+                "description": None,
+                "description_summary": None,
+                "start_datetime": None,
+                "end_datetime": None,
+                "city": None,
+                "llm_extracted": {},
+                "crawled_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
     return events
 
 

@@ -10,11 +10,12 @@ import json
 import re
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import httpx
 from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL, ASI_ONE_MODEL
-from recommend.score import _parse_jsonb, _extract_prize
+from recommend.score import _parse_jsonb
 
 
 def rerank(candidates: list[dict], prefs: dict) -> list[dict]:
@@ -73,10 +74,10 @@ Include ALL {len(candidates)} events in your response."""
     # Build lookup by id
     id_to_ev = {ev["id"]: ev for ev in candidates}
 
-    reranked = []
+    reranked: list[dict] = []
     for item in rankings:
         ev_id = item.get("id")
-        ev = id_to_ev.get(ev_id)
+        ev = id_to_ev.get(ev_id) or {}
         if ev:
             ev["reason"] = item.get("reason", "")
             ev["rank"] = item.get("rank", len(reranked) + 1)
@@ -99,15 +100,15 @@ def _build_summaries(candidates: list[dict]) -> str:
         ed = _parse_jsonb(ev.get("external_data"))
         le = _parse_jsonb(ev.get("llm_extracted"))
 
-        title   = ev.get("title", "Untitled")
-        city    = ev.get("city") or ed.get("location") or "Unknown location"
-        start   = (ev.get("start_datetime") or "")[:10]
-        prize   = le.get("prize_amount") or ed.get("prize_amount") or "Unknown"
-        tags    = ed.get("tags") or le.get("tags") or []
-        tracks  = ed.get("tracks") or []
-        desc    = ev.get("description_summary") or ed.get("description") or ""
-        source  = ev.get("source", "")
-        online  = ed.get("is_online")
+        title = ev.get("title", "Untitled")
+        city = ev.get("city") or ed.get("location") or "Unknown location"
+        start = (ev.get("start_datetime") or "")[:10]
+        prize = le.get("prize_amount") or ed.get("prize_amount") or "Unknown"
+        tags = ed.get("tags") or le.get("tags") or []
+        tracks = ed.get("tracks") or []
+        desc = ev.get("description_summary") or ed.get("description") or ""
+        source = ev.get("source", "")
+        online = ed.get("is_online")
 
         location_str = "Online" if online else city
         tags_str = ", ".join(tags[:5]) if isinstance(tags, list) else str(tags)[:60]
@@ -140,7 +141,9 @@ def _format_prefs(prefs: dict) -> str:
     if prefs.get("online"):
         parts.append("- Preference: online/virtual events")
     if prefs.get("date_from") or prefs.get("date_to"):
-        parts.append(f"- Date range: {prefs.get('date_from','')} to {prefs.get('date_to','')}")
+        parts.append(
+            f"- Date range: {prefs.get('date_from', '')} to {prefs.get('date_to', '')}"
+        )
     if prefs.get("min_prize"):
         parts.append(f"- Minimum prize: ${prefs['min_prize']:,}")
     if prefs.get("hackathon_only"):

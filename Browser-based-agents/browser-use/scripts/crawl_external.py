@@ -34,10 +34,22 @@ KNOWN_PLATFORMS: dict[str, str] = {
 
 # Domains to explicitly ignore (CDNs, analytics, maps, social)
 IGNORED_DOMAINS = {
-    "cdn.", "maps.google", "maps.googleapis", "fonts.google",
-    "posthog", "sentry", "clerk.", "github.com", "linkedin.com",
-    "twitter.com", "x.com", "facebook.com", "instagram.com",
-    "youtube.com", "w3.org", "schema.org",
+    "cdn.",
+    "maps.google",
+    "maps.googleapis",
+    "fonts.google",
+    "posthog",
+    "sentry",
+    "clerk.",
+    "github.com",
+    "linkedin.com",
+    "twitter.com",
+    "x.com",
+    "facebook.com",
+    "instagram.com",
+    "youtube.com",
+    "w3.org",
+    "schema.org",
 }
 
 
@@ -60,7 +72,7 @@ def detect_external_url(crawl_result: dict, rsc_text: str) -> tuple[str, str] | 
         match = _match_platform(url)
         if match:
             # Clean up URL (strip trailing punctuation/quotes)
-            url = url.rstrip('",\'\\)')
+            url = url.rstrip("\",'\\)")
             candidates.append((url, match))
 
     if not candidates:
@@ -155,6 +167,7 @@ def _fetch_html(url: str) -> str | None:
 def _html_to_text(html: str) -> str:
     """Strip HTML tags for a plain-text view to pass to the LLM."""
     import re
+
     text = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.DOTALL)
     text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL)
     text = re.sub(r"<[^>]+>", " ", text)

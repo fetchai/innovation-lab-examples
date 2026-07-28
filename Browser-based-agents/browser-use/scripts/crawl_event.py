@@ -45,7 +45,9 @@ def crawl_event(source: str, slug: str, url: str) -> dict[str, Any] | None:
     # --- LLM extraction: pass a focused slice around the event data ---
     event_slice = get_event_data_slice(rsc_text)
     llm_data = llm_extract_event_details(event_slice)
-    print(f"  [EXTRACT] ✓ (platform_fields={len(platform_data or {})}, llm_fields={len(llm_data)})")
+    print(
+        f"  [EXTRACT] ✓ (platform_fields={len(platform_data or {})}, llm_fields={len(llm_data)})"
+    )
 
     # --- External platform crawl (Luma, Eventbrite, Devpost, etc.) ---
     external_data: dict | None = None
@@ -59,7 +61,11 @@ def crawl_event(source: str, slug: str, url: str) -> dict[str, Any] | None:
 
     # --- Merge: platform data is authoritative, llm fills gaps ---
     event = _merge_event(
-        source, slug, url, platform_data or {}, llm_data,
+        source,
+        slug,
+        url,
+        platform_data or {},
+        llm_data,
         external_url=external_url,
         external_source=external_source,
         external_data=external_data,
@@ -102,8 +108,9 @@ def _merge_event(
     questions = platform.get("questions") or []
     media = platform.get("media") or []
     image_url = (
-        media[0].get("url") if media and isinstance(media, list) and media[0].get("url") else
-        llm.get("image_url")
+        media[0].get("url")
+        if media and isinstance(media, list) and media[0].get("url")
+        else llm.get("image_url")
     )
 
     event: dict[str, Any] = {
@@ -112,28 +119,26 @@ def _merge_event(
         "source": source,
         "slug": platform.get("slug") or slug,
         "event_url": url,
-
         # Core info (platform authoritative)
         "title": platform.get("title") or llm.get("title"),
         "description": _get_description(platform) or llm.get("description"),
-        "description_summary": platform.get("descriptionSummary") or llm.get("description_summary"),
-
+        "description_summary": platform.get("descriptionSummary")
+        or llm.get("description_summary"),
         # Timing
         "start_datetime": platform.get("startDateTime") or llm.get("date_start"),
         "end_datetime": platform.get("endDateTime") or llm.get("date_end"),
         "timezone": platform.get("timeZone") or llm.get("timezone"),
-
         # Location
         "city": platform.get("city") or llm.get("city"),
         "city_latitude": platform.get("cityLatitude"),
         "city_longitude": platform.get("cityLongitude"),
-
         # Config flags
         "event_type": platform.get("type") or llm.get("event_type"),
         "capacity": platform.get("capacity") or llm.get("capacity"),
         "is_platform_hackathon": platform.get("isPlatformHackathon"),
         "searchable": platform.get("searchable"),
-        "approval_required": platform.get("approvalRequired") or llm.get("approval_required"),
+        "approval_required": platform.get("approvalRequired")
+        or llm.get("approval_required"),
         "registration_closed": platform.get("registrationClosed"),
         "enable_chat_apply": platform.get("enableChatApply"),
         "hide_guest_list": platform.get("hideGuestList"),
@@ -143,28 +148,33 @@ def _merge_event(
         "show_hackathon_gallery": platform.get("showHackathonGallery"),
         "hackathon_judging_open": platform.get("hackathonJudgingOpen"),
         "auto_scoring_enabled": platform.get("autoScoringEnabled"),
-
         # Nested JSONB
         "hosts": hosts,
         "questions": questions,
         "media": media,
         "image_url": image_url,
-
         # LLM extras stored for future use
         "llm_extracted": {
-            k: v for k, v in llm.items()
-            if k not in {
-                "title", "description", "description_summary", "date_start",
-                "date_end", "timezone", "city", "approval_required",
-                "capacity", "image_url",
+            k: v
+            for k, v in llm.items()
+            if k
+            not in {
+                "title",
+                "description",
+                "description_summary",
+                "date_start",
+                "date_end",
+                "timezone",
+                "city",
+                "approval_required",
+                "capacity",
+                "image_url",
             }
         },
-
         # External platform data
         "external_url": external_url,
         "external_source": external_source,
         "external_data": external_data,
-
         # Platform timestamps
         "platform_created_at": platform.get("createdAt"),
         "platform_updated_at": platform.get("updatedAt"),

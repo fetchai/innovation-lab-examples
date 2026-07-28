@@ -8,6 +8,7 @@ import sys
 import os
 import json
 from datetime import datetime, timezone
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from db import get_client
 
@@ -21,16 +22,21 @@ def lookup_event(event_name: str) -> dict | None:
     how many words from the query appear in the title.
     """
     client = get_client()
-    words = [w for w in event_name.lower().split() if len(w) >= 3
-             and w not in ("the", "and", "for", "with", "about")]
+    words = [
+        w
+        for w in event_name.lower().split()
+        if len(w) >= 3 and w not in ("the", "and", "for", "with", "about")
+    ]
 
-    candidates = []
-    _select = ("id, slug, title, city, start_datetime, source, "
-               "description_summary, external_url, event_url, "
-               "registration_closed, approval_required, "
-               "end_datetime, timezone, venue, "
-               "is_platform_hackathon, llm_extracted, external_data, "
-               "hosts, questions")
+    candidates: list[dict] = []
+    _select = (
+        "id, slug, title, city, start_datetime, source, "
+        "description_summary, external_url, event_url, "
+        "registration_closed, approval_required, "
+        "end_datetime, timezone, venue, "
+        "is_platform_hackathon, llm_extracted, external_data, "
+        "hosts, questions"
+    )
 
     # 1. Try slug search first (handles acronyms like AIEWF → aiewf-hackathon-2026)
     slug_term = re.sub(r"[^a-z0-9]+", "-", event_name.lower()).strip("-")
@@ -45,7 +51,8 @@ def lookup_event(event_name: str) -> dict | None:
                 .order("start_datetime", desc=False)
                 .limit(10)
                 .execute()
-                .data or []
+                .data
+                or []
             )
             candidates.extend(rows)
         except Exception:
@@ -61,7 +68,8 @@ def lookup_event(event_name: str) -> dict | None:
                 .order("start_datetime", desc=False)
                 .limit(20)
                 .execute()
-                .data or []
+                .data
+                or []
             )
             candidates.extend(rows)
         except Exception as e:
@@ -119,8 +127,8 @@ def format_event_detail(ev: dict) -> str:
     lines = [f"**{ev.get('title', 'Unknown')}**\n"]
 
     start = (ev.get("start_datetime") or "")[:16].replace("T", " ")
-    end   = (ev.get("end_datetime") or "")[:16].replace("T", " ")
-    tz    = ev.get("timezone") or ""
+    end = (ev.get("end_datetime") or "")[:16].replace("T", " ")
+    tz = ev.get("timezone") or ""
     if start:
         lines.append(f"📅 Date: {start} → {end} {tz}".strip())
 
@@ -134,7 +142,7 @@ def format_event_detail(ev: dict) -> str:
         lines.append(f"🏆 Prize: {prize}")
 
     reg_closed = ev.get("registration_closed")
-    approval   = ev.get("approval_required")
+    approval = ev.get("approval_required")
     if reg_closed is False:
         status = "Open"
         if approval:
@@ -143,11 +151,16 @@ def format_event_detail(ev: dict) -> str:
     elif reg_closed is True:
         lines.append("❌ Registration: Closed")
 
-    desc = ev.get("description_summary") or ed.get("description") or ev.get("description") or ""
+    desc = (
+        ev.get("description_summary")
+        or ed.get("description")
+        or ev.get("description")
+        or ""
+    )
     if desc:
         lines.append(f"\n📝 About: {desc[:400]}")
 
-    tags   = ed.get("tags") or le.get("tags") or []
+    tags = ed.get("tags") or le.get("tags") or []
     tracks = ed.get("tracks") or []
     if tracks:
         t = tracks if isinstance(tracks, list) else [tracks]
@@ -165,17 +178,17 @@ def format_event_detail(ev: dict) -> str:
         lines.append("\n🗓 Schedule:")
         for item in schedule[:5]:
             if isinstance(item, dict):
-                t = item.get("time") or ""
-                a = item.get("activity") or ""
-                if a:
-                    lines.append(f"   {t} {a}".strip())
+                time_str = item.get("time") or ""
+                activity = item.get("activity") or ""
+                if activity:
+                    lines.append(f"   {time_str} {activity}".strip())
 
     if qs and isinstance(qs, list):
         lines.append("\n📋 Registration questions:")
         for q in qs[:5]:
             if isinstance(q, dict):
                 req = " (required)" if q.get("required") else ""
-                lines.append(f"   • {q.get('question','')}{req}")
+                lines.append(f"   • {q.get('question', '')}{req}")
 
     url = ev.get("external_url") or ev.get("event_url") or ""
     if url:

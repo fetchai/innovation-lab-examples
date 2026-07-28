@@ -7,7 +7,6 @@ without touching this file.
 
 import json
 import copy
-import os
 from pathlib import Path
 from datetime import datetime
 
@@ -21,7 +20,9 @@ def welcome_card() -> dict:
     return copy.deepcopy(_TEMPLATES["welcome"])
 
 
-def event_list_card(events: list[dict], subtitle: str = "", offset: int = 0, limit: int = 10) -> dict:
+def event_list_card(
+    events: list[dict], subtitle: str = "", offset: int = 0, limit: int = 10
+) -> dict:
     """Build a list card from a slice of scored/ranked event dicts.
 
     `offset`/`limit` page through `events` so "View all" can render the next
@@ -30,7 +31,7 @@ def event_list_card(events: list[dict], subtitle: str = "", offset: int = 0, lim
     card = copy.deepcopy(_TEMPLATES["event_list"])
     card["root"]["subtitle"] = subtitle or f"{len(events)} events found"
 
-    page = events[offset:offset + limit]
+    page = events[offset : offset + limit]
     items = [_build_event_item(ev) for ev in page]
     card["root"]["children"][0]["items"] = items
 
@@ -39,7 +40,9 @@ def event_list_card(events: list[dict], subtitle: str = "", offset: int = 0, lim
     if remaining <= 0:
         # No more pages left — drop the "View all" button.
         card["root"]["children"][1]["children"] = [
-            b for b in buttons if b.get("action", {}).get("selection", {}).get("action") != "view_all"
+            b
+            for b in buttons
+            if b.get("action", {}).get("selection", {}).get("action") != "view_all"
         ]
     return card
 
@@ -53,24 +56,24 @@ def event_detail_card(ev: dict) -> dict:
     le = _parse_jsonb(ev.get("llm_extracted"))
     qs = _parse_jsonb(ev.get("questions")) if ev.get("questions") else []
 
-    title      = ev.get("title", "Untitled")
-    slug       = ev.get("slug", "")
-    url        = ev.get("external_url") or ev.get("event_url") or ""
-    source     = ev.get("source", "")
-    prize      = le.get("prize_amount") or ed.get("prize_amount") or "—"
-    desc       = ev.get("description_summary") or ed.get("description") or ""
-    city       = ev.get("city") or ed.get("location") or "—"
-    venue      = ev.get("venue") or ed.get("venue") or ""
-    location   = f"{venue}, {city}" if venue else city
+    title = ev.get("title", "Untitled")
+    slug = ev.get("slug", "")
+    url = ev.get("external_url") or ev.get("event_url") or ""
+    source = ev.get("source", "")
+    prize = le.get("prize_amount") or ed.get("prize_amount") or "—"
+    desc = ev.get("description_summary") or ed.get("description") or ""
+    city = ev.get("city") or ed.get("location") or "—"
+    venue = ev.get("venue") or ed.get("venue") or ""
+    location = f"{venue}, {city}" if venue else city
     reg_closed = ev.get("registration_closed")
-    status     = "Closed" if reg_closed else "Open"
-    capacity   = ed.get("capacity") or ev.get("capacity") or "—"
-    team_size  = ed.get("team_size") or le.get("team_size") or "—"
-    org        = ed.get("organization_name") or le.get("organizer") or "—"
-    reg_count  = ed.get("registrations_count") or "—"
+    status = "Closed" if reg_closed else "Open"
+    capacity = ed.get("capacity") or ev.get("capacity") or "—"
+    team_size = ed.get("team_size") or le.get("team_size") or "—"
+    org = ed.get("organization_name") or le.get("organizer") or "—"
+    reg_count = ed.get("registrations_count") or "—"
 
     start = _fmt_date(ev.get("start_datetime"))
-    end   = _fmt_date(ev.get("end_datetime"))
+    end = _fmt_date(ev.get("end_datetime"))
     date_range = f"{start} → {end}" if end and end != start else start
 
     # Questions text
@@ -78,28 +81,33 @@ def event_detail_card(ev: dict) -> dict:
     if isinstance(qs, list):
         for q in qs[:10]:
             req = " *" if q.get("required") else ""
-            q_lines.append(f"• {q.get('question','')}{req}")
+            q_lines.append(f"• {q.get('question', '')}{req}")
     q_text = "\n".join(q_lines) if q_lines else "No custom questions"
 
     # Badges
     badges = _build_badges(ev, ed, le)
 
-    _fill(root, {
-        "_TITLE_":       title,
-        "_PLATFORM_":    source.capitalize() or "—",
-        "_STATUS_":      status,
-        "_DATE_RANGE_":  date_range or "—",
-        "_LOCATION_":    location,
-        "_PRIZE_":       prize,
-        "_CAPACITY_":    str(capacity),
-        "_TEAM_SIZE_":   str(team_size),
-        "_ORGANIZER_":   str(org),
-        "_REG_COUNT_":   str(reg_count),
-        "_DESCRIPTION_": desc[:500] + ("…" if len(desc) > 500 else "") if desc else "No description available.",
-        "_QUESTIONS_":   q_text,
-        "_SLUG_":        slug,
-        "_URL_":         url,
-    })
+    _fill(
+        root,
+        {
+            "_TITLE_": title,
+            "_PLATFORM_": source.capitalize() or "—",
+            "_STATUS_": status,
+            "_DATE_RANGE_": date_range or "—",
+            "_LOCATION_": location,
+            "_PRIZE_": prize,
+            "_CAPACITY_": str(capacity),
+            "_TEAM_SIZE_": str(team_size),
+            "_ORGANIZER_": str(org),
+            "_REG_COUNT_": str(reg_count),
+            "_DESCRIPTION_": desc[:500] + ("…" if len(desc) > 500 else "")
+            if desc
+            else "No description available.",
+            "_QUESTIONS_": q_text,
+            "_SLUG_": slug,
+            "_URL_": url,
+        },
+    )
 
     # Replace badge placeholder
     _replace_badges(root, badges)
@@ -111,23 +119,27 @@ def registration_confirm_card(ev: dict, answers: dict) -> dict:
     card = copy.deepcopy(_TEMPLATES["registration_confirm"])
     root = card["root"]
 
-    slug  = ev.get("slug", "")
+    slug = ev.get("slug", "")
     title = ev.get("title", "")
 
     answers_preview = "\n".join(
-        f"• {q[:50]}: {a[:60]}"
-        for q, a in list(answers.items())[:5]
+        f"• {q[:50]}: {a[:60]}" for q, a in list(answers.items())[:5]
     )
 
-    _fill(root, {
-        "_TITLE_":           title,
-        "_ANSWERS_PREVIEW_": answers_preview or "Profile fields will be filled automatically.",
-        "_SLUG_":            slug,
-    })
+    _fill(
+        root,
+        {
+            "_TITLE_": title,
+            "_ANSWERS_PREVIEW_": answers_preview
+            or "Profile fields will be filled automatically.",
+            "_SLUG_": slug,
+        },
+    )
     return card
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
+
 
 def _build_event_item(ev: dict) -> dict:
     """Fill in one event_item template."""
@@ -136,24 +148,27 @@ def _build_event_item(ev: dict) -> dict:
     ed = _parse_jsonb(ev.get("external_data"))
     le = _parse_jsonb(ev.get("llm_extracted"))
 
-    title  = ev.get("title", "Untitled")
-    slug   = ev.get("slug", "")
-    url    = ev.get("external_url") or ev.get("event_url") or ""
+    title = ev.get("title", "Untitled")
+    slug = ev.get("slug", "")
+    url = ev.get("external_url") or ev.get("event_url") or ""
     reason = ev.get("reason", "Matches your search criteria")
-    city   = ev.get("city") or ed.get("location") or "Unknown"
-    prize  = le.get("prize_amount") or ed.get("prize_amount") or "—"
-    start  = _fmt_date(ev.get("start_datetime"))
+    city = ev.get("city") or ed.get("location") or "Unknown"
+    prize = le.get("prize_amount") or ed.get("prize_amount") or "—"
+    start = _fmt_date(ev.get("start_datetime"))
     badges = _build_badges(ev, ed, le)
 
-    _fill(item, {
-        "_TITLE_":    title,
-        "_REASON_":   reason[:100],
-        "_DATE_":     start,
-        "_LOCATION_": city[:30],
-        "_PRIZE_":    prize,
-        "_SLUG_":     slug,
-        "_URL_":      url,
-    })
+    _fill(
+        item,
+        {
+            "_TITLE_": title,
+            "_REASON_": reason[:100],
+            "_DATE_": start,
+            "_LOCATION_": city[:30],
+            "_PRIZE_": prize,
+            "_SLUG_": slug,
+            "_URL_": url,
+        },
+    )
 
     _replace_badges(item, badges)
     return item
@@ -166,12 +181,16 @@ def _build_badges(ev: dict, ed: dict, le: dict) -> list[dict]:
     # Source platform
     source = ev.get("source", "")
     if source:
-        badges.append({"type": "badge", "label": source.capitalize(), "variant": "info"})
+        badges.append(
+            {"type": "badge", "label": source.capitalize(), "variant": "info"}
+        )
 
     # Online/In-person
     is_online = ed.get("is_online")
     city = (ev.get("city") or "").lower()
-    if is_online or any(w in city for w in ["worldwide", "online", "remote", "everywhere"]):
+    if is_online or any(
+        w in city for w in ["worldwide", "online", "remote", "everywhere"]
+    ):
         badges.append({"type": "badge", "label": "Online", "variant": "success"})
     elif city:
         badges.append({"type": "badge", "label": "In-Person", "variant": "warning"})

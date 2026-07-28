@@ -5,7 +5,6 @@ Falls back to direct REST calls using the anon key if supabase-py isn't availabl
 """
 
 import os
-import sys
 import json
 import time
 import httpx
@@ -16,7 +15,9 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://wnapvpzjwvechlpglrun.supabase.co")
+SUPABASE_URL = os.environ.get(
+    "SUPABASE_URL", "https://wnapvpzjwvechlpglrun.supabase.co"
+)
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", os.environ.get("SUPABASE_ANON_KEY", ""))
 # SUPABASE_KEY above is the `anon` key — fine for tables like `events` that
 # are meant to be publicly readable/writable. Tables holding per-user data
@@ -24,10 +25,12 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", os.environ.get("SUPABASE_ANON_KEY"
 # locked down with RLS to service_role only, so they need this separate key
 # instead. Get it from Supabase dashboard > Settings > API > service_role,
 # and NEVER expose it to a browser/client — server-side use only.
-SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", os.environ.get("SUPABASE_SERVICE_ROLE_KEY", ""))
+SUPABASE_SERVICE_KEY = os.environ.get(
+    "SUPABASE_SERVICE_KEY", os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+)
 
-_client = None
-_service_client = None
+_client: object = None
+_service_client: object = None
 
 
 _DB_RETRIES = 5
@@ -39,6 +42,7 @@ def get_client(force_new: bool = False):
     if _client is None or force_new:
         try:
             from supabase import create_client
+
             if not SUPABASE_KEY:
                 raise ValueError("SUPABASE_KEY not set")
             _client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -58,6 +62,7 @@ def get_service_client(force_new: bool = False):
     global _service_client
     if _service_client is None or force_new:
         from supabase import create_client
+
         if not SUPABASE_SERVICE_KEY:
             raise ValueError(
                 "SUPABASE_SERVICE_KEY not set — required for per-user tables "
@@ -75,9 +80,21 @@ def _with_retry(fn, label: str):
         try:
             return fn()
         except Exception as e:
-            is_network = any(k in str(e) for k in ("nodename", "Name or service", "Connection", "timeout", "Errno 8", "Errno 110"))
+            is_network = any(
+                k in str(e)
+                for k in (
+                    "nodename",
+                    "Name or service",
+                    "Connection",
+                    "timeout",
+                    "Errno 8",
+                    "Errno 110",
+                )
+            )
             if is_network and attempt < _DB_RETRIES:
-                print(f"  [DB] {label} network error (attempt {attempt}/{_DB_RETRIES}), retrying in {delay}s: {e}")
+                print(
+                    f"  [DB] {label} network error (attempt {attempt}/{_DB_RETRIES}), retrying in {delay}s: {e}"
+                )
                 time.sleep(delay)
                 delay = min(delay * 2, 120)
                 get_client(force_new=True)  # reset connection
@@ -91,19 +108,50 @@ def _now_iso() -> str:
 
 # Known columns in the events table
 _EVENT_COLUMNS = {
-    "id", "source", "slug", "event_url", "title", "description",
-    "description_summary", "start_datetime", "end_datetime", "timezone",
-    "city", "city_latitude", "city_longitude", "venue", "event_type", "capacity",
-    "status", "cv_event", "featured_start_time", "featured_end_time",
-    "is_platform_hackathon", "searchable", "approval_required",
-    "registration_closed", "enable_chat_apply", "hide_guest_list",
-    "show_guest_list_before_approval", "show_location_before_approval",
-    "hackathon_public_voting_enabled", "show_hackathon_gallery",
-    "hackathon_judging_open", "auto_scoring_enabled", "hosts", "questions",
-    "media", "image_url", "llm_extracted",
-    "external_url", "external_source", "external_data",
+    "id",
+    "source",
+    "slug",
+    "event_url",
+    "title",
+    "description",
+    "description_summary",
+    "start_datetime",
+    "end_datetime",
+    "timezone",
+    "city",
+    "city_latitude",
+    "city_longitude",
+    "venue",
+    "event_type",
+    "capacity",
+    "status",
+    "cv_event",
+    "featured_start_time",
+    "featured_end_time",
+    "is_platform_hackathon",
+    "searchable",
+    "approval_required",
+    "registration_closed",
+    "enable_chat_apply",
+    "hide_guest_list",
+    "show_guest_list_before_approval",
+    "show_location_before_approval",
+    "hackathon_public_voting_enabled",
+    "show_hackathon_gallery",
+    "hackathon_judging_open",
+    "auto_scoring_enabled",
+    "hosts",
+    "questions",
+    "media",
+    "image_url",
+    "llm_extracted",
+    "external_url",
+    "external_source",
+    "external_data",
     "platform_created_at",
-    "platform_updated_at", "crawled_at", "updated_at",
+    "platform_updated_at",
+    "crawled_at",
+    "updated_at",
 }
 
 
@@ -134,9 +182,14 @@ def _build_event_row(event: dict[str, Any]) -> dict[str, Any]:
 
     # Coerce empty strings to None for timestamp columns
     _TIMESTAMP_COLS = {
-        "start_datetime", "end_datetime", "platform_created_at",
-        "platform_updated_at", "featured_start_time", "featured_end_time",
-        "crawled_at", "updated_at",
+        "start_datetime",
+        "end_datetime",
+        "platform_created_at",
+        "platform_updated_at",
+        "featured_start_time",
+        "featured_end_time",
+        "crawled_at",
+        "updated_at",
     }
     for col in _TIMESTAMP_COLS:
         if col in row and row[col] == "":
@@ -162,15 +215,16 @@ def upsert_event(event: dict[str, Any]) -> bool:
         return False
 
     row = _build_event_row(event)
-    client = get_client()
 
     try:
+
         def _do():
             c = get_client()
             if c == "rest":
                 return _rest_upsert("events", row, "slug")
             c.table("events").upsert(row, on_conflict="slug").execute()
             return True
+
         return _with_retry(_do, f"upsert {event.get('slug')}")
     except Exception as e:
         print(f"  [DB] upsert failed for slug={event.get('slug')}: {e}")
@@ -194,12 +248,14 @@ def log_crawl(
         "crawled_at": _now_iso(),
     }
     try:
+
         def _do():
             c = get_client()
             if c == "rest":
                 _rest_insert("crawl_log", row)
             else:
                 c.table("crawl_log").insert(row).execute()
+
         _with_retry(_do, "crawl_log insert")
     except Exception as e:
         print(f"  [DB] crawl_log insert failed: {e}")
@@ -211,7 +267,7 @@ def _rest_upsert(table: str, row: dict, conflict_col: str) -> bool:
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
         "Content-Type": "application/json",
-        "Prefer": f"resolution=merge-duplicates,return=minimal",
+        "Prefer": "resolution=merge-duplicates,return=minimal",
     }
     resp = httpx.post(
         f"{SUPABASE_URL}/rest/v1/{table}",
@@ -237,11 +293,14 @@ def fetch_uncrawled_events(
     event_source_filter — filters by source (which crawler ingested the event, e.g. 'mlh')
     """
     try:
+
         def _do():
             c = get_client()
             q = (
                 c.table("events")
-                .select("id, slug, external_url, external_source, start_datetime, title")
+                .select(
+                    "id, slug, external_url, external_source, start_datetime, title"
+                )
                 .is_("external_data", "null")
                 .not_.is_("external_url", "null")
                 .order("start_datetime", desc=True)
@@ -252,6 +311,7 @@ def fetch_uncrawled_events(
             if event_source_filter:
                 q = q.eq("source", event_source_filter)
             return q.execute().data or []
+
         return _with_retry(_do, "fetch_uncrawled_events")
     except Exception as e:
         print(f"  [DB] fetch_uncrawled_events failed: {e}")
@@ -264,6 +324,7 @@ def count_uncrawled_events(
 ) -> int:
     """Return count of events with external_url but no external_data."""
     try:
+
         def _do():
             c = get_client()
             q = (
@@ -277,6 +338,7 @@ def count_uncrawled_events(
             if event_source_filter:
                 q = q.eq("source", event_source_filter)
             return q.execute().count or 0
+
         return _with_retry(_do, "count_uncrawled_events")
     except Exception as e:
         print(f"  [DB] count_uncrawled_events failed: {e}")
@@ -290,9 +352,11 @@ def update_external_data(slug: str, external_data: dict, error: bool = False) ->
         "updated_at": _now_iso(),
     }
     try:
+
         def _do():
             get_client().table("events").update(payload).eq("slug", slug).execute()
             return True
+
         return _with_retry(_do, f"update_external_data {slug}")
     except Exception as e:
         print(f"  [DB] update_external_data failed for {slug}: {e}")

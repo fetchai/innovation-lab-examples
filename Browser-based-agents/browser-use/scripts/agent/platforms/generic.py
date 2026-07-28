@@ -12,12 +12,17 @@ about what to write — just where to put it.
 import sys
 import os
 import json
+from typing import TYPE_CHECKING, Callable
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from browser_use import Agent, Browser, BrowserProfile
-from browser_use.llm import ChatOpenAI
-from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL
-from agent.profile import save_profile
+from browser_use import Agent, Browser, BrowserProfile  # noqa: E402
+from browser_use.llm import ChatOpenAI  # noqa: E402
+from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL  # noqa: E402
+from agent.profile import save_profile  # noqa: E402
+
+if TYPE_CHECKING:
+    from browser_use import AgentHistoryList
 
 
 def _get_llm():
@@ -32,8 +37,12 @@ def _get_llm():
 
 BOT_CHECK_KEYWORDS = ("turnstile", "cloudflare", "verify you are human", "captcha")
 BOT_CHECK_REPEAT_THRESHOLD = 3  # consecutive identical actions on a bot-check page
-STUCK_ACTION_REPEAT_THRESHOLD = 3  # identical action producing literally zero DOM change
-MAX_STUCK_SELECT_ROUNDS = 2  # cap how many times we'll switch-to-keyboard-nav per registration
+STUCK_ACTION_REPEAT_THRESHOLD = (
+    3  # identical action producing literally zero DOM change
+)
+MAX_STUCK_SELECT_ROUNDS = (
+    2  # cap how many times we'll switch-to-keyboard-nav per registration
+)
 
 
 def _make_watchdogs():
@@ -77,10 +86,14 @@ def _make_watchdogs():
         same_dom = dom_text == state["last_dom_text"]
 
         state["bot_check_repeat_count"] = (
-            state["bot_check_repeat_count"] + 1 if (is_bot_check_page and same_action) else 0
+            state["bot_check_repeat_count"] + 1
+            if (is_bot_check_page and same_action)
+            else 0
         )
         state["stuck_repeat_count"] = (
-            state["stuck_repeat_count"] + 1 if (same_action and same_dom and not is_bot_check_page) else 0
+            state["stuck_repeat_count"] + 1
+            if (same_action and same_dom and not is_bot_check_page)
+            else 0
         )
 
         state["last_action_sig"] = action_sig
@@ -146,7 +159,9 @@ async def _resume_after_stuck_select(agent) -> "AgentHistoryList":
 OTP_REQUIRED_SENTINEL = "OTP_REQUIRED"
 FIELD_INPUT_REQUIRED_SENTINEL = "FIELD_INPUT_REQUIRED"
 REGISTRATION_CLOSED_SENTINEL = "REGISTRATION_CLOSED"
-MAX_FIELD_INPUT_ROUNDS = 3  # cap how many rounds of unknown-field batches we'll stop-and-ask for
+MAX_FIELD_INPUT_ROUNDS = (
+    3  # cap how many rounds of unknown-field batches we'll stop-and-ask for
+)
 # 25 was too tight in practice: a single unreliable custom widget (e.g. a toggle
 # checkbox the agent can't visually confirm) can burn the whole budget before the
 # agent ever reaches FIELD_INPUT_REQUIRED, so the user never even gets asked about
@@ -174,8 +189,8 @@ async def register(
     answers: dict[str, str],
     event_title: str = "",
     headless: bool = False,
-    get_otp: "callable | None" = None,
-    get_field_input: "callable | None" = None,
+    get_otp: Callable | None = None,
+    get_field_input: Callable | None = None,
     profile_path: str | None = None,
     agent_address: str | None = None,
     interactive: bool = True,
@@ -242,7 +257,7 @@ async def register(
     keep_browser_alive = False
 
     try:
-        agent = Agent(
+        agent: Agent = Agent(
             task=task,
             llm=_get_llm(),
             browser=browser,
@@ -288,13 +303,22 @@ async def register(
                 for _ in range(MAX_FIELD_INPUT_ROUNDS):
                     if not _needs_field_input(result):
                         break
-                    result = await _resume_with_field_values(agent, result, profile, get_field_input, profile_path, agent_address=agent_address)
+                    result = await _resume_with_field_values(
+                        agent,
+                        result,
+                        profile,
+                        get_field_input,
+                        profile_path,
+                        agent_address=agent_address,
+                    )
             else:
                 keep_browser_alive = True
                 return {
                     "success": False,
                     "needs_field_input": True,
-                    "missing_fields": _parse_field_requests(result.final_result() or ""),
+                    "missing_fields": _parse_field_requests(
+                        result.final_result() or ""
+                    ),
                     "_resume_state": {"agent": agent, "browser": browser},
                 }
 
@@ -337,7 +361,9 @@ async def resume_registration(
     keep_browser_alive = False
 
     try:
-        result = await _apply_field_answers_and_resume(agent, profile, answers, profile_path, agent_address=agent_address)
+        result = await _apply_field_answers_and_resume(
+            agent, profile, answers, profile_path, agent_address=agent_address
+        )
 
         if _needs_field_input(result):
             keep_browser_alive = True
@@ -506,7 +532,7 @@ def _parse_field_requests(final_text: str) -> list[dict]:
     if end is None:
         return []
     try:
-        parsed = json.loads(body[start:end + 1])
+        parsed = json.loads(body[start : end + 1])
     except Exception:
         return []
     if not isinstance(parsed, list):
@@ -518,15 +544,23 @@ def _parse_field_requests(final_text: str) -> list[dict]:
         options = item.get("options") or []
         if not isinstance(options, list):
             options = []
-        fields.append({
-            "field_name": str(item.get("field_name") or "unknown_field"),
-            "options": [str(o) for o in options],
-            "note": str(item.get("note") or ""),
-        })
+        fields.append(
+            {
+                "field_name": str(item.get("field_name") or "unknown_field"),
+                "options": [str(o) for o in options],
+                "note": str(item.get("note") or ""),
+            }
+        )
     return fields
 
 
-async def _apply_field_answers_and_resume(agent, profile, answers: dict[str, str], profile_path, agent_address: str | None = None) -> "AgentHistoryList":
+async def _apply_field_answers_and_resume(
+    agent,
+    profile,
+    answers: dict[str, str],
+    profile_path,
+    agent_address: str | None = None,
+) -> "AgentHistoryList":
     """
     Save human-provided field answers into the profile (so future
     registrations never have to ask again), then feed them all into the SAME
@@ -572,7 +606,7 @@ async def _apply_field_answers_and_resume(agent, profile, answers: dict[str, str
         "submit the form.\n"
         "   - If ANY such field remains: do NOT click submit. Call done with success=false, with "
         f"your ENTIRE response formatted EXACTLY as before: the sentinel line "
-        f"\"{FIELD_INPUT_REQUIRED_SENTINEL}\" followed by a JSON array — and re-list each such "
+        f'"{FIELD_INPUT_REQUIRED_SENTINEL}" followed by a JSON array — and re-list each such '
         "field using the SAME real field_name, options, and note text you found for it during your "
         "original survey (never an empty or placeholder entry — if you can't recall a field's "
         "exact details, re-read the form to find it again rather than submitting a blank entry).\n"
@@ -585,7 +619,14 @@ async def _apply_field_answers_and_resume(agent, profile, answers: dict[str, str
     return await agent.run(max_steps=_resumed_max_steps(agent))
 
 
-async def _resume_with_field_values(agent, result, profile, get_field_input, profile_path, agent_address: str | None = None) -> "AgentHistoryList":
+async def _resume_with_field_values(
+    agent,
+    result,
+    profile,
+    get_field_input,
+    profile_path,
+    agent_address: str | None = None,
+) -> "AgentHistoryList":
     """
     Ask a human for every value the profile has no answer for (e.g. T-shirt
     size, dietary restrictions) — all at once, not one at a time — then apply
@@ -612,7 +653,9 @@ async def _resume_with_field_values(agent, result, profile, get_field_input, pro
             prompt += f" ({', '.join(m['options'])}): " if m["options"] else ": "
             answers[m["field_name"]] = input(prompt).strip()
 
-    return await _apply_field_answers_and_resume(agent, profile, answers, profile_path, agent_address=agent_address)
+    return await _apply_field_answers_and_resume(
+        agent, profile, answers, profile_path, agent_address=agent_address
+    )
 
 
 def _build_task(
@@ -625,9 +668,7 @@ def _build_task(
 
     # Format answers as a numbered list
     answers_text = "\n".join(
-        f"  - If asked '{q}': answer with '{a}'"
-        for q, a in answers.items()
-        if a
+        f"  - If asked '{q}': answer with '{a}'" for q, a in answers.items() if a
     )
 
     # Build standard field mappings
@@ -641,19 +682,21 @@ Standard fields to fill:
   - GitHub: {profile.github_url}
   - Twitter / X: {profile.twitter_handle}
   - Location / City: {profile.location_str()}
-  - Company / employer / organization: {profile.company_or_school or '(not known — see the DO NOT GUESS rule below)'}
-  - Role / title: {profile.role or '(not known — see the DO NOT GUESS rule below)'}
-  - T-shirt size: {profile.tshirt_size or '(not known — see the DO NOT GUESS rule below)'}
+  - Company / employer / organization: {profile.company_or_school or "(not known — see the DO NOT GUESS rule below)"}
+  - Role / title: {profile.role or "(not known — see the DO NOT GUESS rule below)"}
+  - T-shirt size: {profile.tshirt_size or "(not known — see the DO NOT GUESS rule below)"}
 """
     if profile.custom_fields:
-        standard += "  - " + "\n  - ".join(
-            f"{k}: {v}" for k, v in profile.custom_fields.items() if v
-        ) + "\n"
+        standard += (
+            "  - "
+            + "\n  - ".join(f"{k}: {v}" for k, v in profile.custom_fields.items() if v)
+            + "\n"
+        )
 
     task = f"""Register for the hackathon "{event_title}" at {event_url}.
 
 {standard}
-{f'Custom question answers:{chr(10)}{answers_text}' if answers_text else ''}
+{f"Custom question answers:{chr(10)}{answers_text}" if answers_text else ""}
 
 RULE — DO NOT GUESS. This is a hard per-field checklist, not a short list of exceptions —
 apply it to EVERY field on the form, one at a time, before you type or select anything:
@@ -823,7 +866,6 @@ Do NOT fill in credit card or payment information.
     return task
 
 
-
 ALREADY_REGISTERED_PHRASES = (
     "already registered",
     "already rsvp",
@@ -860,8 +902,14 @@ def _summarize_result(result) -> str:
 
     # Strip our own internal protocol sentinel lines if one ever leaks
     # through here instead of being caught upstream (e.g. FIELD_INPUT_REQUIRED).
-    sentinels = {OTP_REQUIRED_SENTINEL, FIELD_INPUT_REQUIRED_SENTINEL, REGISTRATION_CLOSED_SENTINEL}
-    lines = [line for line in text.splitlines() if line.strip().upper() not in sentinels]
+    sentinels = {
+        OTP_REQUIRED_SENTINEL,
+        FIELD_INPUT_REQUIRED_SENTINEL,
+        REGISTRATION_CLOSED_SENTINEL,
+    }
+    lines = [
+        line for line in text.splitlines() if line.strip().upper() not in sentinels
+    ]
     cleaned = "\n".join(lines).strip() or text
 
     return cleaned[:400]
@@ -895,7 +943,14 @@ def _check_result(result) -> bool:
     # Last resort: neither produced a verdict.
     result_str = str(result).lower()
     failure_signals = ["failed", "error", "could not", "unable", "payment required"]
-    success_signals = ["success", "registered", "submitted", "confirmed", "applied", "rsvp"]
+    success_signals = [
+        "success",
+        "registered",
+        "submitted",
+        "confirmed",
+        "applied",
+        "rsvp",
+    ]
 
     if any(s in result_str for s in failure_signals):
         return False

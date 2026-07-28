@@ -6,6 +6,7 @@ All notable changes to this repository are documented in this file.
 
 ### Added
 
+- `Browser-based-agents/browser-use/`: Hackrawl, a browser-use based hackathon discovery, Q&A, and registration agent. Crawls hackathon listings across Cerebral Valley, Devpost, MLH, HackerEarth, Devfolio, ETHGlobal, DoraHacks, and Unstop; a filter → score → LLM rerank recommendation engine; an intent-routed Q&A agent backed by ASI:One; and a browser-driven registration flow with human-in-the-loop profile onboarding and a code-level dry-run submit guard. Profile storage backed by Supabase (`supabase/migrations/`), deployed to Agentverse via mailbox + chat protocol.
 - `pydantic-agent/shipping-label-agent/`: the repo's first Pydantic AI example. A chat agent that shops shipping rates across USPS, UPS, FedEx, and DHL, walks through address validation and a couple of quick safety checks, then buys the label once the price is approved, entirely through ASI:One interactive cards. Test-mode only: a Stripe payment gate up front, a second charge for the exact label price before purchase, and Shippo test-mode labels throughout.
 - `stripe-payment-agents/twitch-growth-agent/`: Twitch channel growth copilot built on the Fetch.ai uAgents framework. Integrates ASI:One LLM (intent classification, LangGraph 5-node growth pipeline, announcement drafting), Stripe embedded checkout (in-chat one-time unlock), Twitch Helix API (chat settings, announcements, raids, clips), and EventSub WebSocket (reactive copilot that monitors live stream events and proactively suggests actions).
 

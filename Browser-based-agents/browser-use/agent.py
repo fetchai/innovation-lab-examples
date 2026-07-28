@@ -11,7 +11,6 @@ from __future__ import annotations
 import os
 import sys
 import json
-import asyncio
 from datetime import datetime, timezone
 from uuid import uuid4
 from pathlib import Path
@@ -22,8 +21,8 @@ load_dotenv(_root / ".env")
 
 sys.path.insert(0, str(_root / "scripts"))
 
-from uagents import Agent, Context, Protocol
-from uagents_core.contrib.protocols.chat import (
+from uagents import Agent, Context, Protocol  # noqa: E402
+from uagents_core.contrib.protocols.chat import (  # noqa: E402
     chat_protocol_spec,
     ChatMessage,
     ChatAcknowledgement,
@@ -32,11 +31,11 @@ from uagents_core.contrib.protocols.chat import (
     StartSessionContent,
     EndSessionContent,
 )
-from uagents_core.utils.registration import (
+from uagents_core.utils.registration import (  # noqa: E402
     register_chat_agent,
     RegistrationRequestCredentials,
 )
-from uagents_core.contrib.protocols.chat.cards import (
+from uagents_core.contrib.protocols.chat.cards import (  # noqa: E402
     create_card_content,
     FormCardPayload,
     FormField,
@@ -44,26 +43,26 @@ from uagents_core.contrib.protocols.chat.cards import (
     CtaAction,
 )
 
-from agent.qa import ask
-from agent.parse import parse_question
-from agent.answer_gen import generate_answers, classify_and_generate_field_answers
-from agent.profile import load_profile, save_profile
-from agent.cards import (
+from agent.qa import ask  # noqa: E402
+from agent.parse import parse_question  # noqa: E402
+from agent.answer_gen import generate_answers, classify_and_generate_field_answers  # noqa: E402
+from agent.profile import load_profile, save_profile  # noqa: E402
+from agent.cards import (  # noqa: E402
     welcome_card,
     event_list_card,
     event_detail_card,
     registration_confirm_card,
 )
-from recommend.engine import recommend
-from agent.lookup import lookup_event
+from recommend.engine import recommend  # noqa: E402
+from agent.lookup import lookup_event  # noqa: E402
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-AGENT_NAME      = os.getenv("AGENT_NAME", "Hackrawl")
-AGENT_SEED      = os.getenv("AGENT_SEED", "hackrawl-agent-seed-phrase-change-me")
-AGENT_PORT      = int(os.getenv("AGENT_PORT", "8008"))
-AGENTVERSE_KEY  = os.getenv("AGENT_MAILBOX_KEY", "")
-_readme_path    = str(_root / "agent_README.md")
+AGENT_NAME = os.getenv("AGENT_NAME", "Hackrawl")
+AGENT_SEED = os.getenv("AGENT_SEED", "hackrawl-agent-seed-phrase-change-me")
+AGENT_PORT = int(os.getenv("AGENT_PORT", "8008"))
+AGENTVERSE_KEY = os.getenv("AGENT_MAILBOX_KEY", "")
+_readme_path = str(_root / "agent_README.md")
 
 SHORT_DESCRIPTION = (
     "Find, explore, and register for hackathons across 16,700+ events "
@@ -86,13 +85,18 @@ chat_proto = Protocol(spec=chat_protocol_spec)
 
 # ── Startup: register with Agentverse ─────────────────────────────────────────
 
+
 @agent.on_event("startup")
 async def on_startup(ctx: Context):
     ctx.logger.info(f"🚀 {AGENT_NAME} starting — address: {ctx.agent.address}")
 
     if AGENTVERSE_KEY and AGENT_SEED:
         try:
-            readme = Path(_readme_path).read_text() if Path(_readme_path).exists() else SHORT_DESCRIPTION
+            readme = (
+                Path(_readme_path).read_text()
+                if Path(_readme_path).exists()
+                else SHORT_DESCRIPTION
+            )
             register_chat_agent(
                 AGENT_NAME,
                 agent._endpoints[0].url if agent._endpoints else "",
@@ -108,15 +112,21 @@ async def on_startup(ctx: Context):
         except Exception as e:
             ctx.logger.error(f"Agentverse registration failed: {e}")
     else:
-        ctx.logger.warning("⚠️  AGENT_MAILBOX_KEY not set — skipping Agentverse registration")
+        ctx.logger.warning(
+            "⚠️  AGENT_MAILBOX_KEY not set — skipping Agentverse registration"
+        )
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
+
 def _mid():
     return uuid4()
+
 
 def text_msg(text: str, end: bool = False) -> ChatMessage:
     content = [TextContent(type="text", text=text)]
@@ -124,26 +134,37 @@ def text_msg(text: str, end: bool = False) -> ChatMessage:
         content.append(EndSessionContent(type="end-session"))
     return ChatMessage(timestamp=_now(), msg_id=_mid(), content=content)
 
+
 def card_msg(card: dict, label: str = "") -> ChatMessage:
-    return ChatMessage(timestamp=_now(), msg_id=_mid(), content=[
-        TextContent(type="text", text=label),
-        MetadataContent(
-            type="metadata",
-            metadata={
-                "card_protocol_version": "1",
-                "requires_card_interaction": "true",
-                "card_kind": "custom",
-                "card_payload": json.dumps(card),
-            },
-        ),
-    ])
+    return ChatMessage(
+        timestamp=_now(),
+        msg_id=_mid(),
+        content=[
+            TextContent(type="text", text=label),
+            MetadataContent(
+                type="metadata",
+                metadata={
+                    "card_protocol_version": "1",
+                    "requires_card_interaction": "true",
+                    "card_kind": "custom",
+                    "card_payload": json.dumps(card),
+                },
+            ),
+        ],
+    )
+
 
 def form_card_msg(payload: FormCardPayload, label: str = "") -> ChatMessage:
     """Official uagents_core FormCardPayload — a real multi-field form with a submit action."""
-    return ChatMessage(timestamp=_now(), msg_id=_mid(), content=[
-        TextContent(type="text", text=label),
-        create_card_content(payload, card_id=uuid4()),
-    ])
+    return ChatMessage(
+        timestamp=_now(),
+        msg_id=_mid(),
+        content=[
+            TextContent(type="text", text=label),
+            create_card_content(payload, card_id=uuid4()),
+        ],
+    )
+
 
 def missing_fields_form(missing_fields: list[dict], ev: dict) -> FormCardPayload:
     """
@@ -163,22 +184,30 @@ def missing_fields_form(missing_fields: list[dict], ev: dict) -> FormCardPayload
         # the moment the user starts typing, so a truncated placeholder was
         # leaving the user unable to even read what they were being asked.
         # The label persists and isn't length-limited by us.
-        fields.append(FormField(
-            name=name,
-            kind="select" if options else "text",
-            label=note or name.replace("_", " ").title(),
-            required=True,
-            options=[FormFieldOption(value=o, label=o) for o in options] if options else None,
-        ))
+        fields.append(
+            FormField(
+                name=name,
+                kind="select" if options else "text",
+                label=note or name.replace("_", " ").title(),
+                required=True,
+                options=[FormFieldOption(value=o, label=o) for o in options]
+                if options
+                else None,
+            )
+        )
     return FormCardPayload(
         title=f"A few details for {ev.get('title', 'this event')}",
         fields=fields,
         submit_cta=CtaAction(
             label="Submit and continue registration",
-            selection={"action": "submit_missing_fields", "event_slug": ev.get("slug", "")},
+            selection={
+                "action": "submit_missing_fields",
+                "event_slug": ev.get("slug", ""),
+            },
             primary=True,
         ),
     )
+
 
 def onboarding_form() -> FormCardPayload:
     """
@@ -196,13 +225,22 @@ def onboarding_form() -> FormCardPayload:
     return FormCardPayload(
         title="Set up your profile",
         fields=[
-            FormField(name="first_name", kind="text", label="First name", required=True),
+            FormField(
+                name="first_name", kind="text", label="First name", required=True
+            ),
             FormField(name="last_name", kind="text", label="Last name", required=True),
             FormField(name="email", kind="email", label="Email", required=True),
-            FormField(name="linkedin_url", kind="text", label="LinkedIn URL", required=False),
-            FormField(name="github_url", kind="text", label="GitHub URL", required=False),
             FormField(
-                name="skills", kind="text", label="Skills", required=False,
+                name="linkedin_url", kind="text", label="LinkedIn URL", required=False
+            ),
+            FormField(
+                name="github_url", kind="text", label="GitHub URL", required=False
+            ),
+            FormField(
+                name="skills",
+                kind="text",
+                label="Skills",
+                required=False,
                 placeholder="e.g. Python, LLMs, React (comma-separated)",
             ),
         ],
@@ -213,23 +251,29 @@ def onboarding_form() -> FormCardPayload:
         ),
     )
 
+
 def _needs_onboarding(profile) -> bool:
     """A profile is usable for registration once it has at least a name and email."""
     return not (profile.first_name and profile.last_name and profile.email)
 
+
 def ack(msg_id) -> ChatAcknowledgement:
     return ChatAcknowledgement(timestamp=_now(), acknowledged_msg_id=msg_id)
+
 
 # ── Session state (per sender) ────────────────────────────────────────────────
 
 _sessions: dict[str, dict] = {}
+
 
 def _sess(sender: str) -> dict:
     if sender not in _sessions:
         _sessions[sender] = {"last_results": [], "last_event": None}
     return _sessions[sender]
 
+
 # ── Chat protocol ─────────────────────────────────────────────────────────────
+
 
 @chat_proto.on_message(ChatMessage)
 async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
@@ -237,13 +281,26 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
     sess = _sess(sender)
 
     for item in msg.content:
-
         if isinstance(item, StartSessionContent):
-            await ctx.send(sender, ChatMessage(
-                timestamp=_now(), msg_id=_mid(),
-                content=[MetadataContent(type="metadata", metadata={"attachments": "false"})],
-            ))
-            await ctx.send(sender, card_msg(welcome_card(), "👋 Hi! I'm Hackrawl — your hackathon search assistant."))
+            await ctx.send(
+                sender,
+                ChatMessage(
+                    timestamp=_now(),
+                    msg_id=_mid(),
+                    content=[
+                        MetadataContent(
+                            type="metadata", metadata={"attachments": "false"}
+                        )
+                    ],
+                ),
+            )
+            await ctx.send(
+                sender,
+                card_msg(
+                    welcome_card(),
+                    "👋 Hi! I'm Hackrawl — your hackathon search assistant.",
+                ),
+            )
             return
 
         if isinstance(item, TextContent):
@@ -260,11 +317,14 @@ async def on_chat(ctx: Context, sender: str, msg: ChatMessage):
                 await _handle_action(ctx, sender, sess, selection)
             return
 
+
 @chat_proto.on_message(ChatAcknowledgement)
 async def on_ack(ctx: Context, sender: str, msg: ChatAcknowledgement):
     pass
 
+
 # ── Intent handlers ───────────────────────────────────────────────────────────
+
 
 def _parse_selection(text: str) -> dict | None:
     """Try to extract a card selection from text sent by ASI:One on button click."""
@@ -295,14 +355,27 @@ async def _handle_text(ctx: Context, sender: str, sess: dict, text: str):
         return
 
     if text.lower().strip() in {"hi", "hello", "hey", "start", "help"}:
-        await ctx.send(sender, card_msg(welcome_card(), "Hi! I'm Hackrawl — your hackathon search assistant."))
+        await ctx.send(
+            sender,
+            card_msg(
+                welcome_card(), "Hi! I'm Hackrawl — your hackathon search assistant."
+            ),
+        )
         return
 
-    if text.lower().strip() in {"edit profile", "my profile", "update profile", "profile"}:
-        await ctx.send(sender, form_card_msg(
-            onboarding_form(),
-            "Your profile — required fields need to be re-entered; leave optional ones blank to keep what's saved:",
-        ))
+    if text.lower().strip() in {
+        "edit profile",
+        "my profile",
+        "update profile",
+        "profile",
+    }:
+        await ctx.send(
+            sender,
+            form_card_msg(
+                onboarding_form(),
+                "Your profile — required fields need to be re-entered; leave optional ones blank to keep what's saved:",
+            ),
+        )
         return
 
     parsed = parse_question(text)
@@ -315,14 +388,21 @@ async def _handle_text(ctx: Context, sender: str, sess: dict, text: str):
         ev = lookup_event(parsed.get("event_name", text))
         if ev:
             sess["last_event"] = ev
-            await ctx.send(sender, card_msg(event_detail_card(ev), ev.get("title", "Event details")))
+            await ctx.send(
+                sender,
+                card_msg(event_detail_card(ev), ev.get("title", "Event details")),
+            )
         else:
-            await ctx.send(sender, text_msg(
-                f"Couldn't find an event matching that name. Try a more specific name or ask me to search."
-            ))
+            await ctx.send(
+                sender,
+                text_msg(
+                    "Couldn't find an event matching that name. Try a more specific name or ask me to search."
+                ),
+            )
 
     elif intent == "stat":
         from agent.stats import answer_stat
+
         await ctx.send(sender, text_msg(answer_stat(parsed.get("stat_query", text))))
 
     else:  # search
@@ -332,20 +412,29 @@ async def _handle_text(ctx: Context, sender: str, sess: dict, text: str):
         sess["last_results"] = results
 
         if not results:
-            await ctx.send(sender, text_msg(
-                "No events found for those criteria. Try broadening the date range, "
-                "removing location filters, or using different keywords."
-            ))
+            await ctx.send(
+                sender,
+                text_msg(
+                    "No events found for those criteria. Try broadening the date range, "
+                    "removing location filters, or using different keywords."
+                ),
+            )
             return
 
         subtitle = _subtitle(prefs, len(results))
         sess["results_shown"] = 10
-        await ctx.send(sender, card_msg(event_list_card(results, subtitle, limit=10), "Here are your top matches:"))
+        await ctx.send(
+            sender,
+            card_msg(
+                event_list_card(results, subtitle, limit=10),
+                "Here are your top matches:",
+            ),
+        )
 
 
 async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
     action = sel.get("action", "")
-    slug   = sel.get("event_slug", "")
+    slug = sel.get("event_slug", "")
 
     if sel.get("quick_query"):
         await _handle_text(ctx, sender, sess, sel["quick_query"])
@@ -355,36 +444,52 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
         ev = _find(sess, slug) or lookup_event(slug)
         if ev:
             sess["last_event"] = ev
-            await ctx.send(sender, card_msg(event_detail_card(ev), ev.get("title", "Event details")))
+            await ctx.send(
+                sender,
+                card_msg(event_detail_card(ev), ev.get("title", "Event details")),
+            )
         else:
             await ctx.send(sender, text_msg("Event not found. Try searching again."))
 
     elif action == "register":
         ev = _find(sess, slug) or lookup_event(slug)
         if not ev:
-            await ctx.send(sender, text_msg("Event not found. Can't start registration."))
+            await ctx.send(
+                sender, text_msg("Event not found. Can't start registration.")
+            )
             return
         sess["last_event"] = ev
         profile = load_profile(agent_address=sender)
         if _needs_onboarding(profile):
             sess["pending_onboarding"] = {"action": "register", "event_slug": slug}
-            await ctx.send(sender, form_card_msg(
-                onboarding_form(),
-                "Before I register you, I need a few basics — I'll reuse these for every event:",
-            ))
+            await ctx.send(
+                sender,
+                form_card_msg(
+                    onboarding_form(),
+                    "Before I register you, I need a few basics — I'll reuse these for every event:",
+                ),
+            )
             return
         questions = _parse_qs(ev.get("questions"))
-        answers   = generate_answers(questions, profile, ev.get("title",""), ev.get("description_summary",""))
-        await ctx.send(sender, card_msg(registration_confirm_card(ev, answers), "Ready to register:"))
+        answers = generate_answers(
+            questions, profile, ev.get("title", ""), ev.get("description_summary", "")
+        )
+        await ctx.send(
+            sender,
+            card_msg(registration_confirm_card(ev, answers), "Ready to register:"),
+        )
 
     elif action == "submit_onboarding":
         profile = load_profile(agent_address=sender)
         updates = {
-            k: v for k, v in sel.items()
+            k: v
+            for k, v in sel.items()
             if k not in ("action", "event_slug") and v not in (None, "")
         }
         if isinstance(updates.get("skills"), str):
-            updates["skills"] = [s.strip() for s in updates["skills"].split(",") if s.strip()]
+            updates["skills"] = [
+                s.strip() for s in updates["skills"].split(",") if s.strip()
+            ]
         for k, v in updates.items():
             if hasattr(profile, k):
                 setattr(profile, k, v)
@@ -393,20 +498,42 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
         pending = sess.pop("pending_onboarding", None)
         if pending:
             await ctx.send(sender, text_msg("✅ Profile saved — continuing..."))
-            await _handle_action(ctx, sender, sess, {"action": pending["action"], "event_slug": pending.get("event_slug", "")})
+            await _handle_action(
+                ctx,
+                sender,
+                sess,
+                {
+                    "action": pending["action"],
+                    "event_slug": pending.get("event_slug", ""),
+                },
+            )
         else:
-            await ctx.send(sender, text_msg("✅ Profile saved. Say 'edit profile' anytime to update it."))
+            await ctx.send(
+                sender,
+                text_msg("✅ Profile saved. Say 'edit profile' anytime to update it."),
+            )
 
     elif action == "confirm_register":
         ev = sess.get("last_event")
         if not ev:
-            await ctx.send(sender, text_msg("Session expired. Search for the event again."))
+            await ctx.send(
+                sender, text_msg("Session expired. Search for the event again.")
+            )
             return
         profile = load_profile(agent_address=sender)
-        await ctx.send(sender, text_msg("🚀 Opening browser to complete registration..."))
+        await ctx.send(
+            sender, text_msg("🚀 Opening browser to complete registration...")
+        )
         try:
             from agent.register import register_for_event
-            result = await register_for_event(slug=ev.get("slug"), profile=profile, agent_address=sender, headless=False, interactive=False)
+
+            result = await register_for_event(
+                slug=ev.get("slug"),
+                profile=profile,
+                agent_address=sender,
+                headless=False,
+                interactive=False,
+            )
         except Exception as e:
             result = {"success": False, "message": str(e)}
         await _handle_registration_result(ctx, sender, sess, ev, profile, result)
@@ -414,7 +541,9 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
     elif action == "submit_missing_fields":
         pending = sess.get("pending_field_request")
         if not pending:
-            await ctx.send(sender, text_msg("Nothing pending to submit — try registering again."))
+            await ctx.send(
+                sender, text_msg("Nothing pending to submit — try registering again.")
+            )
             return
         answers = {
             k: (v if isinstance(v, str) else str(v))
@@ -422,40 +551,53 @@ async def _handle_action(ctx: Context, sender: str, sess: dict, sel: dict):
             if k not in ("action", "event_slug") and v not in (None, "")
         }
         ev, profile = pending["event"], pending["profile"]
-        await ctx.send(sender, text_msg("Got it — thanks! 🚀 Continuing registration..."))
+        await ctx.send(
+            sender, text_msg("Got it — thanks! 🚀 Continuing registration...")
+        )
         try:
             from agent.register import resume_registration
-            result = await resume_registration(pending["resume_state"], answers, profile, agent_address=sender)
+
+            result = await resume_registration(
+                pending["resume_state"], answers, profile, agent_address=sender
+            )
         except Exception as e:
             result = {"success": False, "message": str(e)}
         sess.pop("pending_field_request", None)
         await _handle_registration_result(ctx, sender, sess, ev, profile, result)
 
     elif action == "refine":
-        await ctx.send(sender, text_msg(
-            "Tell me more:\n"
-            "• Location (e.g. 'in London' or 'online only')\n"
-            "• Tech stack (e.g. 'AI', 'Web3', 'mobile')\n"
-            "• Prize minimum (e.g. 'prizes over $10k')\n"
-            "• Date range (e.g. 'in August')"
-        ))
+        await ctx.send(
+            sender,
+            text_msg(
+                "Tell me more:\n"
+                "• Location (e.g. 'in London' or 'online only')\n"
+                "• Tech stack (e.g. 'AI', 'Web3', 'mobile')\n"
+                "• Prize minimum (e.g. 'prizes over $10k')\n"
+                "• Date range (e.g. 'in August')"
+            ),
+        )
 
     elif action == "view_all":
         results = sess.get("last_results", [])
         offset = sess.get("results_shown", 10)
-        page = results[offset:offset + 10]
+        page = results[offset : offset + 10]
         if page:
             sess["results_shown"] = offset + 10
             subtitle = f"Showing {offset + 1}-{min(offset + len(page), len(results))} of {len(results)} events"
-            await ctx.send(sender, card_msg(
-                event_list_card(results, subtitle, offset=offset, limit=10),
-                "More matches:",
-            ))
+            await ctx.send(
+                sender,
+                card_msg(
+                    event_list_card(results, subtitle, offset=offset, limit=10),
+                    "More matches:",
+                ),
+            )
         else:
             await ctx.send(sender, text_msg("No more results. Try a different search."))
 
 
-async def _handle_registration_result(ctx: Context, sender: str, sess: dict, ev: dict, profile, result: dict) -> None:
+async def _handle_registration_result(
+    ctx: Context, sender: str, sess: dict, ev: dict, profile, result: dict
+) -> None:
     """
     Report a register_for_event()/resume_registration() outcome, or — if the
     form needs info the profile doesn't have — send a form asking for all of
@@ -477,8 +619,15 @@ async def _handle_registration_result(ctx: Context, sender: str, sess: dict, ev:
         # _autofill_retried flag below) — if a retry still comes back needing
         # input, just show the human whatever's left rather than looping.
         slug = ev.get("slug", "")
-        auto_answers = {} if sess.get("_autofill_retried") == slug else classify_and_generate_field_answers(
-            missing, profile, ev.get("title", ""), ev.get("description_summary", ""),
+        auto_answers = (
+            {}
+            if sess.get("_autofill_retried") == slug
+            else classify_and_generate_field_answers(
+                missing,
+                profile,
+                ev.get("title", ""),
+                ev.get("description_summary", ""),
+            )
         )
         if auto_answers:
             # Feeding these into the already-running session via a mid-task
@@ -491,9 +640,14 @@ async def _handle_registration_result(ctx: Context, sender: str, sess: dict, ev:
             await result["_resume_state"]["browser"].close()
             sess["_autofill_retried"] = slug
             from agent.register import register_for_event
+
             result = await register_for_event(
-                slug=slug, profile=profile, agent_address=sender,
-                headless=False, interactive=False, extra_answers=auto_answers,
+                slug=slug,
+                profile=profile,
+                agent_address=sender,
+                headless=False,
+                interactive=False,
+                extra_answers=auto_answers,
             )
             await _handle_registration_result(ctx, sender, sess, ev, profile, result)
             return
@@ -503,62 +657,84 @@ async def _handle_registration_result(ctx: Context, sender: str, sess: dict, ev:
             "event": ev,
             "profile": profile,
         }
-        await ctx.send(sender, form_card_msg(
-            missing_fields_form(missing, ev),
-            f"Just need a few things {ev.get('title', 'this event')} asks for that aren't in your profile yet:",
-        ))
+        await ctx.send(
+            sender,
+            form_card_msg(
+                missing_fields_form(missing, ev),
+                f"Just need a few things {ev.get('title', 'this event')} asks for that aren't in your profile yet:",
+            ),
+        )
         return
 
     title = ev.get("title") or "this event"
 
     if result.get("success") and result.get("already_registered"):
-        await ctx.send(sender, text_msg(
-            f"ℹ️ Looks like you're already registered for **{title}** — no action needed!",
-            end=True,
-        ))
+        await ctx.send(
+            sender,
+            text_msg(
+                f"ℹ️ Looks like you're already registered for **{title}** — no action needed!",
+                end=True,
+            ),
+        )
     elif result.get("success"):
-        await ctx.send(sender, text_msg(
-            f"✅ You're all set — registration for **{title}** went through. "
-            f"Keep an eye on your inbox for a confirmation email.",
-            end=True,
-        ))
+        await ctx.send(
+            sender,
+            text_msg(
+                f"✅ You're all set — registration for **{title}** went through. "
+                f"Keep an eye on your inbox for a confirmation email.",
+                end=True,
+            ),
+        )
     elif result.get("registration_closed"):
-        await ctx.send(sender, text_msg(
-            f"🚫 Registration for **{title}** appears to be closed — {result.get('message','')}\n\n"
-            f"You can double-check here: {ev.get('external_url','')}",
-            end=True,
-        ))
+        await ctx.send(
+            sender,
+            text_msg(
+                f"🚫 Registration for **{title}** appears to be closed — {result.get('message', '')}\n\n"
+                f"You can double-check here: {ev.get('external_url', '')}",
+                end=True,
+            ),
+        )
     else:
-        await ctx.send(sender, text_msg(
-            f"⚠️ I wasn't able to finish registering you for **{title}** automatically.\n\n"
-            f"{result.get('message','')}\n\n"
-            f"You can finish it yourself here: {ev.get('external_url','')}"
-        ))
+        await ctx.send(
+            sender,
+            text_msg(
+                f"⚠️ I wasn't able to finish registering you for **{title}** automatically.\n\n"
+                f"{result.get('message', '')}\n\n"
+                f"You can finish it yourself here: {ev.get('external_url', '')}"
+            ),
+        )
 
 
 # ── Formatting ────────────────────────────────────────────────────────────────
 
+
 def _summary(events: list[dict]) -> str:
     lines = []
     for i, ev in enumerate(events, 1):
-        title  = ev.get("title", "Untitled")
-        city   = ev.get("city") or "?"
-        start  = (ev.get("start_datetime") or "")[:10]
+        title = ev.get("title", "Untitled")
+        city = ev.get("city") or "?"
+        start = (ev.get("start_datetime") or "")[:10]
         reason = ev.get("reason", "")
         lines.append(f"**{i}. {title}** — {city}, {start}")
         if reason:
             lines.append(f"   _{reason[:90]}_")
     return "\n".join(lines)
 
+
 def _subtitle(prefs: dict, count: int) -> str:
-    parts = [p for p in [
-        prefs.get("keywords"),
-        f"in {prefs['location']}" if prefs.get("location") else None,
-        "online" if prefs.get("online") else None,
-        "hackathons only" if prefs.get("hackathon_only") else None,
-    ] if p]
+    parts = [
+        p
+        for p in [
+            prefs.get("keywords"),
+            f"in {prefs['location']}" if prefs.get("location") else None,
+            "online" if prefs.get("online") else None,
+            "hackathons only" if prefs.get("hackathon_only") else None,
+        ]
+        if p
+    ]
     base = " · ".join(parts) if parts else "your search"
     return f"{count} results for {base}"
+
 
 def _find(sess: dict, slug: str) -> dict | None:
     for ev in sess.get("last_results", []):
@@ -567,6 +743,7 @@ def _find(sess: dict, slug: str) -> dict | None:
     if sess.get("last_event", {}).get("slug") == slug:
         return sess["last_event"]
     return None
+
 
 def _parse_qs(raw) -> list[dict]:
     if not raw:
@@ -578,14 +755,17 @@ def _parse_qs(raw) -> list[dict]:
     except Exception:
         return []
 
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 
 agent.include(chat_proto, publish_manifest=True)
 
 if __name__ == "__main__":
-    print(f"\n🔍 Hackrawl — Hackathon Discovery & Registration Agent")
+    print("\n🔍 Hackrawl — Hackathon Discovery & Registration Agent")
     print(f"   Address : {agent.address}")
     print(f"   Port    : {AGENT_PORT}")
-    print(f"   Mailbox : {'✅ configured' if AGENTVERSE_KEY else '⚠️  set AGENT_MAILBOX_KEY in .env'}")
-    print(f"\n   Press Ctrl+C to stop.\n")
+    print(
+        f"   Mailbox : {'✅ configured' if AGENTVERSE_KEY else '⚠️  set AGENT_MAILBOX_KEY in .env'}"
+    )
+    print("\n   Press Ctrl+C to stop.\n")
     agent.run()

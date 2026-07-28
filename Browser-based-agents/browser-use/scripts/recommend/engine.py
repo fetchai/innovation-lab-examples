@@ -25,10 +25,11 @@ Usage:
 
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from recommend.filter import fetch_candidates
-from recommend.score  import score_and_rank, _parse_jsonb, _extract_prize
+from recommend.score import score_and_rank, _parse_jsonb
 from recommend.rerank import rerank
 
 
@@ -46,14 +47,14 @@ def recommend(prefs: dict, skip_rerank: bool = False) -> list[dict]:
         rank    : int  final rank (1 = best)
         reason  : str  one-line LLM explanation (or score-based fallback)
     """
-    print(f"\n[RECOMMEND] Fetching candidates...")
+    print("\n[RECOMMEND] Fetching candidates...")
     candidates = fetch_candidates(prefs)
     print(f"[RECOMMEND] {len(candidates)} candidates after hard filters")
 
     if not candidates:
         return []
 
-    print(f"[RECOMMEND] Scoring and selecting top candidates...")
+    print("[RECOMMEND] Scoring and selecting top candidates...")
     top = score_and_rank(candidates, prefs)
     print(f"[RECOMMEND] Top {len(top)} selected for reranking")
 
@@ -63,7 +64,7 @@ def recommend(prefs: dict, skip_rerank: bool = False) -> list[dict]:
             ev["reason"] = _build_fallback_reason(ev)
         return top
 
-    print(f"[RECOMMEND] Reranking with ASI:One...")
+    print("[RECOMMEND] Reranking with ASI:One...")
     ranked = rerank(top, prefs)
     print(f"[RECOMMEND] Done. {len(ranked)} results returned\n")
     return ranked
@@ -79,13 +80,13 @@ def format_results(results: list[dict], max_show: int = 10) -> str:
         ed = _parse_jsonb(ev.get("external_data"))
         le = _parse_jsonb(ev.get("llm_extracted"))
 
-        title  = ev.get("title", "Untitled")
-        start  = (ev.get("start_datetime") or "")[:10]
-        city   = ev.get("city") or ed.get("location") or "?"
-        prize  = le.get("prize_amount") or ed.get("prize_amount") or ""
-        url    = ev.get("external_url") or ev.get("event_url") or ""
+        title = ev.get("title", "Untitled")
+        start = (ev.get("start_datetime") or "")[:10]
+        city = ev.get("city") or ed.get("location") or "?"
+        prize = le.get("prize_amount") or ed.get("prize_amount") or ""
+        url = ev.get("external_url") or ev.get("event_url") or ""
         reason = ev.get("reason", "")
-        rank   = ev.get("rank", "?")
+        rank = ev.get("rank", "?")
         source = ev.get("source", "")
 
         prize_str = f" | Prize: {prize}" if prize else ""

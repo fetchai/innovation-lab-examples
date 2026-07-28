@@ -24,6 +24,7 @@ import json
 import sys
 import os
 import argparse
+from typing import Callable
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
@@ -35,7 +36,7 @@ from db import get_client
 
 # Platform routing — maps external_source → handler module name
 PLATFORM_HANDLERS = {
-    "cerebralvalley": "cerebralvalley",   # dedicated Playwright handler
+    "cerebralvalley": "cerebralvalley",  # dedicated Playwright handler
     # everything else → generic browser-use handler
 }
 
@@ -54,8 +55,8 @@ async def register_for_event(
     agent_address: str | None = None,
     headless: bool = False,
     dry_run: bool = False,
-    get_otp: "callable | None" = None,
-    get_field_input: "callable | None" = None,
+    get_otp: Callable | None = None,
+    get_field_input: Callable | None = None,
     interactive: bool = True,
     extra_answers: dict[str, str] | None = None,
 ) -> dict:
@@ -102,11 +103,15 @@ async def register_for_event(
     if not event and not url:
         return {"success": False, "message": f"Event not found: {slug or url}"}
 
-    event_url    = url or event.get("external_url") or event.get("event_url", "")
-    event_title  = event.get("title", "") if event else ""
-    event_desc   = event.get("description_summary", "") if event else ""
-    ext_source   = (event.get("external_source") if event else None) or _detect_platform(event_url)
-    questions    = _parse_questions(event.get("questions") if event else None)
+    event_url = url or (
+        event.get("external_url") or event.get("event_url", "") if event else ""
+    )
+    event_title = event.get("title", "") if event else ""
+    event_desc = event.get("description_summary", "") if event else ""
+    ext_source = (event.get("external_source") if event else None) or _detect_platform(
+        event_url
+    )
+    questions = _parse_questions(event.get("questions") if event else None)
 
     print(f"\n[REGISTER] Event:    {event_title or event_url}")
     print(f"[REGISTER] Platform: {ext_source}")
@@ -119,12 +124,12 @@ async def register_for_event(
         print(f"     profile.{ext_source}_email and profile.{ext_source}_password")
 
     # Step 2: generate answers
-    print(f"\n[REGISTER] Generating answers with ASI:One...")
+    print("\n[REGISTER] Generating answers with ASI:One...")
     answers = generate_answers(questions, profile, event_title, event_desc)
     if extra_answers:
         answers.update(extra_answers)
 
-    print(f"\n[REGISTER] Answers preview:")
+    print("\n[REGISTER] Answers preview:")
     for q, a in answers.items():
         print(f"  Q: {q[:60]}")
         print(f"  A: {a[:80]}\n")
@@ -142,7 +147,7 @@ async def register_for_event(
         return {"success": False, "message": "No registration URL found for this event"}
 
     # Step 3: open browser and register
-    print(f"\n[REGISTER] Opening browser...")
+    print("\n[REGISTER] Opening browser...")
     result = await _run_browser(
         event_url=event_url,
         event_title=event_title,
@@ -167,7 +172,7 @@ async def register_for_event(
         status = "✅ Success"
     else:
         status = "❌ Failed"
-    print(f"\n[REGISTER] {status}: {result.get('message','')}")
+    print(f"\n[REGISTER] {status}: {result.get('message', '')}")
 
     return result
 
@@ -191,7 +196,10 @@ async def resume_registration(
     unknown fields comes up.
     """
     from agent.platforms.generic import resume_registration as generic_resume
-    return await generic_resume(resume_state, answers, profile, profile_path, agent_address=agent_address)
+
+    return await generic_resume(
+        resume_state, answers, profile, profile_path, agent_address=agent_address
+    )
 
 
 async def _run_browser(
@@ -201,8 +209,8 @@ async def _run_browser(
     profile: UserProfile,
     answers: dict,
     headless: bool,
-    get_otp: "callable | None" = None,
-    get_field_input: "callable | None" = None,
+    get_otp: Callable | None = None,
+    get_field_input: Callable | None = None,
     profile_path: str | None = None,
     agent_address: str | None = None,
     interactive: bool = True,
@@ -212,6 +220,7 @@ async def _run_browser(
     # Dedicated Playwright handler for Cerebral Valley
     if ext_source == "cerebralvalley" or "cerebralvalley.ai" in event_url:
         from agent.platforms.cerebralvalley import register as cv_register
+
         async with async_playwright() as pw:
             browser = await pw.chromium.launch(headless=headless)
             page = await browser.new_page()
@@ -222,6 +231,7 @@ async def _run_browser(
 
     # Generic browser-use handler for all other platforms
     from agent.platforms.generic import register as generic_register
+
     return await generic_register(
         event_url=event_url,
         profile=profile,
@@ -241,11 +251,32 @@ def _load_event(slug: str | None, url: str | None) -> dict | None:
     client = get_client()
     try:
         if slug:
-            rows = client.table("events").select("*").eq("slug", slug).limit(1).execute().data
+            rows = (
+                client.table("events")
+                .select("*")
+                .eq("slug", slug)
+                .limit(1)
+                .execute()
+                .data
+            )
         elif url:
-            rows = client.table("events").select("*").eq("external_url", url).limit(1).execute().data
+            rows = (
+                client.table("events")
+                .select("*")
+                .eq("external_url", url)
+                .limit(1)
+                .execute()
+                .data
+            )
             if not rows:
-                rows = client.table("events").select("*").eq("event_url", url).limit(1).execute().data
+                rows = (
+                    client.table("events")
+                    .select("*")
+                    .eq("event_url", url)
+                    .limit(1)
+                    .execute()
+                    .data
+                )
         else:
             return None
         return rows[0] if rows else None
@@ -299,25 +330,39 @@ def main():
     parser = argparse.ArgumentParser(description="Register for a hackathon")
     parser.add_argument("--event", help="Event slug from our database")
     parser.add_argument("--url", help="Direct registration URL")
-    parser.add_argument("--profile", help="Path to a local profile JSON file — explicit offline override; Supabase is the default source of truth")
-    parser.add_argument("--agent-address", help="Load/save profile from Supabase under this agent address instead of the default local CLI key")
-    parser.add_argument("--headless", action="store_true", help="Run browser headlessly")
-    parser.add_argument("--dry-run", action="store_true", help="Generate answers only, don't open browser")
+    parser.add_argument(
+        "--profile",
+        help="Path to a local profile JSON file — explicit offline override; Supabase is the default source of truth",
+    )
+    parser.add_argument(
+        "--agent-address",
+        help="Load/save profile from Supabase under this agent address instead of the default local CLI key",
+    )
+    parser.add_argument(
+        "--headless", action="store_true", help="Run browser headlessly"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Generate answers only, don't open browser",
+    )
     args = parser.parse_args()
 
     if not args.event and not args.url:
         parser.error("Provide --event <slug> or --url <registration-url>")
 
     profile = load_profile(args.profile, agent_address=args.agent_address)
-    result = asyncio.run(register_for_event(
-        slug=args.event,
-        url=args.url,
-        profile=profile,
-        profile_path=args.profile,
-        agent_address=args.agent_address,
-        headless=args.headless,
-        dry_run=args.dry_run,
-    ))
+    result = asyncio.run(
+        register_for_event(
+            slug=args.event,
+            url=args.url,
+            profile=profile,
+            profile_path=args.profile,
+            agent_address=args.agent_address,
+            headless=args.headless,
+            dry_run=args.dry_run,
+        )
+    )
 
     print(json.dumps({k: v for k, v in result.items() if k != "screenshot"}, indent=2))
 

@@ -106,7 +106,7 @@ def get_event_data_slice(rsc_text: str, window: int = 6000) -> str:
         # Fallback: just return the last portion which usually has the event data
         return rsc_text[-window:]
     start = max(0, idx - window // 2)
-    return rsc_text[start: start + window]
+    return rsc_text[start : start + window]
 
 
 def extract_event_urls_from_rsc(rsc_text: str, base_url: str) -> list[dict]:
@@ -170,7 +170,7 @@ def llm_extract_event_urls(rsc_text: str, base_url: str) -> list[dict]:
     instruction = (
         "Extract all hackathon event slugs and their full URLs from this page content. "
         f"All URLs follow the pattern {base_url}/e/<slug>. "
-        "Return a JSON array of objects like: [{\"slug\": \"...\", \"url\": \"...\"}]"
+        'Return a JSON array of objects like: [{"slug": "...", "url": "..."}]'
     )
     result = llm_extract(rsc_text[:6000], instruction)
     if isinstance(result, list):

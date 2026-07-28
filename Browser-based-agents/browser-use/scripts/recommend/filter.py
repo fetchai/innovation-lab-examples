@@ -8,6 +8,7 @@ candidate event dicts. Designed to be robust to sparse/missing fields.
 import re
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from db import get_client
@@ -34,16 +35,13 @@ def fetch_candidates(prefs: dict) -> list[dict]:
     """
     client = get_client()
 
-    q = (
-        client.table("events")
-        .select(
-            "id, slug, source, title, description_summary, city, venue, "
-            "start_datetime, end_datetime, timezone, "
-            "registration_closed, approval_required, is_platform_hackathon, "
-            "event_type, status, cv_event, "
-            "external_url, external_source, image_url, "
-            "llm_extracted, external_data"
-        )
+    q = client.table("events").select(
+        "id, slug, source, title, description_summary, city, venue, "
+        "start_datetime, end_datetime, timezone, "
+        "registration_closed, approval_required, is_platform_hackathon, "
+        "event_type, status, cv_event, "
+        "external_url, external_source, image_url, "
+        "llm_extracted, external_data"
     )
 
     # ── Date filters ──────────────────────────────────────────────
@@ -69,18 +67,36 @@ def fetch_candidates(prefs: dict) -> list[dict]:
 
     # Strip generic event-type words that are not useful search terms
     _STOP_WORDS = {
-        "hackathon", "hackathons", "hack", "event", "events", "find",
-        "show", "get", "upcoming", "next", "looking", "want", "need",
-        "me", "us", "the", "a", "an", "and", "or", "in", "at", "for",
+        "hackathon",
+        "hackathons",
+        "hack",
+        "event",
+        "events",
+        "find",
+        "show",
+        "get",
+        "upcoming",
+        "next",
+        "looking",
+        "want",
+        "need",
+        "me",
+        "us",
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "in",
+        "at",
+        "for",
     }
     all_kw = [
-        k for k in re.split(r"[\s,]+", keywords_raw)
+        k
+        for k in re.split(r"[\s,]+", keywords_raw)
         if len(k) >= 2 and k.lower() not in _STOP_WORDS
     ]
-    all_kw += [
-        t for t in topics
-        if len(t) >= 2 and t.lower() not in _STOP_WORDS
-    ]
+    all_kw += [t for t in topics if len(t) >= 2 and t.lower() not in _STOP_WORDS]
 
     location = (prefs.get("location") or "").strip().lower()
     online = prefs.get("online") or False
@@ -96,8 +112,10 @@ def fetch_candidates(prefs: dict) -> list[dict]:
         group_a += [f"title.ilike.{kw}", f"description_summary.ilike.{kw}"]
     if online:
         group_a += [
-            "city.ilike.%worldwide%", "city.ilike.%online%",
-            "city.ilike.%digital%",   "city.ilike.%everywhere%",
+            "city.ilike.%worldwide%",
+            "city.ilike.%online%",
+            "city.ilike.%digital%",
+            "city.ilike.%everywhere%",
             "city.ilike.%remote%",
         ]
     if group_a:
@@ -124,11 +142,18 @@ def fetch_candidates(prefs: dict) -> list[dict]:
             ed = row.get("external_data") or {}
             if isinstance(ed, str):
                 import json
+
                 try:
                     ed = json.loads(ed)
                 except Exception:
                     ed = {}
-            is_online = ed.get("is_online") or "worldwide" in city or "online" in city or "digital" in city or "everywhere" in city
+            is_online = (
+                ed.get("is_online")
+                or "worldwide" in city
+                or "online" in city
+                or "digital" in city
+                or "everywhere" in city
+            )
             if not is_online:
                 continue
         elif location and location != "online":
@@ -137,12 +162,17 @@ def fetch_candidates(prefs: dict) -> list[dict]:
             ed = row.get("external_data") or {}
             if isinstance(ed, str):
                 import json
+
                 try:
                     ed = json.loads(ed)
                 except Exception:
                     ed = {}
             ext_loc = (ed.get("location") or "").lower()
-            if location not in city and location not in title and location not in ext_loc:
+            if (
+                location not in city
+                and location not in title
+                and location not in ext_loc
+            ):
                 continue
 
         # Registration open (NULL = unknown = treat as possibly open)

@@ -27,7 +27,7 @@ def fetch_all_events(source: str = "cerebralvalley") -> list[dict]:
     all_events: list[dict] = []
     offset = 0
 
-    print(f"[API] Fetching all events from Cerebral Valley API...")
+    print("[API] Fetching all events from Cerebral Valley API...")
 
     while True:
         batch = _fetch_page(offset)
@@ -37,7 +37,9 @@ def fetch_all_events(source: str = "cerebralvalley") -> list[dict]:
         for raw in batch:
             all_events.append(_normalise(raw, source))
 
-        print(f"[API] offset={offset:>5} → {len(batch)} events (total: {len(all_events)})")
+        print(
+            f"[API] offset={offset:>5} → {len(batch)} events (total: {len(all_events)})"
+        )
 
         if len(batch) < PAGE_SIZE:
             break
@@ -123,6 +125,7 @@ def _derive_slug(raw: dict) -> str:
     name = raw.get("name", "")
     if name:
         import re
+
         slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
         slug = slug[:80]
         # Append first 8 chars of ID to ensure uniqueness

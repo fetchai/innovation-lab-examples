@@ -5,10 +5,10 @@ dependency on a custom execute_sql RPC function.
 ASI:One classifies the stat type and narrates the result.
 """
 
-import re
 import json
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import httpx
@@ -49,24 +49,53 @@ def _run_stat(stat_type: str, query: str) -> list[dict]:
     try:
         if stat_type == "by_platform":
             # Count events per source platform
-            rows = client.table("events").select("source").gte("start_datetime", TODAY).execute().data or []
+            rows = (
+                client.table("events")
+                .select("source")
+                .gte("start_datetime", TODAY)
+                .execute()
+                .data
+                or []
+            )
             from collections import Counter
+
             counts = Counter(r["source"] for r in rows)
-            return [{"platform": k, "count": v} for k, v in sorted(counts.items(), key=lambda x: -x[1])]
+            return [
+                {"platform": k, "count": v}
+                for k, v in sorted(counts.items(), key=lambda x: -x[1])
+            ]
 
         elif stat_type == "by_location":
-            rows = client.table("events").select("city").not_.is_("city", "null").gte("start_datetime", TODAY).limit(1000).execute().data or []
+            rows = (
+                client.table("events")
+                .select("city")
+                .not_.is_("city", "null")
+                .gte("start_datetime", TODAY)
+                .limit(1000)
+                .execute()
+                .data
+                or []
+            )
             from collections import Counter
+
             cities = Counter(r["city"] for r in rows if r.get("city"))
-            return [{"city": k, "count": v} for k, v in sorted(cities.items(), key=lambda x: -x[1])[:15]]
+            return [
+                {"city": k, "count": v}
+                for k, v in sorted(cities.items(), key=lambda x: -x[1])[:15]
+            ]
 
         elif stat_type == "prize":
             # Events that have prize info
-            rows = client.table("events") \
-                .select("title, source, start_datetime, llm_extracted") \
-                .not_.is_("llm_extracted", "null") \
-                .gte("start_datetime", TODAY) \
-                .limit(500).execute().data or []
+            rows = (
+                client.table("events")
+                .select("title, source, start_datetime, llm_extracted")
+                .not_.is_("llm_extracted", "null")
+                .gte("start_datetime", TODAY)
+                .limit(500)
+                .execute()
+                .data
+                or []
+            )
 
             prizes = []
             for r in rows:
@@ -78,23 +107,41 @@ def _run_stat(stat_type: str, query: str) -> list[dict]:
                         continue
                 prize = le.get("prize_amount")
                 if prize:
-                    prizes.append({"title": r["title"], "prize": prize, "source": r["source"]})
+                    prizes.append(
+                        {"title": r["title"], "prize": prize, "source": r["source"]}
+                    )
 
             return prizes[:20]
 
         elif stat_type == "online":
-            rows = client.table("events") \
-                .select("source, title, city") \
-                .or_("city.ilike.%worldwide%,city.ilike.%online%,city.ilike.%digital%,city.ilike.%everywhere%,city.ilike.%remote%") \
-                .gte("start_datetime", TODAY) \
-                .limit(200).execute().data or []
+            rows = (
+                client.table("events")
+                .select("source, title, city")
+                .or_(
+                    "city.ilike.%worldwide%,city.ilike.%online%,city.ilike.%digital%,city.ilike.%everywhere%,city.ilike.%remote%"
+                )
+                .gte("start_datetime", TODAY)
+                .limit(200)
+                .execute()
+                .data
+                or []
+            )
             from collections import Counter
+
             counts = Counter(r["source"] for r in rows)
             return [{"count": len(rows), "by_platform": dict(counts)}]
 
         elif stat_type == "upcoming_count":
-            rows = client.table("events").select("source").gte("start_datetime", TODAY).execute().data or []
+            rows = (
+                client.table("events")
+                .select("source")
+                .gte("start_datetime", TODAY)
+                .execute()
+                .data
+                or []
+            )
             from collections import Counter
+
             counts = Counter(r["source"] for r in rows)
             return [{"total_upcoming": len(rows), "by_platform": dict(counts)}]
 
@@ -102,8 +149,12 @@ def _run_stat(stat_type: str, query: str) -> list[dict]:
             # General: total count by source
             rows = client.table("events").select("source").execute().data or []
             from collections import Counter
+
             counts = Counter(r["source"] for r in rows)
-            return [{"platform": k, "count": v} for k, v in sorted(counts.items(), key=lambda x: -x[1])]
+            return [
+                {"platform": k, "count": v}
+                for k, v in sorted(counts.items(), key=lambda x: -x[1])
+            ]
 
     except Exception as e:
         print(f"  [STATS] query failed: {e}")

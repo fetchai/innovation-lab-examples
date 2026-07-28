@@ -11,7 +11,6 @@ Flow:
   6. Submit
 """
 
-import asyncio
 from playwright.async_api import Page
 
 
@@ -40,10 +39,13 @@ async def register(
 
         # Handle Clerk login if needed
         if "sign-in" in page.url or "signin" in page.url or await _is_signin_page(page):
-            print(f"  [CV] Login required")
+            print("  [CV] Login required")
             result = await _handle_login(page, profile)
             if not result:
-                return {"success": False, "message": "Login failed — check credentials in profile"}
+                return {
+                    "success": False,
+                    "message": "Login failed — check credentials in profile",
+                }
 
         # Fill form fields
         await _fill_form(page, answers, profile)
@@ -65,7 +67,9 @@ async def register(
 
         return {
             "success": success,
-            "message": "Application submitted!" if success else "Submitted but confirmation unclear",
+            "message": "Application submitted!"
+            if success
+            else "Submitted but confirmation unclear",
             "screenshot": screenshot,
             "final_url": page.url,
         }
@@ -76,7 +80,9 @@ async def register(
 
 
 async def _is_signin_page(page: Page) -> bool:
-    return bool(await page.query_selector("input[type='email'][placeholder*='email' i]"))
+    return bool(
+        await page.query_selector("input[type='email'][placeholder*='email' i]")
+    )
 
 
 async def _handle_login(page: Page, profile) -> bool:
@@ -116,7 +122,9 @@ async def _handle_login(page: Page, profile) -> bool:
 async def _fill_form(page: Page, answers: dict[str, str], profile) -> None:
     """Fill visible form inputs by matching labels to answers."""
     # Get all visible text inputs and textareas
-    inputs = await page.query_selector_all("input[type='text'], input[type='url'], textarea")
+    inputs = await page.query_selector_all(
+        "input[type='text'], input[type='url'], textarea"
+    )
 
     for inp in inputs:
         try:
@@ -205,7 +213,12 @@ async def _check_success(page: Page) -> bool:
     """Detect if submission was successful."""
     content = await page.content()
     success_signals = [
-        "application received", "thank you", "you're in",
-        "successfully", "submitted", "applied", "confirmed"
+        "application received",
+        "thank you",
+        "you're in",
+        "successfully",
+        "submitted",
+        "applied",
+        "confirmed",
     ]
     return any(s in content.lower() for s in success_signals)

@@ -12,6 +12,7 @@ import json
 import re
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import httpx
@@ -21,13 +22,13 @@ from agent.profile import UserProfile, profile_to_context
 
 # Preset question types we can answer directly from profile fields
 PRESET_MAP = {
-    "linkedin":  lambda p: p.linkedin_url,
-    "github":    lambda p: p.github_url,
-    "twitter":   lambda p: p.twitter_url(),
-    "email":     lambda p: p.email,
-    "name":      lambda p: p.full_name(),
+    "linkedin": lambda p: p.linkedin_url,
+    "github": lambda p: p.github_url,
+    "twitter": lambda p: p.twitter_url(),
+    "email": lambda p: p.email,
+    "name": lambda p: p.full_name(),
     "firstname": lambda p: p.first_name,
-    "lastname":  lambda p: p.last_name,
+    "lastname": lambda p: p.last_name,
 }
 
 
@@ -107,7 +108,7 @@ def _llm_generate(
 ) -> dict[str, str]:
     """Use ASI:One to answer open-ended questions."""
     q_list = "\n".join(
-        f"{i+1}. {q['question']}{' (required)' if q.get('required') else ' (optional)'}"
+        f"{i + 1}. {q['question']}{' (required)' if q.get('required') else ' (optional)'}"
         for i, q in enumerate(questions)
     )
 
@@ -117,7 +118,7 @@ User profile:
 {profile_to_context(profile)}
 
 Event: {event_title}
-{f'About: {event_description[:500]}' if event_description else ''}
+{f"About: {event_description[:500]}" if event_description else ""}
 
 Answer the following registration questions on behalf of this user.
 Be authentic, specific, and concise (1-3 sentences per answer).
@@ -204,7 +205,7 @@ def classify_and_generate_field_answers(
         return {}
 
     fields_list = "\n".join(
-        f"{i+1}. field_name=\"{f.get('field_name','')}\" question=\"{f.get('note','')}\""
+        f'{i + 1}. field_name="{f.get("field_name", "")}" question="{f.get("note", "")}"'
         + (f" options={f.get('options')}" if f.get("options") else "")
         for i, f in enumerate(missing_fields)
     )
@@ -215,7 +216,7 @@ User profile:
 {profile_to_context(profile)}
 
 Event: {event_title}
-{f'About: {event_description[:500]}' if event_description else ''}
+{f"About: {event_description[:500]}" if event_description else ""}
 
 The registration form asked some questions that don't match anything in this
 person's profile. For EACH one, decide:

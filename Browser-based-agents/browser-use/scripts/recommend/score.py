@@ -12,11 +12,11 @@ from datetime import datetime, timezone
 
 # Weight config — tune these to change ranking behaviour
 WEIGHTS = {
-    "prize":          0.30,
-    "upcoming":       0.25,
-    "keyword_match":  0.20,
-    "data_quality":   0.15,
-    "featured":       0.10,
+    "prize": 0.30,
+    "upcoming": 0.25,
+    "keyword_match": 0.20,
+    "data_quality": 0.15,
+    "featured": 0.10,
 }
 
 TOP_N = 30  # how many to pass to the LLM reranker
@@ -24,8 +24,12 @@ TOP_N = 30  # how many to pass to the LLM reranker
 
 def score_and_rank(candidates: list[dict], prefs: dict) -> list[dict]:
     """Score all candidates and return top TOP_N sorted by score."""
-    keywords = [k.strip().lower() for k in re.split(r"[\s,]+", prefs.get("keywords", "")) if k.strip()]
-    topics   = [t.strip().lower() for t in prefs.get("topics", [])]
+    keywords = [
+        k.strip().lower()
+        for k in re.split(r"[\s,]+", prefs.get("keywords", ""))
+        if k.strip()
+    ]
+    topics = [t.strip().lower() for t in prefs.get("topics", [])]
     all_terms = list(set(keywords + topics))
 
     scored = []
@@ -40,13 +44,14 @@ def score_and_rank(candidates: list[dict], prefs: dict) -> list[dict]:
 
 # ── Individual signal scorers ──────────────────────────────────────────────
 
+
 def _compute_score(ev: dict, terms: list[str], prefs: dict) -> float:
     total = 0.0
-    total += WEIGHTS["prize"]        * _prize_score(ev, prefs.get("min_prize", 0))
-    total += WEIGHTS["upcoming"]     * _upcoming_score(ev)
+    total += WEIGHTS["prize"] * _prize_score(ev, prefs.get("min_prize", 0))
+    total += WEIGHTS["upcoming"] * _upcoming_score(ev)
     total += WEIGHTS["keyword_match"] * _keyword_score(ev, terms)
     total += WEIGHTS["data_quality"] * _data_quality_score(ev)
-    total += WEIGHTS["featured"]     * _featured_score(ev)
+    total += WEIGHTS["featured"] * _featured_score(ev)
     return total
 
 
@@ -135,6 +140,7 @@ def _featured_score(ev: dict) -> float:
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
+
 
 def _extract_prize(ev: dict) -> int | None:
     """Parse prize amount from various fields into an integer USD value."""

@@ -22,6 +22,7 @@ Interactive CLI:
 
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import httpx
@@ -129,12 +130,13 @@ def _no_results_answer(question: str, prefs: dict) -> str:
 
 # ── Interactive CLI ────────────────────────────────────────────────────────
 
+
 def _run_cli():
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("  Hackathon Q&A Agent")
     print("  Powered by ASI:One + 16,700+ events")
     print("  Type 'quit' to exit")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")
 
     history = []
 

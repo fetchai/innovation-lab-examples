@@ -39,7 +39,7 @@ def fetch_all_events() -> list[dict]:
     page = 1
     total_pages = None
 
-    print(f"[DEVPOST] Fetching hackathons from Devpost API...")
+    print("[DEVPOST] Fetching hackathons from Devpost API...")
 
     while True:
         batch, meta = _fetch_page(page)
@@ -48,13 +48,19 @@ def fetch_all_events() -> list[dict]:
 
         if total_pages is None:
             total_count = int(meta.get("total_count", 0))
-            total_pages = (total_count + PER_PAGE - 1) // PER_PAGE if total_count else None
-            print(f"[DEVPOST] Total: {total_count} hackathons across {total_pages or '?'} pages")
+            total_pages = (
+                (total_count + PER_PAGE - 1) // PER_PAGE if total_count else None
+            )
+            print(
+                f"[DEVPOST] Total: {total_count} hackathons across {total_pages or '?'} pages"
+            )
 
         for raw in batch:
             all_events.append(_normalise(raw))
 
-        print(f"[DEVPOST] page={page}/{total_pages} → {len(batch)} events (total: {len(all_events)})")
+        print(
+            f"[DEVPOST] page={page}/{total_pages} → {len(batch)} events (total: {len(all_events)})"
+        )
 
         if total_pages and page >= total_pages:
             break
@@ -107,7 +113,7 @@ def _normalise(raw: dict) -> dict:
         "external_url": devpost_url,
         "external_source": SOURCE,
         "title": raw.get("title"),
-        "description": None,           # not in listing API — fetched on detail crawl
+        "description": None,  # not in listing API — fetched on detail crawl
         "description_summary": None,
         "start_datetime": raw.get("start_time"),
         "end_datetime": raw.get("end_time"),
@@ -123,7 +129,9 @@ def _normalise(raw: dict) -> dict:
             "featured": raw.get("featured"),
             "organization_name": raw.get("organization_name"),
             "submission_period_dates": raw.get("submission_period_dates"),
-            "eligibility_requirements": raw.get("eligibility_requirement_to_join_count"),
+            "eligibility_requirements": raw.get(
+                "eligibility_requirement_to_join_count"
+            ),
             "tags": tags,
             "time_left": raw.get("time_left_to_submission"),
         },

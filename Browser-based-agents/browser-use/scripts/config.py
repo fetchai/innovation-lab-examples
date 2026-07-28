@@ -37,7 +37,6 @@ SOURCES = {
         "base_url": "https://devpost.com",
         "notes": "Public JSON API, 13,469+ hackathons, paginated by page number",
     },
-
     # ── Tier 2: HTML scraping ────────────────────────────────────────────────
     "mlh": {
         "url": "https://www.mlh.com/seasons/2026/events",
@@ -51,7 +50,6 @@ SOURCES = {
         "base_url": "https://www.hackerearth.com",
         "notes": "HTML listing, may require delay for JS render",
     },
-
     # ── Tier 3: browser automation (JS-rendered) ─────────────────────────────
     "devfolio": {
         "url": "https://devfolio.co/hackathons",

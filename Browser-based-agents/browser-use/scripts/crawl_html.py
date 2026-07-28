@@ -10,7 +10,7 @@ import re
 import httpx
 from datetime import datetime, timezone
 
-from config import CRAWL4AI_BASE, BASE_URLS
+from config import CRAWL4AI_BASE
 from extract import parse_rsc_payload, llm_extract
 
 # Per-source scraping config
@@ -62,6 +62,7 @@ def fetch_all_events(source: str) -> list[dict]:
         # Strategy 1: extract from links object when a path prefix is configured
         if link_prefix:
             from urllib.parse import urlparse
+
             base = url.split("/")[2]  # domain
             internal = result.get("links", {}).get("internal", [])
             link_events = []
@@ -75,11 +76,12 @@ def fetch_all_events(source: str) -> list[dict]:
                 if parsed.path.rstrip("/") == link_prefix.rstrip("/"):
                     continue
                 title = link.get("text", "").strip()
-                slug = _derive_slug(title, href, source)
                 link_events.append(_normalise({"title": title, "url": href}, source))
             if link_events:
                 all_events.extend(link_events)
-                print(f"  [HTML:{source}] Links extracted {len(link_events)} events from {url}")
+                print(
+                    f"  [HTML:{source}] Links extracted {len(link_events)} events from {url}"
+                )
                 continue
 
         # Strategy 2: LLM extraction on page text
@@ -145,7 +147,10 @@ def _fetch_result(url: str, js_delay: int = 3) -> dict | None:
     try:
         resp = httpx.post(
             f"{CRAWL4AI_BASE}/crawl",
-            json={"urls": [url], "crawler_config": {"delay_before_return_html": js_delay}},
+            json={
+                "urls": [url],
+                "crawler_config": {"delay_before_return_html": js_delay},
+            },
             timeout=90,
         )
         resp.raise_for_status()
