@@ -17,21 +17,21 @@ Usage:
     python scripts/crawl_deep.py --limit 50             # stop after 50 events
 """
 
-import sys
-import os
-import time
 import argparse
+import os
 import signal
+import sys
+import time
 from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(__file__))
 
 from crawl_external import crawl_external
 from db import (
-    fetch_uncrawled_events,
     count_uncrawled_events,
-    update_external_data,
+    fetch_uncrawled_events,
     log_crawl,
+    update_external_data,
 )
 
 # Per-platform crawl delay overrides (seconds). Some platforms are stricter.
@@ -165,7 +165,7 @@ def run(
     print(f"  Failed:     {failed:,}")
     print(f"  Skipped:    {skipped:,}")
     print(f"  Remaining:  {remaining_after:,}")
-    print(f"  Elapsed:    {str(timedelta(seconds=int(elapsed_total)))}")
+    print(f"  Elapsed:    {timedelta(seconds=int(elapsed_total))!s}")
     print(f"{'=' * 62}\n")
 
     resume_flags = ""

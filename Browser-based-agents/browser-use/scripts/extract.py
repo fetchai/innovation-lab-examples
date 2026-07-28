@@ -6,11 +6,11 @@ JSON strings inside <script>self.__next_f.push(...)</script> tags — the render
 HTML itself is nearly empty. We unescape and search those script payloads for data.
 """
 
-import re
 import json
-import httpx
+import re
 from typing import Any
 
+import httpx
 from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL, ASI_ONE_MODEL
 
 
@@ -89,7 +89,7 @@ def extract_event_json_from_rsc(rsc_text: str) -> dict | None:
     if isinstance(inner, dict):
         merged = {**inner}
         for key in ("hosts", "questions", "media"):
-            if key in envelope and envelope[key]:
+            if envelope.get(key):
                 merged[key] = envelope[key]
         return merged
 

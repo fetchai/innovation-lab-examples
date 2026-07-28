@@ -20,8 +20,9 @@ Each hackathon object contains:
 """
 
 import re
-import httpx
 from datetime import datetime, timezone
+
+import httpx
 
 SOURCE = "devpost"
 API_URL = "https://devpost.com/api/hackathons"

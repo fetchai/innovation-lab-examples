@@ -34,7 +34,7 @@ Usage:
 
 import json
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 DEFAULT_PROFILE_PATH = Path.home() / ".hackathon_profile.json"

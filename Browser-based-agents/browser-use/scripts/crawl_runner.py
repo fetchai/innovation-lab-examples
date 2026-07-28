@@ -19,23 +19,22 @@ Usage:
     python scripts/crawl_runner.py --url <url>      # Single event detail crawl
 """
 
+import argparse
+import os
 import sys
 import time
-import argparse
 from datetime import datetime
-
-import os
 
 sys.path.insert(0, os.path.dirname(__file__))
 
 from config import SOURCES
-from crawl_listing import fetch_all_events as fetch_cerebralvalley
-from crawl_devpost import fetch_all_events as fetch_devpost
-from crawl_html import fetch_all_events as fetch_html
 from crawl_browser import fetch_all_events as fetch_browser
-from crawl_mlh import fetch_all_events as fetch_mlh
+from crawl_devpost import fetch_all_events as fetch_devpost
 from crawl_event import crawl_event
-from db import upsert_event, log_crawl
+from crawl_html import fetch_all_events as fetch_html
+from crawl_listing import fetch_all_events as fetch_cerebralvalley
+from crawl_mlh import fetch_all_events as fetch_mlh
+from db import log_crawl, upsert_event
 
 
 def fetch_events_for_source(source: str) -> list[dict]:

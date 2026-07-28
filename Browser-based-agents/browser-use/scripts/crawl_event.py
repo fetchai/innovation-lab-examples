@@ -12,17 +12,17 @@ Strategy:
 7. Return normalised event dict
 """
 
-import httpx
 from typing import Any
 
+import httpx
 from config import CRAWL4AI_BASE
+from crawl_external import crawl_external, detect_external_url
 from extract import (
-    parse_rsc_payload,
     extract_event_json_from_rsc,
     get_event_data_slice,
     llm_extract_event_details,
+    parse_rsc_payload,
 )
-from crawl_external import detect_external_url, crawl_external
 
 
 def crawl_event(source: str, slug: str, url: str) -> dict[str, Any] | None:

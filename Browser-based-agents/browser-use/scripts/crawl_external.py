@@ -8,11 +8,11 @@ and merged into the event row.
 """
 
 import re
-import httpx
 from urllib.parse import urlparse
 
+import httpx
 from config import CRAWL4AI_BASE
-from extract import parse_rsc_payload, llm_extract
+from extract import llm_extract, parse_rsc_payload
 
 # Known event/hackathon platform domains to follow
 KNOWN_PLATFORMS: dict[str, str] = {

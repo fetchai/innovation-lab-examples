@@ -7,11 +7,11 @@ lists from the rendered page content.
 """
 
 import re
-import httpx
 from datetime import datetime, timezone
 
+import httpx
 from config import CRAWL4AI_BASE
-from extract import parse_rsc_payload, llm_extract
+from extract import llm_extract, parse_rsc_payload
 
 # Per-source scraping config
 SOURCE_CONFIGS: dict[str, dict] = {

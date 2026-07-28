@@ -10,8 +10,9 @@ all fields available from the API; the detail-page crawl is only done for
 platform hackathons that have a dedicated /e/<slug> page.
 """
 
-import httpx
 from datetime import datetime, timezone
+
+import httpx
 
 API_BASE = "https://api.cerebralvalley.ai/v1/public/event/pull"
 PAGE_SIZE = 50

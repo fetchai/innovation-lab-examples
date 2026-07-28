@@ -5,10 +5,9 @@ Scores each candidate on multiple weighted signals and returns
 the top N sorted by score descending.
 """
 
-import re
 import json
+import re
 from datetime import datetime, timezone
-
 
 # Weight config — tune these to change ranking behaviour
 WEIGHTS = {

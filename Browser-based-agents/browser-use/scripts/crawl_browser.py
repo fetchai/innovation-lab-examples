@@ -7,12 +7,12 @@ to extract structured event lists from the rendered content.
 """
 
 import re
-import httpx
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
+import httpx
 from config import CRAWL4AI_BASE
-from extract import parse_rsc_payload, llm_extract
+from extract import llm_extract, parse_rsc_payload
 
 # Per-source browser crawl config
 SOURCE_CONFIGS: dict[str, dict] = {

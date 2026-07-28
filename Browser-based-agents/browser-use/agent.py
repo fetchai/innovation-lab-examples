@@ -6,14 +6,16 @@ Run:
     python agent.py
 """
 
+# ruff: noqa: E402 -- local package imports must follow sys.path.insert below
 from __future__ import annotations
 
+import json
 import os
 import sys
-import json
 from datetime import datetime, timezone
-from uuid import uuid4
 from pathlib import Path
+from uuid import uuid4
+
 from dotenv import load_dotenv
 
 _root = Path(__file__).parent
@@ -21,40 +23,42 @@ load_dotenv(_root / ".env")
 
 sys.path.insert(0, str(_root / "scripts"))
 
-from uagents import Agent, Context, Protocol  # noqa: E402
-from uagents_core.contrib.protocols.chat import (  # noqa: E402
-    chat_protocol_spec,
-    ChatMessage,
+from agent.answer_gen import (
+    classify_and_generate_field_answers,
+    generate_answers,
+)
+from agent.cards import (
+    event_detail_card,
+    event_list_card,
+    registration_confirm_card,
+    welcome_card,
+)
+from agent.lookup import lookup_event
+from agent.parse import parse_question
+from agent.profile import load_profile, save_profile
+from agent.qa import ask
+from recommend.engine import recommend
+from uagents import Agent, Context, Protocol
+from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
-    TextContent,
+    ChatMessage,
+    EndSessionContent,
     MetadataContent,
     StartSessionContent,
-    EndSessionContent,
+    TextContent,
+    chat_protocol_spec,
 )
-from uagents_core.utils.registration import (  # noqa: E402
-    register_chat_agent,
-    RegistrationRequestCredentials,
-)
-from uagents_core.contrib.protocols.chat.cards import (  # noqa: E402
-    create_card_content,
+from uagents_core.contrib.protocols.chat.cards import (
+    CtaAction,
     FormCardPayload,
     FormField,
     FormFieldOption,
-    CtaAction,
+    create_card_content,
 )
-
-from agent.qa import ask  # noqa: E402
-from agent.parse import parse_question  # noqa: E402
-from agent.answer_gen import generate_answers, classify_and_generate_field_answers  # noqa: E402
-from agent.profile import load_profile, save_profile  # noqa: E402
-from agent.cards import (  # noqa: E402
-    welcome_card,
-    event_list_card,
-    event_detail_card,
-    registration_confirm_card,
+from uagents_core.utils.registration import (
+    RegistrationRequestCredentials,
+    register_chat_agent,
 )
-from recommend.engine import recommend  # noqa: E402
-from agent.lookup import lookup_event  # noqa: E402
 
 # ── Config ────────────────────────────────────────────────────────────────────
 

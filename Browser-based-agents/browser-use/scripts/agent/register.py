@@ -19,20 +19,20 @@ CLI:
     python scripts/agent/register.py --url https://lu.ma/some-hackathon
 """
 
+# ruff: noqa: E402 -- local package imports must follow sys.path.insert below
+import argparse
 import asyncio
 import json
-import sys
 import os
-import argparse
-from typing import Callable
+import sys
+from collections.abc import Callable
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from playwright.async_api import async_playwright
-from agent.profile import UserProfile, load_profile
 from agent.answer_gen import generate_answers
+from agent.profile import UserProfile, load_profile
 from db import get_client
-
+from playwright.async_api import async_playwright
 
 # Platform routing — maps external_source → handler module name
 PLATFORM_HANDLERS = {

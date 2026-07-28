@@ -3,10 +3,10 @@ Direct event lookup by name/slug for the "lookup" intent.
 Searches title with ILIKE and returns the best match.
 """
 
+import json
+import os
 import re
 import sys
-import os
-import json
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))

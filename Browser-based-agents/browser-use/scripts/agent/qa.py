@@ -20,17 +20,17 @@ Interactive CLI:
     python scripts/agent/qa.py
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import httpx
-from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL, ASI_ONE_MODEL
+from agent.lookup import format_event_detail, lookup_event
 from agent.parse import parse_question
-from agent.lookup import lookup_event, format_event_detail
 from agent.stats import answer_stat
-from recommend.engine import recommend, format_results
+from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL, ASI_ONE_MODEL
+from recommend.engine import format_results, recommend
 
 
 def ask(question: str, verbose: bool = False) -> str:

@@ -9,17 +9,19 @@ We give it the pre-generated answers so it doesn't need to reason
 about what to write — just where to put it.
 """
 
-import sys
-import os
+# ruff: noqa: E402 -- local package imports must follow sys.path.insert below
 import json
-from typing import TYPE_CHECKING, Callable
+import os
+import sys
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from browser_use import Agent, Browser, BrowserProfile  # noqa: E402
-from browser_use.llm import ChatOpenAI  # noqa: E402
-from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL  # noqa: E402
-from agent.profile import save_profile  # noqa: E402
+from agent.profile import save_profile
+from browser_use import Agent, Browser, BrowserProfile
+from browser_use.llm import ChatOpenAI
+from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL
 
 if TYPE_CHECKING:
     from browser_use import AgentHistoryList

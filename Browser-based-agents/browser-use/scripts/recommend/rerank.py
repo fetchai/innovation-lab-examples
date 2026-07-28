@@ -7,9 +7,9 @@ ranked list with a one-line explanation per event.
 """
 
 import json
+import os
 import re
 import sys
-import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 

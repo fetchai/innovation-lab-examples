@@ -14,9 +14,9 @@ Usage:
 """
 
 import re
-import httpx
 from datetime import datetime, timezone
 
+import httpx
 from config import CRAWL4AI_BASE
 
 SEASON_URLS = [

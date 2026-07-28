@@ -23,14 +23,14 @@ Usage:
         print(ev["rank"], ev["title"], ev["reason"])
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from recommend.filter import fetch_candidates
-from recommend.score import score_and_rank, _parse_jsonb
 from recommend.rerank import rerank
+from recommend.score import _parse_jsonb, score_and_rank
 
 
 def recommend(prefs: dict, skip_rerank: bool = False) -> list[dict]:

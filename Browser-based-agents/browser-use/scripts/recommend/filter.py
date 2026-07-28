@@ -5,15 +5,15 @@ Queries Supabase with the user's hard constraints and returns a list of
 candidate event dicts. Designed to be robust to sparse/missing fields.
 """
 
+import os
 import re
 import sys
-import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from db import get_client
 from datetime import datetime, timezone
 
+from db import get_client
 
 MAX_CANDIDATES = 200  # max rows to pull before scoring
 

@@ -9,12 +9,12 @@ production chat-bot storage path for a specific user without going through
 the bot itself).
 """
 
-import sys
-import os
 import argparse
+import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from agent.profile import UserProfile, save_profile, LOCAL_AGENT_ADDRESS
+from agent.profile import LOCAL_AGENT_ADDRESS, UserProfile, save_profile
 
 parser = argparse.ArgumentParser()
 parser.add_argument(

@@ -9,16 +9,15 @@ pre-generated answers ready to paste — no LLM calls needed mid-form.
 """
 
 import json
+import os
 import re
 import sys
-import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 import httpx
-from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL, ASI_ONE_MODEL
 from agent.profile import UserProfile, profile_to_context
-
+from config import ASI_ONE_API_KEY, ASI_ONE_BASE_URL, ASI_ONE_MODEL
 
 # Preset question types we can answer directly from profile fields
 PRESET_MAP = {

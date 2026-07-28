@@ -4,13 +4,14 @@ Uses the Supabase REST API via supabase-py.
 Falls back to direct REST calls using the anon key if supabase-py isn't available.
 """
 
-import os
 import json
+import os
 import time
-import httpx
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
+
+import httpx
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env")
