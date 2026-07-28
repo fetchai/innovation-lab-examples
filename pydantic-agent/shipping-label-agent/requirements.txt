@@ -1,0 +1,25 @@
+# Fetch.ai agent framework + ASI:One chat protocol (pins match the quiz-agent)
+uagents==0.23.6
+uagents-core==0.4.0
+
+# Pydantic AI — structured output, dependency injection, requires_approval gating
+pydantic-ai>=1.0.0
+pydantic>=2.7.0
+
+# ASI:One is reached through Pydantic AI's OpenAI-compatible model
+openai>=1.40.0
+
+# Stripe test-mode Checkout — the payment gate rail (mirrored from quiz-agent)
+stripe>=8.0.0
+
+# Shippo test-mode REST calls
+httpx>=0.27.0
+
+# Utilities
+python-dotenv>=1.0.0
+
+# Dev / CI (ruff, mypy, pytest)
+pytest>=8.0.0
+pytest-asyncio>=0.24.0
+ruff>=0.8.0
+mypy>=1.11.0

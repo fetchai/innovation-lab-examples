@@ -1,0 +1,4 @@
+uagents>=0.14.0
+uagents-core>=0.1.0
+google-genai>=0.8.0
+python-dotenv>=1.0.0
