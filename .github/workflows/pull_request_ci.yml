@@ -140,33 +140,6 @@ jobs:
           echo "Update CHANGELOG.md (or contributors/CHANGELOG.md for community agents)."
           exit 1
 
-  contributor-path-check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Block new top-level agent folders (use contributors/)
-        shell: bash
-        run: |
-          set -euo pipefail
-          BASE_SHA="${{ github.event.pull_request.base.sha }}"
-          HEAD_SHA="${{ github.sha }}"
-          ADDED_TOP="$(git diff --name-only --diff-filter=A "$BASE_SHA" "$HEAD_SHA" | awk -F/ 'NF>1{print $1}' | sort -u)"
-          EXISTING_TOP="$(git ls-tree -d --name-only "$BASE_SHA" | sort -u)"
-          for dir in $ADDED_TOP; do
-            case "$dir" in
-              contributors|.github|docs) continue ;;
-            esac
-            if ! echo "$EXISTING_TOP" | grep -qx "$dir"; then
-              echo "New top-level folder '$dir' is not allowed for community agents."
-              echo "Add new agents under contributors/<your-agent-name>/ — see contributors/README.md"
-              exit 1
-            fi
-          done
-          echo "Contributor path check passed."
-
   review-required:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false

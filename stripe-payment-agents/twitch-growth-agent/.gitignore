@@ -1,0 +1,11 @@
+.env
+twitchy_tokens.db
+*.db
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.agent
+*_data.json
+*.log
+.DS_Store
