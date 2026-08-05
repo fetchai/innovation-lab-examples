@@ -87,7 +87,15 @@ else
     echo "[2/4] Virtual environment already exists."
 fi
 
-source .venv/bin/activate
+if [[ -f ".venv/bin/activate" ]]; then
+    source .venv/bin/activate
+elif [[ -f ".venv/Scripts/activate" ]]; then
+    source .venv/Scripts/activate
+else
+    echo "Error: virtual environment activation script not found in .venv." >&2
+    echo "Try deleting .venv and re-running this script." >&2
+    exit 1
+fi
 
 if [[ -f "requirements.txt" ]]; then
     echo "[3/4] Installing dependencies..."
