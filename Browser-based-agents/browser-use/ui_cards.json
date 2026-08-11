@@ -1,0 +1,355 @@
+{
+  "welcome": {
+    "root": {
+      "type": "section",
+      "title": "Hackrawl",
+      "subtitle": "Find, explore, and register for hackathons — powered by ASI:One",
+      "children": [
+        {
+          "type": "group",
+          "direction": "column",
+          "gap": 12,
+          "children": [
+            {
+              "type": "text",
+              "value": "I have 16,700+ events from Cerebral Valley, Devpost, MLH, ETHGlobal and more. Ask me anything:",
+              "style": "muted"
+            },
+            {
+              "type": "group",
+              "direction": "column",
+              "gap": 8,
+              "children": [
+                {
+                  "type": "button",
+                  "label": "Find AI hackathons near me",
+                  "primary": false,
+                  "action": { "selection": { "quick_query": "Find AI hackathons near me" } }
+                },
+                {
+                  "type": "button",
+                  "label": "Show hackathons with big prizes",
+                  "primary": false,
+                  "action": { "selection": { "quick_query": "Show hackathons with prizes over $10k" } }
+                },
+                {
+                  "type": "button",
+                  "label": "Online hackathons this month",
+                  "primary": false,
+                  "action": { "selection": { "quick_query": "Online hackathons I can join this month" } }
+                },
+                {
+                  "type": "button",
+                  "label": "ETHGlobal and Web3 hackathons",
+                  "primary": false,
+                  "action": { "selection": { "quick_query": "Upcoming ETHGlobal and Web3 hackathons" } }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "event_list": {
+    "root": {
+      "type": "section",
+      "title": "Top Matches",
+      "subtitle": "_SUBTITLE_",
+      "children": [
+        {
+          "type": "list",
+          "items": "_EVENTS_"
+        },
+        {
+          "type": "group",
+          "direction": "row",
+          "gap": 12,
+          "children": [
+            {
+              "type": "button",
+              "label": "Refine results",
+              "primary": false,
+              "action": { "selection": { "action": "refine" } }
+            },
+            {
+              "type": "button",
+              "label": "View all",
+              "primary": false,
+              "action": { "selection": { "action": "view_all" } }
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "event_item": {
+    "children": [
+      {
+        "type": "group",
+        "direction": "column",
+        "gap": 14,
+        "children": [
+          {
+            "type": "group",
+            "direction": "column",
+            "gap": 4,
+            "children": [
+              {
+                "type": "heading",
+                "value": "_TITLE_",
+                "level": 3
+              },
+              {
+                "type": "text",
+                "value": "_REASON_",
+                "style": "muted"
+              }
+            ]
+          },
+          {
+            "type": "group",
+            "direction": "row",
+            "gap": 16,
+            "children": [
+              {
+                "type": "text",
+                "value": "_DATE_",
+                "style": "muted"
+              },
+              {
+                "type": "text",
+                "value": "_LOCATION_",
+                "style": "muted"
+              },
+              {
+                "type": "text",
+                "value": "_PRIZE_",
+                "style": "muted"
+              }
+            ]
+          },
+          {
+            "type": "group",
+            "direction": "row",
+            "gap": 6,
+            "children": "_BADGES_"
+          },
+          {
+            "type": "group",
+            "direction": "row",
+            "gap": 12,
+            "children": [
+              {
+                "type": "button",
+                "label": "Register Now",
+                "primary": true,
+                "action": {
+                  "selection": {
+                    "action": "register",
+                    "event_slug": "_SLUG_",
+                    "event_url": "_URL_"
+                  }
+                }
+              },
+              {
+                "type": "button",
+                "label": "Details",
+                "primary": false,
+                "action": {
+                  "selection": {
+                    "action": "view_details",
+                    "event_slug": "_SLUG_"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+
+  "event_detail": {
+    "root": {
+      "type": "section",
+      "title": "_TITLE_",
+      "subtitle": "_PLATFORM_ · _STATUS_",
+      "children": [
+        {
+          "type": "group",
+          "direction": "column",
+          "gap": 16,
+          "children": [
+            {
+              "type": "group",
+              "direction": "row",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "group",
+                  "direction": "column",
+                  "gap": 4,
+                  "children": [
+                    { "type": "text", "value": "DATE", "style": "muted" },
+                    { "type": "text", "value": "_DATE_RANGE_" }
+                  ]
+                },
+                {
+                  "type": "group",
+                  "direction": "column",
+                  "gap": 4,
+                  "children": [
+                    { "type": "text", "value": "LOCATION", "style": "muted" },
+                    { "type": "text", "value": "_LOCATION_" }
+                  ]
+                },
+                {
+                  "type": "group",
+                  "direction": "column",
+                  "gap": 4,
+                  "children": [
+                    { "type": "text", "value": "PRIZE", "style": "muted" },
+                    { "type": "text", "value": "_PRIZE_" }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "group",
+              "direction": "row",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "group",
+                  "direction": "column",
+                  "gap": 4,
+                  "children": [
+                    { "type": "text", "value": "ORGANIZER", "style": "muted" },
+                    { "type": "text", "value": "_ORGANIZER_" }
+                  ]
+                },
+                {
+                  "type": "group",
+                  "direction": "column",
+                  "gap": 4,
+                  "children": [
+                    { "type": "text", "value": "TEAM SIZE", "style": "muted" },
+                    { "type": "text", "value": "_TEAM_SIZE_" }
+                  ]
+                },
+                {
+                  "type": "group",
+                  "direction": "column",
+                  "gap": 4,
+                  "children": [
+                    { "type": "text", "value": "REGISTRATIONS", "style": "muted" },
+                    { "type": "text", "value": "_REG_COUNT_" }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "value": "_DESCRIPTION_",
+              "style": "body"
+            },
+            {
+              "type": "group",
+              "direction": "row",
+              "gap": 6,
+              "children": "_BADGES_"
+            },
+            {
+              "type": "group",
+              "direction": "column",
+              "gap": 6,
+              "children": [
+                { "type": "text", "value": "REGISTRATION QUESTIONS", "style": "muted" },
+                { "type": "text", "value": "_QUESTIONS_" }
+              ]
+            },
+            {
+              "type": "group",
+              "direction": "column",
+              "gap": 4,
+              "children": [
+                { "type": "text", "value": "WEBSITE", "style": "muted" },
+                { "type": "text", "value": "_URL_" }
+              ]
+            },
+            {
+              "type": "button",
+              "label": "Register Now",
+              "primary": true,
+              "action": {
+                "selection": {
+                  "action": "register",
+                  "event_slug": "_SLUG_",
+                  "event_url": "_URL_"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "registration_confirm": {
+    "root": {
+      "type": "section",
+      "title": "Registration Started",
+      "subtitle": "_TITLE_",
+      "children": [
+        {
+          "type": "group",
+          "direction": "column",
+          "gap": 12,
+          "children": [
+            {
+              "type": "text",
+              "value": "Opening browser to complete your registration. I'll fill in your details automatically.",
+              "style": "body"
+            },
+            {
+              "type": "group",
+              "direction": "column",
+              "gap": 6,
+              "children": [
+                { "type": "text", "value": "Answers I'll fill in:", "style": "muted" },
+                { "type": "text", "value": "_ANSWERS_PREVIEW_" }
+              ]
+            },
+            {
+              "type": "group",
+              "direction": "row",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "button",
+                  "label": "Confirm and Register",
+                  "primary": true,
+                  "action": {
+                    "selection": {
+                      "action": "confirm_register",
+                      "event_slug": "_SLUG_"
+                    }
+                  }
+                },
+                {
+                  "type": "button",
+                  "label": "Cancel",
+                  "primary": false,
+                  "action": { "selection": { "action": "cancel" } }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
