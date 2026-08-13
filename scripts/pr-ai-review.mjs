@@ -12,9 +12,16 @@
  * pull requests from forks. Do not add a step that runs contributor code.
  *
  * Required env:
- *   ASI_ONE_API_KEY   ASI:One API key
- *   GITHUB_TOKEN      token with pull-requests: write
- *   GITHUB_REPOSITORY owner/repo
+ *   ASI_ONE_API_KEY   ASI:One API key. The only secret anyone has to add.
+ *   GITHUB_TOKEN      The token GitHub Actions mints automatically for this run
+ *                     (`secrets.GITHUB_TOKEN`). Nobody creates or supplies it,
+ *                     it is not a personal access token, and it is scoped to
+ *                     this repository alone — it cannot touch a contributor's
+ *                     fork or any other repository. The workflow narrows it to
+ *                     `contents: read` and `pull-requests: write`; the write bit
+ *                     is only what lets the job post its review back onto the
+ *                     pull request. It expires when the job ends.
+ *   GITHUB_REPOSITORY Always this repository, set from `github.repository`.
  *   PR_NUMBER         pull request number
  *
  * Optional env:
