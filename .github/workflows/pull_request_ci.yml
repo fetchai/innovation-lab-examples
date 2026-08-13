@@ -159,7 +159,7 @@ jobs:
           set -euo pipefail
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.sha }}"
-          CHANGED_PY="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
+          CHANGED_PY="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
           if [ -z "$CHANGED_PY" ]; then
             echo "No Python files changed; skipping lint."
             exit 0
@@ -185,7 +185,7 @@ jobs:
           set -euo pipefail
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.sha }}"
-          CHANGED_PY="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
+          CHANGED_PY="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
           if [ -z "$CHANGED_PY" ]; then
             echo "No Python files changed; skipping format check."
             exit 0
@@ -211,12 +211,22 @@ jobs:
           set -euo pipefail
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.sha }}"
-          CHANGED_PY="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
+          CHANGED_PY="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
           if [ -z "$CHANGED_PY" ]; then
             echo "No Python files changed; skipping typecheck."
             exit 0
           fi
-          echo "$CHANGED_PY" | tr '\n' '\0' | xargs -0 mypy --ignore-missing-imports --follow-imports=silent
+          # One file per invocation: the examples are independent projects that
+          # reuse filenames (agent.py, main.py, conftest.py), and checking two
+          # same-named files together makes mypy abort with "Duplicate module".
+          status=0
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            echo "::group::mypy $file"
+            mypy --ignore-missing-imports --follow-imports=silent "$file" || status=1
+            echo "::endgroup::"
+          done <<< "$CHANGED_PY"
+          exit "$status"
 
   validate-architecture:
     runs-on: ubuntu-latest
