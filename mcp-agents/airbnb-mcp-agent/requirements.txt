@@ -1,0 +1,10 @@
+uagents>=0.21,<0.25
+uagents-core>=0.4,<0.5
+
+# MCP client. Pinned below 2.0: the 2.x line reorganised the client modules.
+mcp>=1.1,<2.0
+
+# Claude, used to turn the MCP tool output into a chat reply.
+anthropic>=0.42,<1.0
+
+python-dotenv>=1.0,<2.0

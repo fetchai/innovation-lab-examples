@@ -1,0 +1,19 @@
+# Agno agent with Gemini + Exa search, exposed over A2A and bridged to uAgents.
+
+agno>=1.0,<3.0
+google-genai>=1.0,<2.0
+exa-py>=1.0,<2.0
+
+# a2a-sdk 0.4 removed a2a.types.TextPart, which shopping_agent.py imports.
+a2a-sdk[http-server]>=0.3.20,<0.4.0
+
+# Later releases dropped SingleA2AAdapter, which main.py imports.
+uagents-adapter==0.6.2
+
+httpx>=0.28,<0.29
+pydantic>=2.0,<3.0
+typing-extensions>=4.0
+python-dotenv>=1.0,<2.0
+uvicorn>=0.30
+starlette>=0.37
+sse-starlette>=2.0

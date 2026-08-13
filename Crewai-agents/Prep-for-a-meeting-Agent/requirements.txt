@@ -1,0 +1,13 @@
+uagents==0.22.3
+uagents-adapter==0.2.1
+
+crewai
+langchain-openai
+langchain
+openai
+
+# Exa search, used by tools/ExaSearchTool.py
+exa-py
+
+pydantic>=2.0,<3.0
+python-dotenv

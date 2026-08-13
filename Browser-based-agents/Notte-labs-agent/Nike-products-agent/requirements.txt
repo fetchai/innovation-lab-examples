@@ -1,5 +1,5 @@
 uagents
 python-dotenv
 pydantic
-notte
+notte-sdk
 tenacity
