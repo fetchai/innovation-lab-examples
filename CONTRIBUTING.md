@@ -174,9 +174,7 @@ Recommended README snippet:
 - Add `.env.example` if environment variables are required.
 - Include demo image/GIF and agent profile link when applicable.
 - Run `ruff check .` and `ruff format .` before submitting.
-- Add a changelog entry:
-  - Community agents: [contributors/CHANGELOG.md](contributors/CHANGELOG.md)
-  - Other changes: root [CHANGELOG.md](CHANGELOG.md)
+- Add a changelog entry in [contributors/CHANGELOG.md](contributors/CHANGELOG.md) if you are changing a community agent. Examples elsewhere in the repository do not need one.
 - Ensure all CI checks pass on `pull_request`:
   - `stargazer-gate`
   - `contributor-path-check`

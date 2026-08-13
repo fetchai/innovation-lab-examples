@@ -107,7 +107,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Require changelog update for code changes
+      - name: Require changelog update for community agent changes
         shell: bash
         run: |
           set -euo pipefail
@@ -118,26 +118,19 @@ jobs:
             echo "No files changed."
             exit 0
           fi
-          # Doc-only PRs skip changelog
-          NON_DOC="$(echo "$CHANGED" | grep -vE '\.(md|MD)$' || true)"
-          if [ -z "$NON_DOC" ]; then
-            echo "Documentation-only change; skipping changelog check."
+          # Only contributors/ carries a changelog. The rest of the repository is
+          # a collection of independent examples where a single shared log was
+          # more churn than signal, so nothing else is gated here.
+          CONTRIB="$(grep -E '^contributors/' <<< "$CHANGED" | grep -vE '\.(md|MD)$' || true)"
+          if [ -z "$CONTRIB" ]; then
+            echo "No non-doc changes under contributors/; nothing to check."
             exit 0
           fi
-          ONLY_CONTRIBUTORS="$(echo "$NON_DOC" | grep -vE '^contributors/' || true)"
-          if [ -z "$ONLY_CONTRIBUTORS" ]; then
-            if grep -qx 'contributors/CHANGELOG.md' <<< "$CHANGED"; then
-              echo "contributors/CHANGELOG.md updated."
-              exit 0
-            fi
-            echo "Update contributors/CHANGELOG.md for changes under contributors/."
-            exit 1
-          fi
-          if grep -qx 'CHANGELOG.md' <<< "$CHANGED"; then
-            echo "CHANGELOG.md updated."
+          if grep -qx 'contributors/CHANGELOG.md' <<< "$CHANGED"; then
+            echo "contributors/CHANGELOG.md updated."
             exit 0
           fi
-          echo "Update CHANGELOG.md (or contributors/CHANGELOG.md for community agents)."
+          echo "Update contributors/CHANGELOG.md for changes under contributors/."
           exit 1
 
   lint:

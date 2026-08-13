@@ -63,7 +63,7 @@ Reference examples elsewhere in the repo:
 
 ## Changelog
 
-Every non-documentation change under `contributors/` must update [contributors/CHANGELOG.md](./CHANGELOG.md). The root [CHANGELOG.md](../CHANGELOG.md) is updated by maintainers when we cut releases.
+Every non-documentation change under `contributors/` must update [contributors/CHANGELOG.md](./CHANGELOG.md). Examples outside `contributors/` do not keep a changelog.
 
 ---
 

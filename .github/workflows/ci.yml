@@ -65,7 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          REQUIRED_FILES=("README.md" "CONTRIBUTING.md" "LICENSE" "CHANGELOG.md" "SECURITY.md")
+          REQUIRED_FILES=("README.md" "CONTRIBUTING.md" "LICENSE" "SECURITY.md")
           for file in "${REQUIRED_FILES[@]}"; do
             if [ ! -f "$file" ]; then
               echo "Missing required repository file: $file"

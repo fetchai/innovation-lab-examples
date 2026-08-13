@@ -75,7 +75,6 @@ innovation-lab-examples/
 │
 ├── 📄 README.md                 # This file
 ├── 📄 CONTRIBUTING.md           # How to contribute
-├── 📄 CHANGELOG.md              # What changed, and why
 ├── 📄 SECURITY.md               # Vulnerability reporting
 ├── 📄 ISSUES_GUIDE.md           # How to file a good issue
 ├── 📄 LICENSE                   # Apache 2.0
@@ -338,7 +337,6 @@ Use the [Agent README Template](docs/AGENT_README_TEMPLATE.md) for new examples.
 | Contributing Guide | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Community Agents Folder | [contributors/README.md](contributors/README.md) |
 | Security Policy | [SECURITY.md](SECURITY.md) |
-| Changelog | [CHANGELOG.md](CHANGELOG.md) |
 | Community Changelog | [contributors/CHANGELOG.md](contributors/CHANGELOG.md) |
 | Issues Guide | [ISSUES_GUIDE.md](ISSUES_GUIDE.md) |
 
