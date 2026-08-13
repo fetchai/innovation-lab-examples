@@ -19,6 +19,23 @@ MCP, the A2A protocol, LangChain, CrewAI, Gemini, Claude and OpenAI.
 
 </div>
 
+
+## 📈 Star history
+
+<p align="center">
+ <a href="https://github.com/fetchai/innovation-lab-examples/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/fetchai/innovation-lab-examples?style=for-the-badge&logo=github&label=Stars&color=1f6feb" /></a>
+ <a href="https://github.com/fetchai/innovation-lab-examples/forks"><img alt="GitHub forks" src="https://img.shields.io/github/forks/fetchai/innovation-lab-examples?style=for-the-badge&logo=github&label=Forks&color=8957e5" /></a>
+ <a href="https://github.com/fetchai/innovation-lab-examples/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/fetchai/innovation-lab-examples?style=for-the-badge&logo=github&label=Contributors&color=2ea043" /></a>
+ <a href="https://github.com/fetchai/innovation-lab-examples/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/fetchai/innovation-lab-examples?style=for-the-badge&logo=git&label=Last%20commit&color=db6d28" /></a>
+</p>
+
+<p align="center">
+ <a href="https://www.star-history.com/#fetchai/innovation-lab-examples&Date">
+ </a>
+</p>
+
+If these examples save you time, a ⭐ helps other developers find them.
+
 ---
 
 Every folder here is a **self-contained, runnable AI agent project** with its own README, dependencies and
@@ -281,25 +298,6 @@ EXAMPLE=fetch-hackathon-quickstarter docker compose up
 > Several examples also include their own `Dockerfile` and `docker-compose.yml` for custom setups.
 
 ---
-
-## 📈 Star history
-
-<p align="center">
- <a href="https://github.com/fetchai/innovation-lab-examples/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/fetchai/innovation-lab-examples?style=for-the-badge&logo=github&label=Stars&color=1f6feb" /></a>
- <a href="https://github.com/fetchai/innovation-lab-examples/forks"><img alt="GitHub forks" src="https://img.shields.io/github/forks/fetchai/innovation-lab-examples?style=for-the-badge&logo=github&label=Forks&color=8957e5" /></a>
- <a href="https://github.com/fetchai/innovation-lab-examples/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/fetchai/innovation-lab-examples?style=for-the-badge&logo=github&label=Contributors&color=2ea043" /></a>
- <a href="https://github.com/fetchai/innovation-lab-examples/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/fetchai/innovation-lab-examples?style=for-the-badge&logo=git&label=Last%20commit&color=db6d28" /></a>
-</p>
-
-<p align="center">
- <a href="https://www.star-history.com/#fetchai/innovation-lab-examples&Date">
- </a>
-</p>
-
-If these examples save you time, a ⭐ helps other developers find them.
-
----
-
 ## 🤝 Contributing
 
 We welcome contributions from everyone — a new agent example, a bug fix or a documentation improvement.
