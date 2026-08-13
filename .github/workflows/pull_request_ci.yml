@@ -126,14 +126,14 @@ jobs:
           fi
           ONLY_CONTRIBUTORS="$(echo "$NON_DOC" | grep -vE '^contributors/' || true)"
           if [ -z "$ONLY_CONTRIBUTORS" ]; then
-            if echo "$CHANGED" | grep -q '^contributors/CHANGELOG.md$'; then
+            if grep -qx 'contributors/CHANGELOG.md' <<< "$CHANGED"; then
               echo "contributors/CHANGELOG.md updated."
               exit 0
             fi
             echo "Update contributors/CHANGELOG.md for changes under contributors/."
             exit 1
           fi
-          if echo "$CHANGED" | grep -q '^CHANGELOG.md$'; then
+          if grep -qx 'CHANGELOG.md' <<< "$CHANGED"; then
             echo "CHANGELOG.md updated."
             exit 0
           fi
