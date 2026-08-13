@@ -11,7 +11,7 @@ This example demonstrates a minimal “store” A2A agent that supports add/remo
 ```bash
 # (Recommended) create venv and install deps
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r ../requirements.txt -r requirements.txt
+pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env

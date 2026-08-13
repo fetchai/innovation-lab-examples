@@ -49,12 +49,12 @@ python agent.py
 2. Use **mailbox** (no public URL needed): run the agent (e.g. on your machine or a server) and connect via the Agent Inspector link from the logs.
 3. **ASI-One:** After the agent is registered on Agentverse, it appears in [asi1.ai](https://asi1.ai); you can chat there or add it to a group.
 
-See [deploy-agent-on-av/docs.md](../innovation-lab-examples/deploy-agent-on-av/docs.md) for Render/mailbox deployment and env vars.
+See [deploy-agent-on-av/docs.md](../../deploy-agent-on-av/docs.md) for Render/mailbox deployment and env vars.
 
 ## What the agent does
 
 - **Receipt photo:** Attach an image → agent extracts line items (name + price) with OpenAI Vision and lists them.
-- **Optional Stripe payment:** If `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` are set, after listing items the agent sends a **Stripe payment request** (embedded Checkout, same as [stripe-horoscope-agent](../stripe-horoscope-agent)). Complete payment in the UI, then say **done** to start the poll.
+- **Optional Stripe payment:** If `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` are set, after listing items the agent sends a **Stripe payment request** (embedded Checkout, same as [stripe-horoscope-agent](../../stripe-horoscope-agent)). Complete payment in the UI, then say **done** to start the poll.
 - **Manual:** Say **new receipt**, then **add Pizza 12** (and more). Say **done** when finished.
 - **Poll:** Each person replies with the **numbers** of items they brought (e.g. `1,2,3`). Multiple people can claim the same item.
 - **Split:** Say **calculate** → agent shows each person’s share (only people who brought an item pay for it).

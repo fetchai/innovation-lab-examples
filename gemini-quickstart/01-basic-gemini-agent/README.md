@@ -191,4 +191,4 @@ Enhance this basic agent:
 
 ## Next Guide
 
-👉 [02-multimodal-agent](../02-multimodal-agent/) - Add image understanding to your agent!
+👉 [02-multimodal-agent](../02-imagen-agent/) - Add image understanding to your agent!

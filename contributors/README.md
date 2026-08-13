@@ -107,4 +107,5 @@ Your pull request must pass:
 | Agent | Description |
 |-------|-------------|
 | [community_agent](./community_agent/) | AI community growth agent for events, conferences, and hackathons |
-| [gemini-research-agent](./gemini-research-agent/) | Multi-agent research and summarization assistant powered by Google Gemini |
+| [gemini-task-manager-agent](./gemini-task-manager-agent/) | Breaks a goal down into an actionable task plan using Google Gemini |
+| [news-summarizer-agent](./news-summarizer-agent/) | Fetches top headlines for a topic via NewsAPI and summarizes them with ASI:One |

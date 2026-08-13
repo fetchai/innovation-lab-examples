@@ -1,6 +1,6 @@
 # Profile README — automatic contributor badge
 
-When your PR is **merged** into `fetchai/innovation-lab-examples`, the [**Award Contributor Badge**](../../../.github/workflows/award-contributor-badge.yml) workflow:
+When your PR is **merged** into `fetchai/innovation-lab-examples`, the [**Award Contributor Badge**](../../.github/workflows/award-contributor-badge.yml) workflow:
 
 1. Adds the badge to your agent README under `contributors/<your-agent>/`
 2. Registers you in [`BADGE_REGISTRY.json`](../BADGE_REGISTRY.json)

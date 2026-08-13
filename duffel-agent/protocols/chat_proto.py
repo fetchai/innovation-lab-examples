@@ -28,28 +28,23 @@ from uagents_core.contrib.protocols.chat import (
 # Protocol initialization
 chat_proto = Protocol(spec=chat_protocol_spec)
 
-# Known passenger profiles (auto-fill based on sender address)
-KNOWN_PASSENGERS = {
-    "agent1qwjam26wx4y45fv44gm09q5znn8kfvy66nvan6ggg9ax2fhw4n0e6sxzkr9": {
-        "title": "mr",
-        "given_name": "Attila",
-        "family_name": "Bagoly",
-        "born_on": "1996-10-10",
-        "gender": "M",
-        "email": "attila.bagoly@fetch.ai",
-        "phone_number": "+13433232242",
-        "passport_number": "XY139503",
-    },
-    "agent1qv87tq7p3tghryfa07m3d0kls854qp5zr6ge3ex0r2fwlkjjkerakvjy35z": {
-        "title": "mr",
-        "given_name": "Abhi",
-        "family_name": "Gangani",
-        "born_on": "1997-01-31",
-        "gender": "M",
-        "email": "abhi.gangani@fetch.ai",
-        "phone_number": "+447788998877",
-    }
-}
+# Optional passenger profiles, auto-filled from the sender's agent address so a
+# demo booking can skip the details prompt. Leave empty unless you are running
+# your own instance — never commit real names, passports or contact details.
+#
+# KNOWN_PASSENGERS = {
+#     "agent1q...": {
+#         "title": "mr",
+#         "given_name": "Ada",
+#         "family_name": "Lovelace",
+#         "born_on": "1990-01-01",
+#         "gender": "F",
+#         "email": "ada@example.com",
+#         "phone_number": "+15550000000",
+#         "passport_number": "X1234567",
+#     },
+# }
+KNOWN_PASSENGERS: Dict[str, Dict[str, Any]] = {}
 
 def _get_known_passenger(sender: str) -> Optional[Dict[str, Any]]:
     """Get pre-filled passenger details for known agent addresses."""
