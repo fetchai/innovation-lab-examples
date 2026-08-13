@@ -113,9 +113,11 @@ jobs:
           set -euo pipefail
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.sha }}"
-          CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          # ACMR excludes deletions: removing a stale example is not a change
+          # anyone needs to write a changelog entry for.
+          CHANGED="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA")"
           if [ -z "$CHANGED" ]; then
-            echo "No files changed."
+            echo "No added or modified files."
             exit 0
           fi
           # Only contributors/ carries a changelog. The rest of the repository is

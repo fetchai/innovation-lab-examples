@@ -1,25 +1,6 @@
 name: PR AI code review
 
-# ASI:One review of every pull request into main.
-#
-# Trigger is pull_request_target, not pull_request, because most contributions
-# here come from forks and pull_request does not expose repository secrets to
-# fork PRs — the review would silently skip for exactly the contributors it is
-# meant to help.
-#
-# pull_request_target is only safe when the workflow never runs contributor
-# code. This one does not: actions/checkout takes the default ref (the base
-# branch, which is trusted) and the script reads the diff over the GitHub API.
-# Do not add a step here that checks out the PR head or installs and runs code
-# from it. That would hand repository secrets to anyone who can open a PR.
-#
-# Merge blocking: scripts/pr-ai-review.mjs exits 1 when the model reports a
-# high-confidence must_fix, or when the local secret scan matches. Mark
-# "ASI:One PR review" as a required status check on main to enforce it.
-#
-# Requires ASI_ONE_API_KEY in repository secrets. Without it the job explains
-# what is missing and passes, so the check never blocks a repo that has not
-# configured the key yet.
+
 
 on:
   pull_request_target:
@@ -60,4 +41,5 @@ jobs:
           REVIEW_MAX_DIFF_CHARS: "180000"
           REVIEW_DEEP: "1"
           REVIEW_MAX_INLINE: "15"
+          REVIEW_VERIFY: "1"
         run: node scripts/pr-ai-review.mjs
