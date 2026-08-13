@@ -76,7 +76,7 @@ innovation-lab-examples/
 │   └── ISSUE_TEMPLATE/
 │
 ├── fetch-hackathon-quickstarter/   # Start here!
-├── advance-agent-examples/         # Advanced patterns
+├── google-adk/                     # Google ADK advanced patterns
 ├── gemini-quickstart/              # Google Gemini series
 ├── anthropic-quickstart/           # Claude series
 ├── ...                             # 30+ examples below
@@ -109,6 +109,9 @@ innovation-lab-examples/
 | [Claude Agent SDK](Claude%20Agent%20SDK/) | Real estate search agent with Claude SDK | Python, Claude SDK, uAgents | 🟡 Intermediate |
 | [google-genai-parallel-processing](google-genai-parallel-processing/) | Parallel processing with Google GenAI | Python, Google GenAI, uAgents | 🟡 Intermediate |
 | [flight-tracker-openai-workflow-agent](flight-tracker-openai-workflow-agent/) | Flight tracking with OpenAI workflow agents | Python, OpenAI SDK, uAgents | 🟡 Intermediate |
+| [langchain-agents](langchain-agents/) | Hackflow — hackathon competitive-intelligence agent built on LangChain Deep Agents with Stripe payments | Python, LangChain, uAgents, Stripe | 🔴 Advanced |
+| [pydantic-agent](pydantic-agent/) | Shipping label booking agent using Pydantic AI and ASI:One interactive cards | Python, Pydantic AI, uAgents, Shippo | 🔴 Advanced |
+| [security-scanner-agent](security-scanner-agent/) | LLM-powered code security scanner returning structured vulnerability reports | Python, uAgents, ASI:One | 🟡 Intermediate |
 
 ### 🔗 Agent-to-Agent (A2A)
 
@@ -146,9 +149,10 @@ innovation-lab-examples/
 
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
-| [advance-agent-examples](advance-agent-examples/) | Advanced patterns — sub-agents, search, policy, security, SEO, due diligence | Python, uAgents, Google ADK | 🟡–🔴 Collection |
+| [google-adk](google-adk/) | Google ADK patterns — sub-agents, search, policy, security, SEO audit, due diligence, trends | Python, uAgents, Google ADK | 🟡–🔴 Collection |
 | [Crewai-agents](Crewai-agents/) | CrewAI agents — trip planner, code analyzer, meeting prep, blood report | Python, CrewAI, uAgents | 🟡–🔴 Collection |
 | [ag2-agents](ag2-agents/) | AG2 framework — research synthesis, payment approval | Python, AG2, uAgents | 🔴 Advanced |
+| [video-to-map-agent](video-to-map-agent/) | Turns YouTube travel vlogs into a day-by-day itinerary with route map, PDF and Excel output | Python, uAgents, ASI:One, Google Maps, Stripe | 🔴 Advanced |
 
 ### 🌍 Community Contributors
 
