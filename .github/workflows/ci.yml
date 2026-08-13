@@ -76,6 +76,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,14 +84,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install pytest
-        run: python -m pip install --upgrade pip pytest
-      - name: Run tests when present
+      - name: Run example test suites
         shell: bash
-        run: |
-          set -euo pipefail
-          if find . -type f \( -name "test_*.py" -o -name "*_test.py" \) | grep -q .; then
-            pytest -q
-          else
-            echo "No test files found; skipping tests."
-          fi
+        run: bash .github/scripts/run-example-tests.sh

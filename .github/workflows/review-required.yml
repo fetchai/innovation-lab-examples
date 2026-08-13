@@ -1,0 +1,102 @@
+name: Review Required
+
+# Split out of pull_request_ci.yml so the check is re-evaluated when a review is
+# submitted or dismissed. Without the pull_request_review trigger the job only
+# ran on push-style PR events, so it stayed red forever after a maintainer
+# approved and the PR could never satisfy branch protection.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: review-required-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review-required:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout for maintainer list
+        uses: actions/checkout@v4
+      - name: Require review (skipped for maintainers)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const pr = context.payload.pull_request;
+            const author = pr.user.login;
+            const authorLc = author.toLowerCase();
+            const { owner, repo } = context.repo;
+
+            const fromMaintainersFile = () => {
+              const path = ".github/MAINTAINERS";
+              if (!fs.existsSync(path)) return false;
+              return fs
+                .readFileSync(path, "utf8")
+                .split("\n")
+                .map((l) => l.trim().replace(/^@/, ""))
+                .filter((l) => l && !l.startsWith("#"))
+                .some((u) => u.toLowerCase() === authorLc);
+            };
+
+            let isMaintainer = fromMaintainersFile();
+            if (!isMaintainer) {
+              try {
+                await github.rest.orgs.checkMembershipForUser({
+                  org: "fetchai",
+                  username: author,
+                });
+                isMaintainer = true;
+              } catch (_) {}
+            }
+            if (!isMaintainer) {
+              try {
+                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner,
+                  repo,
+                  username: author,
+                });
+                isMaintainer = ["admin", "maintain", "write"].includes(data.permission);
+              } catch (_) {}
+            }
+
+            if (isMaintainer) {
+              core.info(`Maintainer @${author}: review-required skipped.`);
+              return;
+            }
+
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner,
+              repo,
+              pull_number: pr.number,
+              per_page: 100,
+            });
+
+            // Keep only each reviewer's most recent state so a later CHANGES_REQUESTED
+            // or dismissal correctly overrides an earlier approval.
+            const latestByReviewer = new Map();
+            for (const review of reviews) {
+              if (!review.user || !["APPROVED", "CHANGES_REQUESTED", "DISMISSED"].includes(review.state)) {
+                continue;
+              }
+              latestByReviewer.set(review.user.login, review.state);
+            }
+            const approved = [...latestByReviewer.values()].includes("APPROVED");
+
+            if (!approved) {
+              core.setFailed(
+                "This PR needs at least one approving review from a maintainer before merge. " +
+                  "Maintainers (Fetch.ai org / repo write access) skip this check. " +
+                  "See CONTRIBUTING.md and .github/BRANCH_PROTECTION.md."
+              );
+            } else {
+              core.info("Review requirement satisfied.");
+            }

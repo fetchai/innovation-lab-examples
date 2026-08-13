@@ -15,16 +15,20 @@ Community PRs must **not merge without review**. Configure these settings on the
 
 3. **Require status checks to pass before merging**
    - Require branches to be up to date before merging: recommended
-   - Required checks (match workflow job names in `pull_request_ci.yml`):
+   - Required checks (must match actual workflow job names — a required check that
+     no workflow produces blocks every PR indefinitely):
+
+     From `pull_request_ci.yml`:
      - `stargazer-gate`
-     - `contributor-path-check`
      - `changelog-check`
-     - `review-required`
      - `lint`
      - `format`
      - `typecheck`
      - `validate-architecture`
      - `test`
+
+     From `review-required.yml`:
+     - `review-required`
 
 4. **Do not allow bypassing the above settings** (recommended for `main`)
 
@@ -33,10 +37,14 @@ Community PRs must **not merge without review**. Configure these settings on the
 
 ## CI vs GitHub settings
 
-- The `review-required` workflow job fails until a reviewer approves the PR.
+- The `review-required` workflow job fails until a reviewer approves the PR. It lives in its own
+  workflow so that it also runs on `pull_request_review` events — otherwise the check would stay
+  red after an approval and never re-evaluate.
 - Branch protection must list `review-required` as a required check, or merges can still proceed if only other checks are required.
 - Admins can bypass protection unless "Include administrators" is enforced.
 
 ## After updating workflows
 
-When new jobs are added to `pull_request_ci.yml`, re-open branch protection and add the new check names to the required list.
+When jobs are added, removed or renamed in any PR workflow, re-open branch protection and update
+the required check list to match. Required checks are matched by job name; a stale name that no
+workflow produces will never report and will block merges forever.
