@@ -53,4 +53,26 @@ All notable changes to this repository are documented in this file.
 - `README.md` rewritten with project overview, quickstart guide, categorized examples index table, folder structure, Docker instructions, and resource links
 - `CONTRIBUTING.md` expanded with setup script reference, tagging/categorization guidance, Docker support section, and issue flow references
 ### Fixed
+- CI `test` job never ran any tests. `find ... | grep -q .` killed `find` with SIGPIPE, and under `set -o pipefail` that failure became the `if` condition, so every run reported "No test files found". Replaced with [`.github/scripts/run-example-tests.sh`](.github/scripts/run-example-tests.sh), which builds a virtualenv per example from that example's `requirements.txt` — a single root `pytest` cannot work because the examples have conflicting dependency sets. All seven suites now run (234 tests)
+- CI `review-required` never re-evaluated after a maintainer approved, because it only triggered on push-style PR events. Moved to [`review-required.yml`](.github/workflows/review-required.yml) with a `pull_request_review` trigger, and it now uses each reviewer's latest state so `CHANGES_REQUESTED` overrides an earlier approval
+- CI `lint`, `format` and `typecheck` failed on unrelated changes: deleted files were passed to `ruff`/`mypy` (fixed with `--diff-filter=ACMR`), and `mypy` aborted with "Duplicate module" whenever a PR touched two files sharing a basename (now invoked per file)
+- Pinned the repo-wide ruff selection in [`ruff.toml`](ruff.toml) to `E4`/`E7`/`E9`/`F`. CI installs the latest ruff, whose default rule set has grown well past what these examples were written against, so upstream releases retroactively failed PRs on untouched code
+- `ag2-agents/payment-approval` and `ag2-agents/research-synthesis-team` could not run: ag2 1.0 removed the `autogen` module, a2a-sdk 0.4 removed `a2a.types.TextPart`, and `uagents-adapter` dropped `SingleA2AAdapter`. Pinned to the last compatible line and gave the sync tests an event loop
+- `mcp-agents/ticketlens-agent` could not import: mcp 2.0 renamed `streamablehttp_client`. Pinned `mcp<2.0`
+- `stripe-payment-agents/twitch-growth-agent` integration tests call `os._exit(0)`, terminating pytest mid-run with a success code and silently dropping the other 28 tests. Deselected by default via `pytest.ini`; still runnable with `pytest -m integration`
+- `duffel-agent` shipped real passenger PII (names, `fetch.ai` email addresses, phone numbers, dates of birth, a passport number) in `KNOWN_PASSENGERS`; replaced with an empty map and a commented template
+- `Composio/linkedln/.env.example` defined `LINKEDLN_AUTH_CONFIG_ID` while the code reads `LINKEDIN_AUTH_CONFIG_ID`
+- `fet-example/.env.example` asked for `GEMINI_API_KEY`, which the example never reads; it uses `ASI_ONE_API_KEY`
+- `a2a-cart-store/README.md` told users to install a `../requirements.txt` that does not exist
+- `README.md` examples index pointed at `advance-agent-examples/` (renamed to `google-adk/`) and omitted `google-adk`, `langchain-agents`, `pydantic-agent`, `security-scanner-agent` and `video-to-map-agent`
+- `contributors/README.md` linked a `gemini-research-agent/` directory that does not exist, and omitted the two community agents that do
+- Corrected seven relative links in example READMEs that pointed at the wrong directory depth
+- `security-scanner-agent/,gitignore` was a typo for `.gitignore`, so its ignore rules never applied
+- `.github/BRANCH_PROTECTION.md` listed `contributor-path-check` as a required status check; no workflow produces it, so requiring it would block every PR forever
 - Fixed sandbox validation in `scan_directory` to properly reject paths outside the demo sandbox using `Path.relative_to()` (#159)
+
+### Removed
+- Committed build artifacts: a 5,310-file Python virtualenv under `frontend-integration/venv/`, 2,265 `__pycache__` entries, 15 `.DS_Store` files, and uAgents runtime state (`duffel-agent/state/*.sqlite`, `agent1q*_data.json`)
+- Two dead files: an empty `duffel-agent/runner.py` and `mcp-agents/events-finder-mcp-agent/new-adapter.py`, an unreferenced orphan importing a `.protocol` module that does not exist
+- The blanket `*.json` rule in `.gitignore`, replaced with credential-specific patterns; it silently dropped legitimate project files. `.dockerignore` is no longer ignored either
+- Tracked `Crewai-agents/*/.env` files, renamed to `.env.example` (both only ever held empty placeholders, verified across the full history)
