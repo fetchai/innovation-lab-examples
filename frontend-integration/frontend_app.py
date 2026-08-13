@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, jsonify
 import requests
-import json
 
 app = Flask(__name__)
 
@@ -9,6 +8,10 @@ AGENTS = {
     "search": "http://127.0.0.1:8001",
     "info": "http://127.0.0.1:8002"
 }
+
+# Without this the request inherits requests' default of no timeout, so an agent
+# that accepts the connection but never answers holds the Flask worker forever.
+AGENT_TIMEOUT_SECONDS = 30
 
 @app.route('/')
 def index():
@@ -24,7 +27,9 @@ def search_products():
         
         # Call search agent with POST request
         payload = {"query": query}
-        response = requests.post(f"{AGENTS['search']}/search", json=payload)
+        response = requests.post(
+            f"{AGENTS['search']}/search", json=payload, timeout=AGENT_TIMEOUT_SECONDS
+        )
         response.raise_for_status()
         
         # Agent returns JSON directly
@@ -65,7 +70,9 @@ def get_product_info():
         
         # Call info agent with POST request
         payload = {"barcode": barcode}
-        response = requests.post(f"{AGENTS['info']}/product", json=payload)
+        response = requests.post(
+            f"{AGENTS['info']}/product", json=payload, timeout=AGENT_TIMEOUT_SECONDS
+        )
         response.raise_for_status()
         
         # Agent returns JSON directly
@@ -118,7 +125,7 @@ def health_check():
                 health_status[agent_name] = {"status": "healthy", "url": agent_url, "agent_info": health_data}
             else:
                 health_status[agent_name] = {"status": "unhealthy", "url": agent_url}
-        except:
+        except (requests.RequestException, ValueError):
             health_status[agent_name] = {"status": "offline", "url": agent_url}
     
     return jsonify(health_status)

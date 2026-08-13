@@ -1,15 +1,13 @@
 import os
 import json
 import asyncio
-import secrets
-import urllib.parse
 from typing import Dict, Any, Optional
 from contextlib import AsyncExitStack
 from cryptography.fernet import Fernet
 import time
 import mcp
 from mcp.client.stdio import stdio_client
-from uagents import Agent, Context, Protocol, Model
+from uagents import Agent, Context, Protocol
 from uagents_core.contrib.protocols.chat import (
     chat_protocol_spec,
     ChatMessage,
@@ -533,13 +531,21 @@ async def handle_chat_message(ctx: Context, sender: str, msg: ChatMessage):
                                 headers={'Authorization': f'token {item.text}'}
                             )
                             
-                            # GitHub returns scopes in the X-OAuth-Scopes header
-                            if 'X-OAuth-Scopes' in scopes_response.headers:
-                                scopes = scopes_response.headers['X-OAuth-Scopes']
+                            # GitHub only sends X-OAuth-Scopes for classic tokens.
+                            # Fine-grained PATs and App tokens omit it, so treat a
+                            # missing header as "scopes not introspectable" rather
+                            # than reading an unbound name below.
+                            scopes = scopes_response.headers.get('X-OAuth-Scopes')
+                            if scopes is not None:
                                 user_info['token_scopes'] = scopes
-                                ctx.logger.info(f"Token validated with required scopes")
+                                ctx.logger.info("Token validated, scopes: %s", scopes)
+                            else:
+                                ctx.logger.info(
+                                    "Token validated; scopes not reported by GitHub "
+                                    "(fine-grained token), skipping scope check"
+                                )
                             
-                            if 'repo' not in scopes:
+                            if scopes is not None and 'repo' not in scopes:
                                 response_text = "❌ **Token Missing Permissions**\n\nYour token doesn't have 'repo' scope needed to create repositories.\n\nPlease create a new token at https://github.com/settings/tokens/new with these scopes:\n- ✅ repo\n- ✅ user:email\n- ✅ read:user"
                             else:
                                 # Store token and user info

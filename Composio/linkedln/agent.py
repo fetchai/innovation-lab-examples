@@ -436,11 +436,21 @@ class LinkedInAgent:
 
 Each post will automatically generate professional content and a relevant image! 🖼️"""
 
-# Initialize LinkedInAgent
-linkedin_agent = LinkedInAgent(
-    user_id="",
-    auth_config_id=os.getenv("LINKEDIN_AUTH_CONFIG_ID")
-)
+# One LinkedInAgent per chat sender. A single shared instance would leak across
+# users: its user_id is reassigned on every "connect" message, so a second user
+# connecting would silently redirect the first user's posts and tokens to their
+# own LinkedIn account.
+_agents_by_sender: Dict[str, LinkedInAgent] = {}
+
+
+def get_agent_for(sender: str) -> LinkedInAgent:
+    """Return the caller's own LinkedInAgent, creating it on first contact."""
+    if sender not in _agents_by_sender:
+        _agents_by_sender[sender] = LinkedInAgent(
+            user_id="",
+            auth_config_id=os.getenv("LINKEDIN_AUTH_CONFIG_ID"),
+        )
+    return _agents_by_sender[sender]
 
 def extract_user_id_from_query(text: str) -> str:
     """Extract LinkedIn username from query"""
@@ -473,6 +483,8 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             text += item.text
 
     print(f"📥 Received query: {text}")
+
+    linkedin_agent = get_agent_for(sender)
 
     # Check if this is a help request
     if text.lower().strip() in ["help", "what can i do", "available operations", "permissions", "scopes"]:
