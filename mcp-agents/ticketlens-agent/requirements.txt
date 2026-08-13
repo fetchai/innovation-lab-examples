@@ -1,5 +1,6 @@
 uagents
-mcp
+# mcp 2.0 renamed streamablehttp_client to streamable_http_client; stay on 1.x.
+mcp>=1.9,<2.0
 openai
 python-dotenv
 pytest
