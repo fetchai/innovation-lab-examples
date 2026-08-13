@@ -85,12 +85,15 @@ innovation-lab-examples/
 ├── 🔧 ruff.toml                 # Repo-wide lint baseline
 │
 ├── 📂 .github/                  # CI and contributor templates
-│   ├── workflows/               #   ci · pull_request_ci · review-required
+│   ├── workflows/               #   ci · pull_request_ci · review-required · pr-ai-review
 │   ├── scripts/                 #   run-example-tests.sh (per-example test runner)
 │   ├── ISSUE_TEMPLATE/
 │   ├── pull_request_template.md
 │   ├── CODEOWNERS
 │   └── BRANCH_PROTECTION.md
+│
+├── 📂 scripts/                  # Repository tooling
+│   └── pr-ai-review.mjs         #   ASI:One code review for pull requests
 │
 ├── 📂 docs/                     # Shared guides and templates
 │   └── AGENT_README_TEMPLATE.md
@@ -282,7 +285,25 @@ EXAMPLE=fetch-hackathon-quickstarter docker compose up
 
 ## 📈 Star history
 
-[![Star History Chart](https://api.star-history.com/svg?repos=fetchai/innovation-lab-examples&type=Date)](https://star-history.com/#fetchai/innovation-lab-examples&Date)
+<p align="center">
+ <a href="https://www.star-history.com/fetchai/innovation-lab-examples">
+  <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/badge?repo=fetchai/innovation-lab-examples&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/badge?repo=fetchai/innovation-lab-examples" />
+   <img alt="Star History Rank for fetchai/innovation-lab-examples" src="https://api.star-history.com/badge?repo=fetchai/innovation-lab-examples" />
+  </picture>
+ </a>
+</p>
+
+<p align="center">
+ <a href="https://www.star-history.com/#fetchai/innovation-lab-examples&Date">
+  <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=fetchai/innovation-lab-examples&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=fetchai/innovation-lab-examples&type=Date" />
+   <img alt="Star history chart for fetchai/innovation-lab-examples" src="https://api.star-history.com/svg?repos=fetchai/innovation-lab-examples&type=Date" />
+  </picture>
+ </a>
+</p>
 
 If these examples save you time, a ⭐ helps other developers find them.
 
