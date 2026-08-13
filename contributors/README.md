@@ -85,14 +85,6 @@ Your pull request must pass:
 
 ---
 
-## Contributor badge (after your PR merges)
-
-1. Badge is added to your agent `README.md` under `contributors/<your-agent>/`
-2. You are listed in [BADGE_REGISTRY.json](./BADGE_REGISTRY.json)
-3. Install [profile-badge-sync](./profile-badge-sync/README.md) in your `GitHubUsername/GitHubUsername` repo for **automatic** profile README badge, or paste the markdown from the merge comment.
-
----
-
 ## Need help?
 
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — full contribution policy

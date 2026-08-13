@@ -73,6 +73,10 @@ All notable changes to this repository are documented in this file.
 - Fixed sandbox validation in `scan_directory` to properly reject paths outside the demo sandbox using `Path.relative_to()` (#159)
 
 ### Removed
+- GSSoC '26 program automation, now that the program has ended: `gssoc-label-bootstrap` and `gssoc-label-sync` workflows, [`.github/labels/gssoc-labels.json`](.github/labels/), `.github/scripts/create-gssoc-labels.sh`, and `docs/GSSOC.md`
+- The contributor badge system that existed to support it: `award-contributor-badge` workflow, `.github/badges/` artwork, `contributors/BADGE_REGISTRY.json`, and `contributors/profile-badge-sync/`. Badge references removed from `CONTRIBUTING.md` and `contributors/README.md`; individual contributors' own credit lines in their agent READMEs are untouched
+- `.github/scripts/create-fetch-tech-issues.sh`, a one-shot script that bulk-created the #54–#91 issue batch. It is not wired into CI and re-running it would duplicate issues
+- Generic contributor infrastructure is kept: `CONTRIBUTING.md`, issue and PR templates, `CODEOWNERS`, `MAINTAINERS`, `stargazer-gate`, `review-required` and the `contributors/` folder
 - Committed build artifacts: a 5,310-file Python virtualenv under `frontend-integration/venv/`, 2,265 `__pycache__` entries, 15 `.DS_Store` files, and uAgents runtime state (`duffel-agent/state/*.sqlite`, `agent1q*_data.json`)
 - Two dead files: an empty `duffel-agent/runner.py` and `mcp-agents/events-finder-mcp-agent/new-adapter.py`, an unreferenced orphan importing a `.protocol` module that does not exist
 - The blanket `*.json` rule in `.gitignore`, replaced with credential-specific patterns; it silently dropped legitimate project files. `.dockerignore` is no longer ignored either
