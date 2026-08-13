@@ -293,11 +293,6 @@ EXAMPLE=fetch-hackathon-quickstarter docker compose up
 
 <p align="center">
  <a href="https://www.star-history.com/#fetchai/innovation-lab-examples&Date">
-  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=fetchai/innovation-lab-examples&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=fetchai/innovation-lab-examples&type=Date" />
-   <img alt="Star history chart for fetchai/innovation-lab-examples" src="https://api.star-history.com/svg?repos=fetchai/innovation-lab-examples&type=Date" />
-  </picture>
  </a>
 </p>
 
