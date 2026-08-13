@@ -48,6 +48,7 @@ All notable changes to this repository are documented in this file.
 - Missing `README.md` for `duffel-agent`, `deploy-agent-on-av`
 
 ### Changed
+- `README.md` restructured for discoverability: keyword-led header, quick nav, a full annotated folder tree grouped by category, a [star history](https://star-history.com/#fetchai/innovation-lab-examples&Date) chart, and an FAQ covering the questions people actually search for. The repository had **no GitHub topics set at all**, which is the single largest discoverability gap on GitHub — 20 topics are now set (`ai-agents`, `autonomous-agents`, `multi-agent-systems`, `agentic-ai`, `llm-agents`, `uagents`, `mcp`, `a2a-protocol`, …) along with a keyword-led description and a homepage link. `contributors/gemini-task-manager-agent/` was missing from the index and is now listed
 - `community_agent/` moved to `contributors/community_agent/` — all new community agents must use `contributors/<agent-name>/`
 - `CONTRIBUTING.md`, `README.md`, `ISSUES_GUIDE.md`, and PR template updated for contributor folder workflow
 - `README.md` rewritten with project overview, quickstart guide, categorized examples index table, folder structure, Docker instructions, and resource links
