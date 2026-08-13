@@ -60,7 +60,7 @@ async def handle_message(ctx: Context, sender: str, msg: ChatMessage):
             max_tokens=2048,
         )
         response = str(r.choices[0].message.content)
-    except:
+    except Exception:
         ctx.logger.exception("Error querying model")
 
     await ctx.send(sender, ChatMessage(

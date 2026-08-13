@@ -1,37 +1,5 @@
-#!/usr/bin/env node
-/**
- * AI code review for pull requests, backed by ASI:One.
- *
- * Reads the PR diff from the GitHub API, asks ASI:One to review it, and posts
- * the result as a PR review with inline comments. Exits non-zero when the model
- * reports a high-confidence `must_fix`, or when the local secret scan hits, so
- * the check can be made merge-blocking via branch protection.
- *
- * This never checks out or executes pull request code. It only reads the diff
- * over the API, which is what makes it safe to run with repository secrets on
- * pull requests from forks. Do not add a step that runs contributor code.
- *
- * Required env:
- *   ASI_ONE_API_KEY   ASI:One API key. The only secret anyone has to add.
- *   GITHUB_TOKEN      The token GitHub Actions mints automatically for this run
- *                     (`secrets.GITHUB_TOKEN`). Nobody creates or supplies it,
- *                     it is not a personal access token, and it is scoped to
- *                     this repository alone — it cannot touch a contributor's
- *                     fork or any other repository. The workflow narrows it to
- *                     `contents: read` and `pull-requests: write`; the write bit
- *                     is only what lets the job post its review back onto the
- *                     pull request. It expires when the job ends.
- *   GITHUB_REPOSITORY Always this repository, set from `github.repository`.
- *   PR_NUMBER         pull request number
- *
- * Optional env:
- *   ASI_ONE_MODEL          default "asi1"
- *   ASI_ONE_BASE_URL       default "https://api.asi1.ai/v1"
- *   REVIEW_MAX_DIFF_CHARS  default 180000
- *   REVIEW_MAX_INLINE      default 15
- *   REVIEW_DEEP            "1" asks for a more thorough pass
- *   REVIEW_FAIL_ON         "must_fix" (default) or "never"
- */
+
+
 
 const API_KEY = process.env.ASI_ONE_API_KEY || "";
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || "";
