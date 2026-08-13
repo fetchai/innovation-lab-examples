@@ -1,0 +1,45 @@
+name: PR AI code review
+
+
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+concurrency:
+  group: pr-ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-review:
+    name: ASI:One PR review
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Checkout base branch (never the pull request head)
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run AI review
+        env:
+          ASI_ONE_API_KEY: ${{ secrets.ASI_ONE_API_KEY }}
+          ASI_ONE_MODEL: asi1
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          REVIEW_MAX_DIFF_CHARS: "180000"
+          REVIEW_DEEP: "1"
+          REVIEW_MAX_INLINE: "15"
+          REVIEW_VERIFY: "1"
+        run: node scripts/pr-ai-review.mjs

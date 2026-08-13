@@ -1,5 +1,11 @@
+from dotenv import load_dotenv
 from uagents import Agent
-from chat_proto import chat_proto
+
+# Load .env before importing chat_proto: utils.py reads ASI_ONE_API_KEY at call
+# time, but keeping this first means every module sees the same environment.
+load_dotenv()
+
+from chat_proto import chat_proto  # noqa: E402
 
 agent = Agent(name="PDF Summariser Agent", port=8005, mailbox=True)
 
@@ -8,4 +14,3 @@ agent.include(chat_proto, publish_manifest=True)
 
 if __name__ == "__main__":
     agent.run()
-

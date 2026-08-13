@@ -66,17 +66,19 @@ dmypy.json
 # pyre
 .pyre/
 
-# Service account keys
-*.json
-!requirements.txt
-!package.json
-!tsconfig.json
-!contributors/BADGE_REGISTRY.json
-!.github/labels/gssoc-labels.json
-!pyproject.toml
+# Credentials / service account keys
+*credentials*.json
+*service-account*.json
+*service_account*.json
+client_secret*.json
+private_keys.json
+token.json
 
-# Docker
-.dockerignore
+# uAgents local runtime storage
+agent1q*_data.json
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 
 # Temporary files
 *.tmp

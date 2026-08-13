@@ -32,24 +32,25 @@ from .nl_parser import parse_filters
 from .llm_parser import llm_interpret
 from .state_manager import get_state, merge_parsed_into_state, next_page, update_state
 
-from property_finder.repliers_client.client import search_listings, fetch_listing_by_mls
-from property_finder.repliers_client.formatter import (
+# repliers_client is a sibling package of asi1_agent, so the example directory
+# has to be importable. It cannot be a package itself: its name has a hyphen.
+import sys
+from pathlib import Path
+
+_agent_dir = Path(__file__).resolve().parent
+_example_root = _agent_dir.parent
+if str(_example_root) not in sys.path:
+    sys.path.insert(0, str(_example_root))
+
+from repliers_client.client import search_listings, fetch_listing_by_mls  # noqa: E402
+from repliers_client.formatter import (  # noqa: E402
     format_listings as format_listings_text,
     format_listing_details,
     format_listing_full,
 )
 
-from . import stripe_payments as stripe_payments_mod
-from .payment_proto import build_payment_proto
-
-# Ensure project root is on path so we can import property_finder.repliers_client
-import sys
-from pathlib import Path
-
-_agent_dir = Path(__file__).resolve().parent
-_project_root = _agent_dir.parent.parent
-if str(_project_root) not in sys.path:
-    sys.path.insert(0, str(_project_root))
+from . import stripe_payments as stripe_payments_mod  # noqa: E402
+from .payment_proto import build_payment_proto  # noqa: E402
 
 # ASI:One helper is kept for optional non-search chat features
 try:

@@ -7,7 +7,8 @@ A conversational Property Finder agent that runs on **ASI1** (https://asi1.ai). 
 ## Project structure
 
 ```
-property_finder/
+conversational-property-finder/
+├── run_agent.py            # Entry point
 ├── asi1_agent/
 │   ├── property_agent.py   # ASI1 uAgent: chat handler, state, Repliers call
 │   ├── nl_parser.py        # Extract location, price, beds, property type from text
@@ -23,56 +24,39 @@ property_finder/
 
 ## Setup
 
-1. **Clone/navigate** to the project (parent of `property_finder`):
+1. **Navigate** to this example:
 
    ```bash
-   cd "/Users/chayanshah/Desktop/Property Finder"
+   cd stripe-payment-agents/conversational-property-finder
    ```
 
 2. **Create a virtualenv** (recommended):
 
    ```bash
-   python3 -m venv venv
-   source venv/bin/activate   # Windows: venv\Scripts\activate
+   python3 -m venv .venv
+   source .venv/bin/activate   # Windows: .venv\Scripts\activate
    ```
 
-3. **Install dependencies** (from project root):
+3. **Install dependencies**:
 
    ```bash
-   pip install -r property_finder/asi1_agent/requirements.txt
+   pip install -r asi1_agent/requirements.txt
    ```
 
 4. **Configure environment**:
 
    ```bash
-   cp property_finder/asi1_agent/.env.example property_finder/asi1_agent/.env
-   # Edit .env: set AGENT_SECRET_KEY_1, AGENTVERSE_API_KEY, REPLIERS_API_KEY
+   cp asi1_agent/.env.example asi1_agent/.env
+   # Edit .env: AGENT_SECRET_KEY_1 and REPLIERS_API_KEY are required.
    ```
 
-   Or set env vars in the shell; the agent loads `.env` from its directory when run.
+   The agent loads `.env` from `asi1_agent/` when it runs. You can also export the
+   variables in your shell instead.
 
 ## Run the agent
 
-**From inside `property_finder`** (recommended):
-
 ```bash
-cd property_finder
-source venv/bin/activate   # if using a venv
 python3 run_agent.py
-```
-
-**From project root** (parent of `property_finder`):
-
-```bash
-cd "/Users/chayanshah/Desktop/Property Finder"
-python3 property_finder/run_agent.py
-```
-
-Or as a module (from project root only):
-
-```bash
-cd "/Users/chayanshah/Desktop/Property Finder"
-python3 -m property_finder.asi1_agent.property_agent
 ```
 
 You should see the agent address (e.g. `agent1q...`) and Mailbox/Almanac messages. Open https://asi1.ai, find the agent by name or address, and chat.

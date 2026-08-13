@@ -1,0 +1,14 @@
+uagents>=0.21,<0.25
+uagents-core>=0.4,<0.5
+
+# MCP server exposing the Gmail tools (server.py)
+fastmcp>=2.0,<4.0
+
+# Gmail API and the OAuth installed-app flow
+google-api-python-client>=2.100,<3.0
+google-auth>=2.23,<3.0
+google-auth-oauthlib>=1.1,<2.0
+
+httpx>=0.28,<0.29
+requests>=2.31,<3.0
+python-dotenv>=1.0,<2.0

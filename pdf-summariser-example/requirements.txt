@@ -4,4 +4,4 @@ httpx
 pdfplumber
 PyPDF2
 requests
-
+python-dotenv

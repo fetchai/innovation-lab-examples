@@ -25,7 +25,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CHANGED_PY="$(git diff --name-only HEAD~1 HEAD | grep -E '\.py$' || true)"
+          CHANGED_PY="$(git diff --name-only --diff-filter=ACMR HEAD~1 HEAD | grep -E '\.py$' || true)"
           if [ -z "$CHANGED_PY" ]; then
             echo "No Python files changed; skipping lint."
             exit 0
@@ -49,7 +49,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          CHANGED_PY="$(git diff --name-only HEAD~1 HEAD | grep -E '\.py$' || true)"
+          CHANGED_PY="$(git diff --name-only --diff-filter=ACMR HEAD~1 HEAD | grep -E '\.py$' || true)"
           if [ -z "$CHANGED_PY" ]; then
             echo "No Python files changed; skipping format check."
             exit 0
@@ -65,7 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          REQUIRED_FILES=("README.md" "CONTRIBUTING.md" "LICENSE" "CHANGELOG.md" "SECURITY.md")
+          REQUIRED_FILES=("README.md" "CONTRIBUTING.md" "LICENSE" "SECURITY.md")
           for file in "${REQUIRED_FILES[@]}"; do
             if [ ! -f "$file" ]; then
               echo "Missing required repository file: $file"
@@ -76,6 +76,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,14 +84,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install pytest
-        run: python -m pip install --upgrade pip pytest
-      - name: Run tests when present
+      - name: Run example test suites
         shell: bash
-        run: |
-          set -euo pipefail
-          if find . -type f \( -name "test_*.py" -o -name "*_test.py" \) | grep -q .; then
-            pytest -q
-          else
-            echo "No test files found; skipping tests."
-          fi
+        run: bash .github/scripts/run-example-tests.sh

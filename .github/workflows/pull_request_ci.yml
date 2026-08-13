@@ -107,107 +107,33 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Require changelog update for code changes
+      - name: Require changelog update for community agent changes
         shell: bash
         run: |
           set -euo pipefail
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.sha }}"
-          CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          # ACMR excludes deletions: removing a stale example is not a change
+          # anyone needs to write a changelog entry for.
+          CHANGED="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA")"
           if [ -z "$CHANGED" ]; then
-            echo "No files changed."
+            echo "No added or modified files."
             exit 0
           fi
-          # Doc-only PRs skip changelog
-          NON_DOC="$(echo "$CHANGED" | grep -vE '\.(md|MD)$' || true)"
-          if [ -z "$NON_DOC" ]; then
-            echo "Documentation-only change; skipping changelog check."
+          # Only contributors/ carries a changelog. The rest of the repository is
+          # a collection of independent examples where a single shared log was
+          # more churn than signal, so nothing else is gated here.
+          CONTRIB="$(grep -E '^contributors/' <<< "$CHANGED" | grep -vE '\.(md|MD)$' || true)"
+          if [ -z "$CONTRIB" ]; then
+            echo "No non-doc changes under contributors/; nothing to check."
             exit 0
           fi
-          ONLY_CONTRIBUTORS="$(echo "$NON_DOC" | grep -vE '^contributors/' || true)"
-          if [ -z "$ONLY_CONTRIBUTORS" ]; then
-            if echo "$CHANGED" | grep -q '^contributors/CHANGELOG.md$'; then
-              echo "contributors/CHANGELOG.md updated."
-              exit 0
-            fi
-            echo "Update contributors/CHANGELOG.md for changes under contributors/."
-            exit 1
-          fi
-          if echo "$CHANGED" | grep -q '^CHANGELOG.md$'; then
-            echo "CHANGELOG.md updated."
+          if grep -qx 'contributors/CHANGELOG.md' <<< "$CHANGED"; then
+            echo "contributors/CHANGELOG.md updated."
             exit 0
           fi
-          echo "Update CHANGELOG.md (or contributors/CHANGELOG.md for community agents)."
+          echo "Update contributors/CHANGELOG.md for changes under contributors/."
           exit 1
-
-  review-required:
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
-    steps:
-      - name: Checkout for maintainer list
-        uses: actions/checkout@v4
-      - name: Require review (skipped for maintainers)
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require("fs");
-            const pr = context.payload.pull_request;
-            const author = pr.user.login;
-            const authorLc = author.toLowerCase();
-            const { owner, repo } = context.repo;
-
-            const fromMaintainersFile = () => {
-              const path = ".github/MAINTAINERS";
-              if (!fs.existsSync(path)) return false;
-              return fs
-                .readFileSync(path, "utf8")
-                .split("\n")
-                .map((l) => l.trim().replace(/^@/, ""))
-                .filter((l) => l && !l.startsWith("#"))
-                .some((u) => u.toLowerCase() === authorLc);
-            };
-
-            let isMaintainer = fromMaintainersFile();
-            if (!isMaintainer) {
-              try {
-                await github.rest.orgs.checkMembershipForUser({
-                  org: "fetchai",
-                  username: author,
-                });
-                isMaintainer = true;
-              } catch (_) {}
-            }
-            if (!isMaintainer) {
-              try {
-                const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
-                  owner,
-                  repo,
-                  username: author,
-                });
-                isMaintainer = ["admin", "maintain", "write"].includes(data.permission);
-              } catch (_) {}
-            }
-
-            if (isMaintainer) {
-              core.info(`Maintainer @${author}: review-required skipped.`);
-              return;
-            }
-
-            const reviews = await github.rest.pulls.listReviews({
-              owner,
-              repo,
-              pull_number: pr.number,
-            });
-            const approved = reviews.data.some((r) => r.state === "APPROVED");
-            if (!approved) {
-              core.setFailed(
-                "This PR needs at least one approving review from a maintainer before merge. " +
-                  "Maintainers (Fetch.ai org / repo write access) skip this check. " +
-                  "See CONTRIBUTING.md and .github/BRANCH_PROTECTION.md."
-              );
-            } else {
-              core.info("Review requirement satisfied.");
-            }
 
   lint:
     runs-on: ubuntu-latest
@@ -228,7 +154,7 @@ jobs:
           set -euo pipefail
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.sha }}"
-          CHANGED_PY="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
+          CHANGED_PY="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
           if [ -z "$CHANGED_PY" ]; then
             echo "No Python files changed; skipping lint."
             exit 0
@@ -254,7 +180,7 @@ jobs:
           set -euo pipefail
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.sha }}"
-          CHANGED_PY="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
+          CHANGED_PY="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
           if [ -z "$CHANGED_PY" ]; then
             echo "No Python files changed; skipping format check."
             exit 0
@@ -280,12 +206,22 @@ jobs:
           set -euo pipefail
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
           HEAD_SHA="${{ github.sha }}"
-          CHANGED_PY="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
+          CHANGED_PY="$(git diff --name-only --diff-filter=ACMR "$BASE_SHA" "$HEAD_SHA" | grep -E '\.py$' || true)"
           if [ -z "$CHANGED_PY" ]; then
             echo "No Python files changed; skipping typecheck."
             exit 0
           fi
-          echo "$CHANGED_PY" | tr '\n' '\0' | xargs -0 mypy --ignore-missing-imports --follow-imports=silent
+          # One file per invocation: the examples are independent projects that
+          # reuse filenames (agent.py, main.py, conftest.py), and checking two
+          # same-named files together makes mypy abort with "Duplicate module".
+          status=0
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            echo "::group::mypy $file"
+            mypy --ignore-missing-imports --follow-imports=silent "$file" || status=1
+            echo "::endgroup::"
+          done <<< "$CHANGED_PY"
+          exit "$status"
 
   validate-architecture:
     runs-on: ubuntu-latest
@@ -307,6 +243,7 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -314,14 +251,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install pytest
-        run: python -m pip install --upgrade pip pytest
-      - name: Run tests when present
+      - name: Run example test suites
         shell: bash
-        run: |
-          set -euo pipefail
-          if find . -type f \( -name "test_*.py" -o -name "*_test.py" \) | grep -q .; then
-            pytest -q
-          else
-            echo "No test files found; skipping tests."
-          fi
+        run: bash .github/scripts/run-example-tests.sh

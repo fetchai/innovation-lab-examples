@@ -334,4 +334,4 @@ is set for maximum resilience.
 
 ## License
 
-MIT — see [LICENSE](../../LICENSE) in the repository root.
+MIT — see [LICENSE](../../../LICENSE) in the repository root.

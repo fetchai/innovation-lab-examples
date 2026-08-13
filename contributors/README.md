@@ -63,7 +63,7 @@ Reference examples elsewhere in the repo:
 
 ## Changelog
 
-Every non-documentation change under `contributors/` must update [contributors/CHANGELOG.md](./CHANGELOG.md). The root [CHANGELOG.md](../CHANGELOG.md) is updated by maintainers when we cut releases.
+Every non-documentation change under `contributors/` must update [contributors/CHANGELOG.md](./CHANGELOG.md). Examples outside `contributors/` do not keep a changelog.
 
 ---
 
@@ -85,14 +85,6 @@ Your pull request must pass:
 
 ---
 
-## Contributor badge (after your PR merges)
-
-1. Badge is added to your agent `README.md` under `contributors/<your-agent>/`
-2. You are listed in [BADGE_REGISTRY.json](./BADGE_REGISTRY.json)
-3. Install [profile-badge-sync](./profile-badge-sync/README.md) in your `GitHubUsername/GitHubUsername` repo for **automatic** profile README badge, or paste the markdown from the merge comment.
-
----
-
 ## Need help?
 
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — full contribution policy
@@ -107,4 +99,5 @@ Your pull request must pass:
 | Agent | Description |
 |-------|-------------|
 | [community_agent](./community_agent/) | AI community growth agent for events, conferences, and hackathons |
-| [gemini-research-agent](./gemini-research-agent/) | Multi-agent research and summarization assistant powered by Google Gemini |
+| [gemini-task-manager-agent](./gemini-task-manager-agent/) | Breaks a goal down into an actionable task plan using Google Gemini |
+| [news-summarizer-agent](./news-summarizer-agent/) | Fetches top headlines for a topic via NewsAPI and summarizes them with ASI:One |
