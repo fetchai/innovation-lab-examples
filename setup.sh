@@ -87,7 +87,18 @@ else
     echo "[2/4] Virtual environment already exists."
 fi
 
-source .venv/bin/activate
+# Git Bash / MSYS on Windows lays the venv out as .venv/Scripts, not .venv/bin.
+if [[ -f ".venv/bin/activate" ]]; then
+    source .venv/bin/activate
+    VENV_BIN_DIR="bin"
+elif [[ -f ".venv/Scripts/activate" ]]; then
+    source .venv/Scripts/activate
+    VENV_BIN_DIR="Scripts"
+else
+    echo "Error: no virtual environment activation script found in .venv." >&2
+    echo "Delete .venv and re-run this script." >&2
+    exit 1
+fi
 
 if [[ -f "requirements.txt" ]]; then
     echo "[3/4] Installing dependencies..."
@@ -118,7 +129,7 @@ echo ""
 echo "=== Setup Complete ==="
 echo ""
 echo "To activate the environment:"
-echo "  cd $EXAMPLE && source .venv/bin/activate"
+echo "  cd $EXAMPLE && source .venv/$VENV_BIN_DIR/activate"
 echo ""
 
 if [[ -n "$ENTRY_FILE" ]]; then

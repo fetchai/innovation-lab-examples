@@ -9,11 +9,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY ${EXAMPLE}/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
+# Copied before the install so that examples shipping no requirements.txt still
+# build: COPYing a file that does not exist is a hard build failure, whereas a
+# shell test after the fact can skip cleanly.
 COPY ${EXAMPLE}/ ./
+
+RUN if [ -f requirements.txt ]; then \
+        pip install --no-cache-dir --upgrade pip && \
+        pip install --no-cache-dir -r requirements.txt; \
+    else \
+        echo "No requirements.txt for ${EXAMPLE}; skipping dependency install."; \
+    fi
 
 RUN if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env; fi
 
