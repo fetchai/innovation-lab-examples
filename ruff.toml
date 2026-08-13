@@ -1,0 +1,13 @@
+# Repository-wide lint baseline.
+#
+# CI installs the latest ruff, and ruff's default rule set has grown well beyond
+# the classic E4/E7/E9/F defaults these examples were written against. Without
+# this file, upgrading ruff upstream retroactively fails PRs on pre-existing
+# style debt (BLE001, S110, I001, UP006, ...) in ~200 files, in code the
+# contributor never touched. Pin the selection so the lint gate depends on the
+# change, not on the day the runner resolved ruff.
+#
+# An individual example may still opt into stricter rules with its own
+# ruff.toml or [tool.ruff] section; ruff uses the nearest config.
+[lint]
+select = ["E4", "E7", "E9", "F"]

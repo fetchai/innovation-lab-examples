@@ -14,7 +14,6 @@ This module:
 from __future__ import annotations
 import re
 from typing import Dict, Any, Optional
-from uuid import uuid4
 from datetime import datetime, timezone
 
 from uagents import Protocol, Context
@@ -288,7 +287,7 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage) -> None:
                 ctx.storage.set(f"selected_offer_id:{sender}:{session_id}", offer_id)
                 ctx.logger.info(f"Stored offer ID: {offer_id}")
             else:
-                ctx.logger.warning(f"No offer_id found in state when requesting payment!")
+                ctx.logger.warning("No offer_id found in state when requesting payment!")
             
             # Store offer_passengers (passenger IDs from the offer)
             offer_passengers = new_state.get("offer_passengers") or state.get("offer_passengers")
