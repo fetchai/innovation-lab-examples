@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/fetchai-innovation-lab-examples-badge.png)](https://mseep.ai/app/fetchai-innovation-lab-examples)
+
 <div align="center">
 
 # Fetch.ai Innovation Lab Examples
