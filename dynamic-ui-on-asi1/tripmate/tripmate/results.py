@@ -89,7 +89,7 @@ def _hotel_price_text(hotel: dict, nights: int = 1) -> str:
 
 
 def hotels_carousel(data: dict, destination: str) -> dict:
-    items = []
+    items: list[dict] = []
     nights = (data.get("search_params") or {}).get("nights") or 1
     dest_label = _destination_label(destination)
     for h in data.get("products_summary", [])[:5]:
@@ -117,7 +117,7 @@ def hotels_carousel(data: dict, destination: str) -> dict:
 
 
 def packages_carousel(data: dict, subtitle: str) -> dict:
-    items = []
+    items: list[dict] = []
     search_id = data.get("search_id", "")
     for p in data.get("products_summary", [])[:5]:
         idx = p.get("index", 0)
@@ -172,7 +172,7 @@ def _flight_subtitle(flight: dict) -> str:
 
 
 def flights_json_carousel(data: dict, subtitle: str) -> dict:
-    items = []
+    items: list[dict] = []
     for f in data.get("flights", [])[:5]:
         fid = f"flight_{f.get('flight_number', len(items) + 1)}"
         airline = f.get("airline", "Flight")
