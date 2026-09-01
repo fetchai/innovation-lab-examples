@@ -131,7 +131,7 @@ innovation-lab-examples/
 │
 ├── 🤖 LLM integration
 │   ├── asi1-llm-example/
-│   ├── news-card-agent/
+│   ├── dynamic-ui-on-asi1/          # ASI:One interactive cards (TripMate + news)
 │   ├── anthropic-quickstart/
 │   ├── gemini-quickstart/
 │   ├── openai-agent-sdk/
@@ -198,7 +198,7 @@ innovation-lab-examples/
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
 | [asi1-llm-example](asi1-llm-example/) | ASI:One LLM with LangChain integration | Python, LangChain, ASI:One | 🟢 Beginner |
-| [news-card-agent](news-card-agent/) | Live news rendered as ASI:One interactive cards (custom element-tree) with Tavily + ASI1 polish | Python, uAgents, ASI:One, Tavily, Cards | 🟡 Intermediate |
+| [dynamic-ui-on-asi1](dynamic-ui-on-asi1/) | ASI:One interactive cards — [TripMate](dynamic-ui-on-asi1/tripmate/) (flights/hotels/packages via lastminute.com MCP) and [news-card-agent](dynamic-ui-on-asi1/news-card-agent/) (live news carousel) | Python, uAgents, ASI:One, Cards, MCP, Tavily | 🟡 Intermediate |
 | [anthropic-quickstart](anthropic-quickstart/) | Claude integration series — basic, vision, functions, MCP, multi-agent | Python, Anthropic SDK, uAgents | 🟢–🔴 Series |
 | [gemini-quickstart](gemini-quickstart/) | Google Gemini series — text, Imagen, Veo, Lyria, TTS, research, film | Python, Google Gemini, uAgents | 🟢–🔴 Series |
 | [openai-agent-sdk](openai-agent-sdk/) | OpenAI Agents SDK examples (scholarship finder) | Python, OpenAI SDK, uAgents | 🟡 Intermediate |

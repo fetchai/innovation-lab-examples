@@ -40,8 +40,8 @@ This agent takes any free-text news query (e.g. `latest tech news`, `bitcoin new
 
 1. **Clone the repository:**
 ```bash
-git clone <repository-url>
-cd news-card-agent
+git clone https://github.com/fetchai/innovation-lab-examples.git
+cd innovation-lab-examples/dynamic-ui-on-asi1/news-card-agent
 ```
 
 2. **Install dependencies:**
