@@ -117,7 +117,9 @@ def test_fails_closed_when_contents_is_a_hash_string():
     # json_block not honoured) rather than the dict with link_as_account. The
     # verifier must not crash with AttributeError; it must fail closed.
     payload = _send_block(int(0.05 * verify_nano.RAW_PER_XNO))
-    payload["contents"] = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+    payload["contents"] = (
+        "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+    )
     with mock.patch.object(verify_nano, "nano_rpc_post", return_value=payload):
         ok = verify_nano.verify_nano_send("ABC", "nano_1seller", "0.03", logger=None)
     assert ok is False
@@ -137,6 +139,7 @@ def test_fails_closed_when_contents_missing():
 # never the buyer-controlled msg.funds.amount. declared_matches_accepted is the
 # pure decision used in payment.py before any on-chain check.
 
+
 def test_declared_matches_accepted_exact():
     # 0.0001 declared against 0.0001 accepted -> exact match, accepted.
     assert verify_nano.declared_matches_accepted("0.0001", "0.0001") is True
@@ -148,7 +151,10 @@ def test_declared_matches_accepted_mismatch_rejected():
     assert verify_nano.declared_matches_accepted("0.00001", "0.0001") is False
     assert verify_nano.declared_matches_accepted("0.001", "0.0001") is False
     # The classic bypass: a microscopic declared amount.
-    assert verify_nano.declared_matches_accepted("0.000000000000000000001", "0.0001") is False
+    assert (
+        verify_nano.declared_matches_accepted("0.000000000000000000001", "0.0001")
+        is False
+    )
 
 
 def test_declared_matches_accepted_unparseable_fails_closed():
