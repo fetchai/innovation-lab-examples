@@ -32,6 +32,15 @@ seller can request XNO and verify receipt on-chain before releasing the job.
   the seller for the requested amount, and only then sends `CompletePayment`.
 - Replay protection: an honoured send hash cannot be reused.
 - Clearly logs the verification path so reviewers can confirm honesty.
+- Binds each payment to the order it was issued for: every `RequestPayment` carries an
+  opaque random order id (`reference`) and `metadata["provider_nano_representative"]`, a
+  commitment to (order id, payTo, price). The buyer signs its send block with that
+  representative and echoes the order id on `CommitPayment`; the seller checks the
+  block's representative and block time, and records `block hash -> order` once in
+  `ctx.storage` (persistent, 5-minute window). See `nano_binding.py` and
+  [option C of the binding standard](https://github.com/dhyabi2/xno-call-binding/blob/main/docs/BINDING-STANDARD.md).
+  Node lookups time out after 15 s, cap the response at 64 KiB and refuse plain-HTTP
+  RPC URLs unless loopback.
 
 ## Prerequisites
 

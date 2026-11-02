@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import os
+import urllib.parse
 import urllib.request
 from decimal import Decimal
 from typing import Any
@@ -27,6 +28,20 @@ from typing import Any
 # Public Nano RPC (rpc.nano.to). No key required for read actions.
 # Override with the NANO_RPC_URL env var to point at a private/shared node.
 NANO_RPC_URL = os.getenv("NANO_RPC_URL", "https://rpc.nano.to")
+
+# Node lookups are bounded: 15 s timeout, 64 KiB response cap, and plain-HTTP RPC is
+# refused unless the host is loopback.
+RPC_TIMEOUT_S = 15
+RPC_MAX_BYTES = 64 * 1024
+_LOOPBACK = ("localhost", "127.0.0.1", "::1")
+
+
+def rpc_url_allowed(url: str) -> bool:
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme == "https":
+        return bool(parts.hostname)
+    return parts.scheme == "http" and parts.hostname in _LOOPBACK
+
 
 # There are 10^30 raw units (raw) per 1 XNO.
 RAW_PER_XNO = 10**30
@@ -63,6 +78,8 @@ def declared_matches_accepted(declared_xno, accepted_xno) -> bool:
 
 def nano_rpc_post(action: str, params: dict[str, Any]) -> dict[str, Any]:
     """POST a Nano RPC action to the public node and return parsed JSON."""
+    if not rpc_url_allowed(NANO_RPC_URL):
+        raise ValueError("NANO_RPC_URL must be https (plain http only for loopback)")
     payload = json.dumps({"action": action, **params}).encode("utf-8")
     req = urllib.request.Request(
         NANO_RPC_URL,
@@ -73,8 +90,11 @@ def nano_rpc_post(action: str, params: dict[str, Any]) -> dict[str, Any]:
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:  # noqa: S310 (https only)
-        return json.loads(resp.read().decode("utf-8"))
+    with urllib.request.urlopen(req, timeout=RPC_TIMEOUT_S) as resp:  # noqa: S310
+        body = resp.read(RPC_MAX_BYTES + 1)
+    if len(body) > RPC_MAX_BYTES:
+        raise ValueError("Nano RPC response too large")
+    return json.loads(body.decode("utf-8"))
 
 
 def verify_nano_send(
@@ -82,6 +102,9 @@ def verify_nano_send(
     expected_recipient: str,
     expected_amount_xno: str | float,
     *,
+    expected_representative: str | None = None,
+    valid_from: int | None = None,
+    valid_until: int | None = None,
     logger: Any = None,
 ) -> bool:
     """Verify a Nano send block reached a recipient for at least a given amount.
@@ -162,6 +185,31 @@ def verify_nano_send(
                 f"Block {send_hash} was sent to {dest}, expected {expected_recipient}"
             )
         return False
+
+    # Order binding: the buyer signed the order commitment into the block's
+    # representative (see nano_binding.py), so this block is for THIS order only.
+    if expected_representative is not None:
+        rep = contents.get("representative", "") or ""
+        if rep.lower() != expected_representative.lower():
+            if logger:
+                logger.error(f"Block {send_hash} is not committed to this order")
+            return False
+    # Window: judged on the block's own time, not on when the commit arrived.
+    if valid_from is not None or valid_until is not None:
+        try:
+            block_time = int(data.get("local_timestamp", ""))
+        except (TypeError, ValueError):
+            block_time = 0
+        if (
+            block_time <= 0
+            or (valid_from is not None and block_time < valid_from)
+            or (valid_until is not None and block_time > valid_until)
+        ):
+            if logger:
+                logger.error(
+                    f"Block {send_hash} time {block_time} outside the order window"
+                )
+            return False
 
     if logger:
         logger.info(

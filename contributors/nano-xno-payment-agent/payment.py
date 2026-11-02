@@ -33,7 +33,18 @@ from uagents_core.contrib.protocols.payment import (
 )
 
 from shared import create_text_chat
-from verify_nano import verify_nano_send, declared_matches_accepted
+from nano_binding import (
+    claim_block,
+    commitment_rep_account,
+    finalize,
+    new_order,
+    release_block,
+)
+from verify_nano import (
+    _xno_to_raw,
+    declared_matches_accepted,
+    verify_nano_send,
+)
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -52,10 +63,7 @@ NANO_ACCOUNT = os.getenv("NANO_ACCOUNT", "")
 XNO_FUNDS = Funds(currency="XNO", amount=DEFAULT_XNO_AMOUNT, payment_method="nano_xno")
 ACCEPTED_FUNDS = [XNO_FUNDS]
 
-# Replay protection: remember send-block hashes already honoured, so the same
-# payment cannot be used to claim service twice. Persist in ctx.storage so it
-# survives restarts.
-PAID_PREFIX = "nano_paid:"
+ORDER_TTL_S = 300  # validity window of an issued order
 
 
 @payment_proto.on_message(CommitPayment)
@@ -117,27 +125,22 @@ async def handle_commit_payment(ctx: Context, sender: str, msg: CommitPayment):
     tx_id = msg.transaction_id
     ctx.logger.info(f"[nano] Verifying send {tx_id} of {accepted_amount} XNO")
 
-    # Replay protection: reject a send hash already honoured.
-    #
-    # Reserve the key BEFORE the awaited on-chain verify so a second
-    # CommitPayment for the same tx_id cannot slip past the has() check while
-    # the first is still awaiting the RPC (they would both honour one payment).
-    # If verification fails we release the reservation so a genuine retry can
-    # re-verify; only a confirmed payment keeps the flag.
-    paid_key = PAID_PREFIX + tx_id
-    if ctx.storage.has(paid_key) or ctx.storage.get(paid_key):
-        ctx.logger.warning(f"[nano] Send {tx_id} already honoured; rejecting replay")
+    # Order binding + replay protection (docs/BINDING-STANDARD.md): the commit must
+    # name an order THIS seller issued to THIS requester (msg.reference), inside its
+    # validity window. The block hash is claimed one-to-one with that order in
+    # ctx.storage (persistent) BEFORE the awaited RPC, and released if verification
+    # fails, so a duplicate commit cannot be credited twice.
+    order, reason = claim_block(ctx.storage, msg.reference or "", sender, tx_id)
+    if order is None:
+        ctx.logger.warning(f"[nano] Commit refused for {tx_id}: {reason}")
         await ctx.send(
-            sender,
-            CancelPayment(
-                transaction_id=tx_id,
-                reason="Payment already used",
-            ),
+            sender, CancelPayment(transaction_id=tx_id, reason=f"Refused: {reason}")
         )
         return
-
-    # Reserve now (small window vs a truly concurrent duplicate), then verify.
-    ctx.storage.set(paid_key, "verifying")
+    order_id = msg.reference
+    rep_account = commitment_rep_account(
+        order_id, order["pay_to"], int(order["price_raw"])
+    )
 
     # Run the blocking RPC verify off the event loop so the agent keeps serving
     # other messages while the public Nano node answers. Verify against the
@@ -149,10 +152,12 @@ async def handle_commit_payment(ctx: Context, sender: str, msg: CommitPayment):
         tx_id,
         NANO_ACCOUNT,
         str(accepted_amount),
+        expected_representative=rep_account,
+        valid_until=order["expires_at"],
         logger=ctx.logger,
     )
     if ok:
-        ctx.storage.set(paid_key, True)
+        finalize(ctx.storage, order_id)
         ctx.logger.info(f"[nano] Payment confirmed: {tx_id}")
         await ctx.send(sender, CompletePayment(transaction_id=tx_id))
         # Continue the seller's own post-payment handler here, e.g. release the
@@ -166,7 +171,7 @@ async def handle_commit_payment(ctx: Context, sender: str, msg: CommitPayment):
     else:
         # Verification failed — release the reservation so a corrected or
         # different commit for this tx is not permanently stuck as "paid".
-        ctx.storage.remove(paid_key)
+        release_block(ctx.storage, order_id, tx_id)
         ctx.logger.error(f"[nano] Payment NOT verified for tx {tx_id}")
         await ctx.send(
             sender,
@@ -196,11 +201,23 @@ async def request_payment_from_user(ctx: Context, user_address: str, description
     if NANO_ACCOUNT:
         metadata["provider_nano_account"] = NANO_ACCOUNT
 
+    # One opaque order per request. The buyer must sign the send block with
+    # representative = metadata["provider_nano_representative"] and echo the order id
+    # as CommitPayment.reference.
+    order_id, rep, _ = new_order(
+        ctx.storage,
+        user_address,
+        NANO_ACCOUNT,
+        _xno_to_raw(ACCEPTED_FUNDS[0].amount),
+        ORDER_TTL_S,
+    )
+    metadata["provider_nano_representative"] = rep
+
     payment_request = RequestPayment(
         accepted_funds=ACCEPTED_FUNDS,
         recipient=str(ctx.agent.address),
-        deadline_seconds=300,
-        reference=str(ctx.session),
+        deadline_seconds=ORDER_TTL_S,
+        reference=order_id,
         description=description,
         metadata=metadata,
     )
