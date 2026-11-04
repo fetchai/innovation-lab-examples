@@ -51,13 +51,19 @@ from verify_nano import (
 # ---------------------------------------------------------------------------
 
 # Amount requested per job, in XNO. Fee is always zero at the protocol level.
-DEFAULT_XNO_AMOUNT = os.getenv("NANO_AMOUNT", "0.0001")
+DEFAULT_XNO_AMOUNT = os.getenv("NANO_AMOUNT", "0.0001").strip()
+
+# Fail at startup, not inside the chat handler: a non-numeric or non-positive
+# NANO_AMOUNT would otherwise only surface when the first payment is requested.
+_amount_raw = _xno_to_raw(DEFAULT_XNO_AMOUNT)
+if _amount_raw is None or _amount_raw <= 0:
+    raise ValueError(
+        f"NANO_AMOUNT must be a positive XNO amount such as 0.0001, got {DEFAULT_XNO_AMOUNT!r}"
+    )
 
 payment_proto = Protocol(spec=payment_protocol_spec, role="seller")
 
-# Nano receiving account. In a real deployment set this to the agent's own Nano
-# account (NANO_ACCOUNT in .env). For a local no-wallet demo you can use the
-# reward / faucet-style address below, which only demonstrates the verify path.
+# Nano receiving account: the agent's own Nano account (NANO_ACCOUNT in .env).
 NANO_ACCOUNT = os.getenv("NANO_ACCOUNT", "")
 
 XNO_FUNDS = Funds(currency="XNO", amount=DEFAULT_XNO_AMOUNT, payment_method="nano_xno")
