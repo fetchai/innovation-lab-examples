@@ -21,7 +21,6 @@ verified live 2026-11-19):
   run an unrated scrimmage against a house bot, read the match result, and
   optionally enrol the bot in a sponsored cup.
 
-- **Category:** `MCP`
 - **Tech stack:** `Python`, `MCP`, `httpx2`
 - **Status:** `demo` (the demo mode was run against the live server; the
   write loop follows the live tool schemas, verified 2026-11-19)

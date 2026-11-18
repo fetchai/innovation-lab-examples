@@ -195,8 +195,13 @@ async def full(session: ClientSession, args: argparse.Namespace) -> None:
         scrimmage_args["seed"] = args.seed
     print(f"--- scrimmage: {bot_name} vs {args.vs} (unrated)")
     match = try_json(await call(session, "scrimmage", scrimmage_args))
-    match_id = match.get("match_id") or match.get("matchId") or match.get("id")
-    print(f"    {json.dumps(match)[:400]}")
+    if isinstance(match, dict):
+        match_id = match.get("match_id") or match.get("matchId") or match.get("id")
+        print(f"    {json.dumps(match)[:400]}")
+    else:
+        # Non-JSON text: print the raw payload instead of crashing.
+        print(f"    {match}")
+        match_id = None
     if not match_id:
         print("    (no match_id returned — skipping the poll; check the URL above)")
     else:
