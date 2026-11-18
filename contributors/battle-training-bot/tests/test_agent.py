@@ -116,3 +116,49 @@ def test_constants_match_live_mcp_server():
     assert agent.MCP_URL == "https://api.battle.training/mcp"
     assert agent.DEFAULT_VS == "house:hunter"
     assert agent.POLL_MAX_TRIES * agent.POLL_INTERVAL_S >= 60
+
+
+class _FakeContent:
+    def __init__(self, text):
+        self.text = text
+
+
+class _FakeResult:
+    def __init__(self, text, is_error=False):
+        self.content = [_FakeContent(text)]
+        self.isError = is_error
+
+
+class _FakeSession:
+    """Minimal stand-in for ClientSession: answers each tool from a script."""
+
+    def __init__(self, script):
+        self._script = script
+        self.calls = []
+
+    async def call_tool(self, name, args):
+        self.calls.append(name)
+        return self._script[name]
+
+
+def test_full_mode_scrimmage_non_json_does_not_crash(monkeypatch, tmp_path):
+    # Regression test (review 19 Nov): try_json falls back to a raw string
+    # when the scrimmage tool returns non-JSON text; full() must print the
+    # raw payload and skip the poll instead of raising AttributeError.
+    import asyncio
+
+    monkeypatch.setenv("BATTLE_TRAINING_API_KEY", "fake-key-for-test")
+    monkeypatch.chdir(tmp_path)
+    Path("controller.js").write_text("// fake controller", encoding="utf-8")
+    script = {
+        "whoami": _FakeResult('{"ok": true}'),
+        "get_bot": _FakeResult(
+            '{"name": "x", "rating": 100, "wins": 0, "losses": 0, "draws": 0}'
+        ),
+        "upload_version": _FakeResult("uploaded"),
+        "scrimmage": _FakeResult("plain text, not json"),
+    }
+    session = _FakeSession(script)
+    args = agent.build_parser().parse_args(["--mode", "full", "--bot", "x"])
+    asyncio.run(agent.full(session=session, args=args))  # must not raise
+    assert "get_match" not in session.calls
