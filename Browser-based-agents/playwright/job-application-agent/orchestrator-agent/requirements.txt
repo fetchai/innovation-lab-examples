@@ -6,7 +6,7 @@ certifi>=2024.7.4
 openai>=1.30
 requests>=2.31
 # FET on-chain payment verification
-cosmpy>=0.9
+cosmpy>=0.12.2
 # Greenhouse job extraction
 html2text>=2020.1
 # Answer composition loop
