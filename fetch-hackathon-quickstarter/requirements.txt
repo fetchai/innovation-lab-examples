@@ -37,7 +37,7 @@ uagents==0.22.8
 uagents-core==0.3.8
 urllib3==2.8.0
 uvicorn==0.35.0
-virtualenv==21.14.9
+virtualenv==21.14.13
 yarl==1.25.1
 
 python-dotenv
