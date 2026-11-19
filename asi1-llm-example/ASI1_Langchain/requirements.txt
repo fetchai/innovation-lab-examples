@@ -3,4 +3,4 @@ pydantic>=2.0.0
 langchain-core>=0.3.0
 langchain-community>=0.3.0
 langchain-classic>=1.0.0
-python-dotenv>=1.0.0
+python-dotenv>=1.2.4
