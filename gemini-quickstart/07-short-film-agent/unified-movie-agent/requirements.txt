@@ -1,6 +1,6 @@
 uagents>=0.20.0
 uagents-core>=0.15.0
-google-genai>=1.0.0
+google-genai>=3.4.0
 google-cloud-storage>=2.14.0
 google-auth>=2.25.0
 python-dotenv>=1.2.4
