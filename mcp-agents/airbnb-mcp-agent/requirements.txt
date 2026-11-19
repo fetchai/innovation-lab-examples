@@ -7,4 +7,4 @@ mcp>=2.3.0,<3.0
 # Claude, used to turn the MCP tool output into a chat reply.
 anthropic>=0.42,<1.0
 
-python-dotenv>=1.0,<2.0
+python-dotenv>=1.2.4,<2.0
