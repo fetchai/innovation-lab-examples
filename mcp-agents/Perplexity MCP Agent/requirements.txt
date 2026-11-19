@@ -4,4 +4,4 @@ anthropic>=0.34.0
 python-dotenv>=1.0.0
 httpx>=0.25.0
 cryptography>=41.0.0
-docker>=6.0.0
+docker>=7.2.0
