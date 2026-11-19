@@ -24,6 +24,8 @@ jobs:
   tag-reviewer:
     name: Tag @gautammanak1
     runs-on: ubuntu-latest
+    # Do not fail the PR check status if tagging is a no-op / permission-limited.
+    continue-on-error: true
     if: >
       github.event_name == 'schedule' ||
       github.event_name == 'workflow_dispatch' ||
@@ -43,47 +45,70 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           PR: ${{ github.event.pull_request.number }}
           REVIEWER: gautammanak1
         run: |
           set -euo pipefail
-          gh pr edit "$PR" --add-reviewer "$REVIEWER" --add-assignee "$REVIEWER" || true
-          # Avoid spamming the same comment on every synchronize.
-          if gh api "repos/${{ github.repository }}/issues/${PR}/comments" \
-            --jq '.[].body' | grep -Fq "cc @${REVIEWER} — please review this dependency/security PR"; then
+
+          # Prefer REST over `gh pr *` so we do not need a local git checkout.
+          gh api \
+            --method POST \
+            "repos/${GH_REPO}/issues/${PR}/assignees" \
+            -f "assignees[]=${REVIEWER}" || true
+
+          gh api \
+            --method POST \
+            "repos/${GH_REPO}/pulls/${PR}/requested_reviewers" \
+            -f "reviewers[]=${REVIEWER}" || true
+
+          MARKER="cc @${REVIEWER} — please review this dependency/security PR."
+          if gh api "repos/${GH_REPO}/issues/${PR}/comments" --jq '.[].body' \
+            | grep -Fq "${MARKER}"; then
             echo "Review nudge already present."
           else
-            gh pr comment "$PR" --body "cc @${REVIEWER} — please review this dependency/security PR."
+            gh api \
+              --method POST \
+              "repos/${GH_REPO}/issues/${PR}/comments" \
+              -f "body=${MARKER}" || true
           fi
 
       - name: Sweep open Dependabot / security PRs
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           REVIEWER: gautammanak1
         run: |
           set -euo pipefail
-          # Open PRs from Dependabot or security auto-fix branches.
+          MARKER="cc @${REVIEWER} — please review this dependency/security PR."
+
           mapfile -t PRS < <(
-            gh pr list --state open --limit 100 --json number,author,headRefName,labels \
+            gh api "repos/${GH_REPO}/pulls?state=open&per_page=100" \
               --jq '.[] | select(
-                .author.login == "dependabot" or
-                .author.login == "app/dependabot" or
-                (.headRefName | startswith("dependabot/")) or
-                (.headRefName | startswith("security/auto-fix")) or
+                .user.login == "dependabot[bot]" or
+                (.head.ref | startswith("dependabot/")) or
+                (.head.ref | startswith("security/auto-fix")) or
                 ([.labels[].name] | index("dependencies") or index("security"))
               ) | .number'
           )
+
           if [ "${#PRS[@]}" -eq 0 ]; then
             echo "No open dependency/security PRs."
             exit 0
           fi
+
           for PR in "${PRS[@]}"; do
             echo "Tagging reviewer on PR #${PR}"
-            gh pr edit "$PR" --add-reviewer "$REVIEWER" --add-assignee "$REVIEWER" || true
-            if gh api "repos/${{ github.repository }}/issues/${PR}/comments" \
-              --jq '.[].body' | grep -Fq "cc @${REVIEWER} — please review this dependency/security PR"; then
+            gh api --method POST "repos/${GH_REPO}/issues/${PR}/assignees" \
+              -f "assignees[]=${REVIEWER}" || true
+            gh api --method POST "repos/${GH_REPO}/pulls/${PR}/requested_reviewers" \
+              -f "reviewers[]=${REVIEWER}" || true
+
+            if gh api "repos/${GH_REPO}/issues/${PR}/comments" --jq '.[].body' \
+              | grep -Fq "${MARKER}"; then
               continue
             fi
-            gh pr comment "$PR" --body "cc @${REVIEWER} — please review this dependency/security PR." || true
+            gh api --method POST "repos/${GH_REPO}/issues/${PR}/comments" \
+              -f "body=${MARKER}" || true
           done

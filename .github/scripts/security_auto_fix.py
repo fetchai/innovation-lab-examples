@@ -126,7 +126,9 @@ def bump_requirements(path: Path, package: str, patched: str) -> bool:
         op = "==" if m.group("op") in ("==", "===") else m.group("op")
         rest = m.groupdict().get("rest") or ""
         suffix = m.group("suffix") or ""
-        out.append(f"{m.group('prefix')}{m.group('name')}{op}{patched}{rest}{suffix}{ending}")
+        out.append(
+            f"{m.group('prefix')}{m.group('name')}{op}{patched}{rest}{suffix}{ending}"
+        )
         changed = True
     if changed:
         path.write_text("".join(out), encoding="utf-8")
@@ -151,7 +153,7 @@ def bump_uv_lock(path: Path, package: str, patched: str) -> bool:
         current = match.group("ver")
         if not needs_bump(current, patched):
             return match.group(0)
-        return f'{match.group("head")}{patched}{match.group("tail")}'
+        return f"{match.group('head')}{patched}{match.group('tail')}"
 
     new_text, count = UV_PKG_BLOCK_RE.subn(repl, text)
     # Also bump exact version strings in requirement lines inside the same lock
@@ -262,7 +264,9 @@ def apply_fix(manifest: str, package: str, patched: str, ecosystem: str | None) 
     if name == "package-lock.json":
         # Prefer also bumping sibling package.json when present.
         sibling = path.with_name("package.json")
-        changed_json = bump_package_json(sibling, package, patched) if sibling.is_file() else False
+        changed_json = (
+            bump_package_json(sibling, package, patched) if sibling.is_file() else False
+        )
         changed_lock = bump_package_lock(path, package, patched)
         return changed_json or changed_lock
     # Fallback by ecosystem
@@ -281,8 +285,12 @@ def main() -> int:
     skipped: list[dict] = []
 
     # Prefer highest patched version per (manifest, package) already done.
-    for (_manifest, _pkg), info in sorted(targets.items(), key=lambda x: (x[0][0], x[0][1].lower())):
-        ok = apply_fix(info["manifest"], info["package"], info["patched"], info.get("ecosystem"))
+    for (_manifest, _pkg), info in sorted(
+        targets.items(), key=lambda x: (x[0][0], x[0][1].lower())
+    ):
+        ok = apply_fix(
+            info["manifest"], info["package"], info["patched"], info.get("ecosystem")
+        )
         if ok:
             changed_files.add(info["manifest"])
             # package.json may also have been updated for lockfile alerts
@@ -336,7 +344,10 @@ def main() -> int:
     SUMMARY_PATH.write_text("\n".join(lines), encoding="utf-8")
     # Machine-readable changed files for the workflow
     changed_list = ROOT / "security-fix-changed.txt"
-    changed_list.write_text("\n".join(sorted(changed_files)) + ("\n" if changed_files else ""), encoding="utf-8")
+    changed_list.write_text(
+        "\n".join(sorted(changed_files)) + ("\n" if changed_files else ""),
+        encoding="utf-8",
+    )
     print(f"Applied {len(applied)} bumps across {len(changed_files)} files")
     for path in sorted(changed_files):
         print(f"CHANGED {path}")
