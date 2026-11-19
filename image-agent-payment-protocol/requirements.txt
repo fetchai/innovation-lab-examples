@@ -4,7 +4,7 @@ uagents-core==0.3.8
 
 # Async HTTP and JWT
 aiohttp==3.14.4
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.4.0
 
 # Environment variables
 python-dotenv==1.2.2
