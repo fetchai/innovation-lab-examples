@@ -5,7 +5,7 @@ uagents-core==0.4.12
 mcp==2.3.0
 
 # Anthropic Claude API
-anthropic==0.42.0
+anthropic==2.9.0
 
 # HTTP client for API calls
 httpx==0.28.1
