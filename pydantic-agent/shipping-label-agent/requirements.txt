@@ -1,6 +1,6 @@
 # Fetch.ai agent framework + ASI:One chat protocol (pins match the quiz-agent)
 uagents==0.23.6
-uagents-core==0.4.0
+uagents-core==0.4.12
 
 # Pydantic AI — structured output, dependency injection, requires_approval gating
 pydantic-ai>=2.68.0
