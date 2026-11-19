@@ -2,7 +2,7 @@ uagents==0.26.1
 uagents-core==0.4.12
 
 # MCP (Model Context Protocol) client
-mcp==1.28.1
+mcp==2.3.0
 
 # Anthropic Claude API
 anthropic==0.42.0
