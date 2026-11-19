@@ -9,7 +9,7 @@ description = "Fetch Orchestrator Agent integration with OpenClaw – secure loc
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = [
-    "uagents==0.23.6",
+    "uagents==0.26.1",
     "uagents-core==0.4.1",
     "pydantic>=2.0",
     "cryptography>=42.0",

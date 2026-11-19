@@ -1,5 +1,5 @@
 # Core
-uagents==0.23.6
+uagents==0.26.1
 uagents-core==0.4.1
 pydantic>=2.0
 cryptography>=42.0
