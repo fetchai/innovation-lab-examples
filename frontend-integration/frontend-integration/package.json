@@ -14,7 +14,7 @@
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
-    "uagent-client": "1.0.3"
+    "uagent-client": "1.0.10"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",
