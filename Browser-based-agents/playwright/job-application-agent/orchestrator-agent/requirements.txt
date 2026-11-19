@@ -10,7 +10,7 @@ cosmpy>=0.9
 # Greenhouse job extraction
 html2text>=2020.1
 # Answer composition loop
-langgraph>=0.1
+langgraph>=1.2.22
 # Live form-fill browser automation
 playwright>=1.40
 # Stripe payment processing
