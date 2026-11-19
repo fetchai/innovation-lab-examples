@@ -10,7 +10,7 @@ google-auth>=2.62.2
 openai>=1.0.0
 
 # Stripe payments
-stripe>=7.0.0
+stripe>=17.0.0
 
 # Utilities
 python-dotenv>=1.0.1
