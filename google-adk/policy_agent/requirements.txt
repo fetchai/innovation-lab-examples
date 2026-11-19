@@ -1,5 +1,5 @@
 uagents>=0.20.0
 uagents-core>=0.4.12
-python-dotenv>=1.0.0
+python-dotenv>=1.2.4
 google-adk>=2.14.1
 google-genai>=1.0.0
