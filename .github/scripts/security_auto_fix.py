@@ -67,9 +67,68 @@ def load_alerts() -> list[dict]:
     return data
 
 
+def version_sort_key(value: str):
+    parsed = parse_version(value)
+    if parsed is not None:
+        return (0, parsed)
+    return (1, value)
+
+
+def prefer_same_major(current: str | None, candidates: list[str]) -> str:
+    """Pick the highest patched version, preferring the current pin's major line."""
+    uniq = sorted({c for c in candidates if c}, key=version_sort_key)
+    if not uniq:
+        raise ValueError("no candidates")
+    if not current:
+        return uniq[-1]
+    cur = parse_version(current)
+    if cur is None:
+        return uniq[-1]
+    same_major = [
+        c
+        for c in uniq
+        if (pv := parse_version(c)) is not None and pv.major == cur.major
+    ]
+    if same_major:
+        return same_major[-1]
+    return uniq[-1]
+
+
+def read_current_pin(manifest: str, package: str) -> str | None:
+    """Best-effort current version from requirements.txt / package.json."""
+    path = ROOT / manifest
+    name = path.name.lower()
+    if name in {"requirements.txt"} or path.suffix in {".txt", ".in"}:
+        if not path.is_file():
+            return None
+        for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+            m = REQ_EQ_RE.match(line) or REQ_PIN_RE.match(line)
+            if m and m.group("name").lower() == package.lower():
+                return m.group("ver")
+        return None
+    if name in {"package.json", "package-lock.json"}:
+        pkg_path = path if name == "package.json" else path.with_name("package.json")
+        if not pkg_path.is_file():
+            return None
+        data = json.loads(pkg_path.read_text(encoding="utf-8"))
+        for key in PKG_JSON_DEP_KEYS:
+            deps = data.get(key)
+            if isinstance(deps, dict) and package in deps:
+                spec = str(deps[package]).strip()
+                m = re.match(r"^[\^~>=]*([0-9][^\\s]*)$", spec)
+                if m:
+                    return m.group(1).split()[0]
+        return None
+    return None
+
+
 def collect_targets(alerts: list[dict]) -> dict[tuple[str, str], dict]:
-    """Map (manifest_path, package) -> best patch target."""
-    targets: dict[tuple[str, str], dict] = {}
+    """Map (manifest_path, package) -> best patch target.
+
+    Prefers a patched release on the same major as the current pin when one
+    exists among open alerts, to avoid unnecessary breaking major jumps.
+    """
+    buckets: dict[tuple[str, str], dict] = {}
     for alert in alerts:
         if alert.get("state") != "open":
             continue
@@ -82,18 +141,36 @@ def collect_targets(alerts: list[dict]) -> dict[tuple[str, str], dict]:
             continue
         key = (manifest, pkg)
         severity = (alert.get("security_advisory") or {}).get("severity") or "unknown"
-        existing = targets.get(key)
-        if existing is None or needs_bump(existing["patched"], patched):
-            targets[key] = {
+        existing = buckets.get(key)
+        if existing is None:
+            buckets[key] = {
                 "package": pkg,
                 "manifest": manifest,
-                "patched": patched,
+                "patched_candidates": [patched],
                 "severity": severity,
                 "alert_numbers": [alert.get("number")],
                 "ecosystem": (dep.get("package") or {}).get("ecosystem"),
             }
         else:
+            existing["patched_candidates"].append(patched)
             existing["alert_numbers"].append(alert.get("number"))
+            # Keep highest severity label for summary purposes.
+            rank = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+            if rank.get(severity, -1) > rank.get(existing["severity"], -1):
+                existing["severity"] = severity
+
+    targets: dict[tuple[str, str], dict] = {}
+    for key, info in buckets.items():
+        current = read_current_pin(info["manifest"], info["package"])
+        patched = prefer_same_major(current, info["patched_candidates"])
+        targets[key] = {
+            "package": info["package"],
+            "manifest": info["manifest"],
+            "patched": patched,
+            "severity": info["severity"],
+            "alert_numbers": info["alert_numbers"],
+            "ecosystem": info["ecosystem"],
+        }
     return targets
 
 

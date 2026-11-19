@@ -2,6 +2,9 @@
 # Creates PRs for outdated / vulnerable dependencies.
 # Security updates are also enabled at the repo level.
 version: 2
+# Note: each `directory` is a single manifest folder (Dependabot does not
+# recurse). Entries like /contributors and /contributors/<agent> cover
+# different requirements.txt files and are intentional, not duplicates.
 updates:
   - package-ecosystem: "pip"
     directory: "/Browser-based-agents/Notte-labs-agent/Nike-products-agent"

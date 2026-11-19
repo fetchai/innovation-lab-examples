@@ -82,6 +82,28 @@ jobs:
             echo "No open alerts; nothing to do."
           fi
 
+      - name: Prepare same-day branch
+        id: branch
+        if: steps.alerts.outputs.open_alerts != '0'
+        run: |
+          set -euo pipefail
+          BRANCH="security/auto-fix-$(date -u +%Y%m%d)"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Checkout the branch BEFORE applying fixes so same-day reruns do not
+          # hit "local changes would be overwritten" when switching branches.
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            git fetch origin "$BRANCH"
+            git checkout -B "$BRANCH" "origin/$BRANCH"
+            echo "Reusing existing branch ${BRANCH}"
+          else
+            git checkout -b "$BRANCH"
+            echo "Created new branch ${BRANCH}"
+          fi
+
       - name: Apply security version bumps + regenerate locks
         id: fix
         if: steps.alerts.outputs.open_alerts != '0'
@@ -100,7 +122,7 @@ jobs:
             echo "No pin bumps could be applied automatically."
           fi
 
-      - name: Create pull request
+      - name: Create or update pull request
         id: pr
         if: >-
           steps.fix.outputs.has_changes == 'true' &&
@@ -112,20 +134,9 @@ jobs:
           GH_TOKEN: ${{ secrets.SECURITY_AUTOFIX_TOKEN || secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           REVIEWER: gautammanak1
+          BRANCH: ${{ steps.branch.outputs.branch }}
         run: |
           set -euo pipefail
-          BRANCH="security/auto-fix-$(date -u +%Y%m%d)"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          # Reuse the same-day branch/PR when it already exists (update in place).
-          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
-            git fetch origin "$BRANCH"
-            git checkout -B "$BRANCH" "origin/$BRANCH"
-          else
-            git checkout -b "$BRANCH"
-          fi
 
           # Stage only dependency / lock files that the fixer touched.
           while IFS= read -r path; do
@@ -161,8 +172,11 @@ jobs:
             echo "cc @${REVIEWER} please review and merge if CI is green."
           } > "$BODY_FILE"
 
-          PR_URL="$(gh pr list --head "$BRANCH" --state open --json url -q '.[0].url' || true)"
-          if [ -z "${PR_URL}" ]; then
+          # jq '.[0].url' prints the literal string "null" for an empty list —
+          # treat that as empty so the first daily run actually creates a PR.
+          PR_URL="$(gh pr list --head "$BRANCH" --state open --json url \
+            -q '.[0].url // empty' || true)"
+          if [ -z "${PR_URL}" ] || [ "${PR_URL}" = "null" ]; then
             PR_URL="$(gh pr create \
               --title "fix(security): auto-bump vulnerable dependencies" \
               --body-file "$BODY_FILE" \
@@ -179,7 +193,7 @@ jobs:
           echo "pr_url=${PR_URL}" >> "$GITHUB_OUTPUT"
           echo "Opened/found PR: ${PR_URL}"
 
-          if [ -n "${PR_URL}" ]; then
+          if [ -n "${PR_URL}" ] && [ "${PR_URL}" != "null" ]; then
             gh pr comment "$PR_URL" --body "cc @${REVIEWER} — security auto-fix ready for review." || true
             gh pr edit "$PR_URL" --add-reviewer "$REVIEWER" --add-assignee "$REVIEWER" || true
           fi
