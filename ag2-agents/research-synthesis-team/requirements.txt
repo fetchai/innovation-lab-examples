@@ -4,4 +4,4 @@ a2a-sdk[http-server]>=0.3.20,<0.4.0
 mcp>=1.0.0,<2.0
 uagents>=0.20.0
 uagents-adapter==0.6.2
-python-dotenv>=1.0.0
+python-dotenv>=1.2.4
