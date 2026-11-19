@@ -1,5 +1,5 @@
 uagents==0.24.0
-uagents-core==0.4.4
+uagents-core==0.4.12
 openai==2.30.0
 httpx==0.28.1
 pydantic==2.14.3
