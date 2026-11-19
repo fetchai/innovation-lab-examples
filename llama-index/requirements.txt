@@ -6,7 +6,7 @@ llama-index-readers-file==0.5.6
 qdrant-client==1.17.0
 uagents==0.23.6
 uagents-core==0.4.2
-python-dotenv==1.2.1
+python-dotenv==1.2.2
 stripe>=7.0.0
-requests==2.32.5
+requests==2.33.0
 openai==2.21.0

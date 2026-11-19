@@ -20,7 +20,12 @@ jobs:
     name: ASI:One PR review
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: github.event.pull_request.draft == false
+    # Skip Dependabot / github-actions bot PRs (no AI review needed).
+    # Author only — never branch name (branch names are attacker-controlled).
+    if: >
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'github-actions[bot]'
     steps:
       - name: Checkout base branch (never the pull request head)
         uses: actions/checkout@v4

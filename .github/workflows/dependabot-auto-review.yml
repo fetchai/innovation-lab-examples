@@ -1,0 +1,114 @@
+name: Dependabot auto-review request
+
+# When Dependabot (or security-auto-fix) opens/updates a dependency PR,
+# assign and request review from @gautammanak1.
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+  schedule:
+    # Catch any Dependabot PRs that missed the event (daily).
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: dependabot-auto-review-${{ github.event.pull_request.number || 'cron' }}
+  cancel-in-progress: true
+
+jobs:
+  tag-reviewer:
+    name: Tag @gautammanak1
+    runs-on: ubuntu-latest
+    # Do not fail the PR check status if tagging is a no-op / permission-limited.
+    continue-on-error: true
+    if: >
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.pull_request.draft == false &&
+        (
+          github.event.pull_request.user.login == 'dependabot[bot]' ||
+          github.event.pull_request.user.login == 'github-actions[bot]' ||
+          contains(join(github.event.pull_request.labels.*.name, ','), 'dependencies') ||
+          contains(join(github.event.pull_request.labels.*.name, ','), 'security') ||
+          startsWith(github.head_ref, 'dependabot/') ||
+          startsWith(github.head_ref, 'security/auto-fix')
+        )
+      )
+    steps:
+      - name: Request review on this PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          REVIEWER: gautammanak1
+        run: |
+          set -euo pipefail
+
+          # Prefer REST over `gh pr *` so we do not need a local git checkout.
+          gh api \
+            --method POST \
+            "repos/${GH_REPO}/issues/${PR}/assignees" \
+            -f "assignees[]=${REVIEWER}" || true
+
+          gh api \
+            --method POST \
+            "repos/${GH_REPO}/pulls/${PR}/requested_reviewers" \
+            -f "reviewers[]=${REVIEWER}" || true
+
+          MARKER="cc @${REVIEWER} — please review this dependency/security PR."
+          if gh api "repos/${GH_REPO}/issues/${PR}/comments" --jq '.[].body' \
+            | grep -Fq "${MARKER}"; then
+            echo "Review nudge already present."
+          else
+            gh api \
+              --method POST \
+              "repos/${GH_REPO}/issues/${PR}/comments" \
+              -f "body=${MARKER}" || true
+          fi
+
+      - name: Sweep open Dependabot / security PRs
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          REVIEWER: gautammanak1
+        run: |
+          set -euo pipefail
+          MARKER="cc @${REVIEWER} — please review this dependency/security PR."
+
+          mapfile -t PRS < <(
+            gh api "repos/${GH_REPO}/pulls?state=open&per_page=100" \
+              --jq '.[] | select(
+                .user.login == "dependabot[bot]" or
+                (.head.ref | startswith("dependabot/")) or
+                (.head.ref | startswith("security/auto-fix")) or
+                ([.labels[].name] | index("dependencies") or index("security"))
+              ) | .number'
+          )
+
+          if [ "${#PRS[@]}" -eq 0 ]; then
+            echo "No open dependency/security PRs."
+            exit 0
+          fi
+
+          for PR in "${PRS[@]}"; do
+            echo "Tagging reviewer on PR #${PR}"
+            gh api --method POST "repos/${GH_REPO}/issues/${PR}/assignees" \
+              -f "assignees[]=${REVIEWER}" || true
+            gh api --method POST "repos/${GH_REPO}/pulls/${PR}/requested_reviewers" \
+              -f "reviewers[]=${REVIEWER}" || true
+
+            if gh api "repos/${GH_REPO}/issues/${PR}/comments" --jq '.[].body' \
+              | grep -Fq "${MARKER}"; then
+              continue
+            fi
+            gh api --method POST "repos/${GH_REPO}/issues/${PR}/comments" \
+              -f "body=${MARKER}" || true
+          done

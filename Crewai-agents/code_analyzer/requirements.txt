@@ -7,4 +7,4 @@ langchain
 requests
 crewai-tools
 flake8==6.0.0  # For code analysis
-pytest==7.4.0  # For running tests and debugging
+pytest==9.0.3  # For running tests and debugging
