@@ -1,5 +1,5 @@
 chromadb
-uagents==0.22.3
+uagents==0.26.1
 uagents-adapter==0.2.1
 crewai
 langchain-openai
