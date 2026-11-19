@@ -7,7 +7,7 @@ langchain-anthropic>=1.7.10
 langchain-openai>=0.2.0
 
 # Fetch.ai agent framework, versions from fet-example
-uagents==0.23.6
+uagents==0.26.1
 uagents-core==0.4.0
 
 # Tools
