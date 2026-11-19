@@ -16,7 +16,7 @@ stripe>=8.0.0
 httpx>=0.27.0
 
 # Utilities
-python-dotenv>=1.0.0
+python-dotenv>=1.2.4
 
 # Dev / CI (ruff, mypy, pytest)
 pytest>=8.0.0
