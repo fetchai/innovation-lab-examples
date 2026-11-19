@@ -1,4 +1,4 @@
-uagents>=0.20.0
+uagents>=0.26.1
 uagents-core>=0.3.0
 python-dotenv>=1.0.0
 google-adk>=1.0.0
