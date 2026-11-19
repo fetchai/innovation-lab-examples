@@ -3,7 +3,7 @@
 deepagents==0.6.8
 
 # LLM providers
-langchain-anthropic>=0.3.0
+langchain-anthropic>=1.7.10
 langchain-openai>=0.2.0
 
 # Fetch.ai agent framework, versions from fet-example
