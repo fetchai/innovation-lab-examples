@@ -1,6 +1,6 @@
 # Core agent framework
 uagents==0.22.8
-uagents-core==0.3.8
+uagents-core==0.4.12
 
 # ASI:One (OpenAI-compatible client)
 openai
