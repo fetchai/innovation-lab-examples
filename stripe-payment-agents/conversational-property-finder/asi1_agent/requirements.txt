@@ -1,5 +1,5 @@
 uagents
-uagents-core>=0.2.0
+uagents-core>=0.4.12
 python-dotenv
 requests
 openai
