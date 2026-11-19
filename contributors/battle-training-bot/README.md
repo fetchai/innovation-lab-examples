@@ -37,7 +37,7 @@ verified live 2026-11-19):
   loop that creates/uploads/battles a real bot.
 - Defensive JSON parsing: if the arena ever changes a response shape, the
   agent prints the raw payload instead of crashing.
-- Offline unit tests (`tests/test_agent.py`, 9 tests, no network).
+- Offline unit tests (`tests/test_agent.py`, 10 tests, no network).
 
 ## Prerequisites
 
