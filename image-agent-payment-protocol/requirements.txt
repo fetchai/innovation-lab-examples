@@ -3,11 +3,11 @@ uagents==0.22.8
 uagents-core==0.3.8
 
 # Async HTTP and JWT
-aiohttp==3.10.9
+aiohttp==3.14.4
 python-jose[cryptography]==3.3.0
 
 # Environment variables
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 
 # HTTP client
 requests

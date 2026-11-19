@@ -2,7 +2,7 @@
 #    uv pip compile pyproject.toml -o requirements.txt
 aiohappyeyeballs==2.6.1
     # via aiohttp
-aiohttp==3.13.3
+aiohttp==3.14.4
     # via uagents
 aiosignal==1.4.0
     # via aiohttp
@@ -14,7 +14,7 @@ annotated-doc==0.0.4
     # via fastapi
 annotated-types==0.7.0
     # via pydantic
-anyio==4.12.0
+anyio==4.14.2
     # via
     #   google-adk
     #   google-genai
@@ -27,7 +27,7 @@ attrs==25.4.0
     #   aiohttp
     #   jsonschema
     #   referencing
-authlib==1.6.6
+authlib==1.9.1
     # via google-adk
 bcrypt==5.0.0
     # via cosmpy
@@ -37,7 +37,7 @@ bech32==1.2.0
     #   uagents-core
 cachetools==6.2.4
     # via google-auth
-certifi==2026.1.4
+certifi==2026.10.18
     # via
     #   httpcore
     #   httpx
@@ -58,7 +58,7 @@ contourpy==1.3.3
     # via matplotlib
 cosmpy==0.11.2
     # via uagents
-cryptography==46.0.3
+cryptography==50.0.0
     # via
     #   authlib
     #   pyjwt
@@ -70,13 +70,13 @@ distro==1.9.0
     # via google-genai
 docstring-parser==0.17.0
     # via google-cloud-aiplatform
-ecdsa==0.19.1
+ecdsa==0.19.2
     # via
     #   cosmpy
     #   uagents-core
 fastapi==0.123.10
     # via google-adk
-filelock==3.20.2
+filelock==4.2.1
     # via virtualenv
 fonttools==4.61.1
     # via matplotlib
@@ -84,7 +84,7 @@ frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-google-adk==1.21.0
+google-adk==1.28.1
     # via ai-due-diligence-agent (pyproject.toml)
 google-api-core==2.28.1
     # via
@@ -129,7 +129,7 @@ google-auth==2.46.0
     #   google-genai
 google-auth-httplib2==0.3.0
     # via google-api-python-client
-google-cloud-aiplatform==1.132.0
+google-cloud-aiplatform==1.133.0
     # via google-adk
 google-cloud-appengine-logging==1.7.0
     # via google-cloud-logging
@@ -236,7 +236,7 @@ h11==0.16.0
     #   uvicorn
 httpcore==1.0.9
     # via httpx
-httplib2==0.31.0
+httplib2==0.32.0
     # via
     #   google-api-python-client
     #   google-auth-httplib2
@@ -246,7 +246,7 @@ httpx==0.28.1
     #   mcp
 httpx-sse==0.4.3
     # via mcp
-idna==3.11
+idna==3.15
     # via
     #   anyio
     #   httpx
@@ -263,17 +263,17 @@ jsonschema-specifications==2025.9.1
     # via jsonschema
 kiwisolver==1.4.9
     # via matplotlib
-mako==1.3.10
+mako==1.3.12
     # via alembic
 markupsafe==3.0.3
     # via mako
 matplotlib==3.10.8
     # via ai-due-diligence-agent (pyproject.toml)
-mcp==1.25.0
+mcp==1.30.0
     # via google-adk
 mmh3==5.2.0
     # via google-cloud-spanner
-multidict==6.7.0
+multidict==6.9.1
     # via
     #   aiohttp
     #   yarl
@@ -282,7 +282,7 @@ numpy==2.4.0
     #   contourpy
     #   matplotlib
     #   shapely
-opentelemetry-api==1.37.0
+opentelemetry-api==1.45.2
     # via
     #   google-adk
     #   google-cloud-logging
@@ -340,7 +340,7 @@ packaging==25.0
     #   google-cloud-aiplatform
     #   google-cloud-bigquery
     #   matplotlib
-pillow==12.1.0
+pillow==13.0.0
     # via matplotlib
 platformdirs==4.5.1
     # via virtualenv
@@ -363,7 +363,7 @@ proto-plus==1.27.0
     #   google-cloud-spanner
     #   google-cloud-speech
     #   google-cloud-trace
-protobuf==5.29.5
+protobuf==5.29.6
     # via
     #   cosmpy
     #   google-api-core
@@ -385,9 +385,9 @@ protobuf==5.29.5
     #   grpcio-status
     #   opentelemetry-proto
     #   proto-plus
-pyarrow==22.0.0
+pyarrow==23.0.1
     # via google-adk
-pyasn1==0.6.1
+pyasn1==0.6.4
     # via
     #   pyasn1-modules
     #   rsa
@@ -409,11 +409,11 @@ pydantic==2.12.5
     #   uagents-core
 pydantic-core==2.41.5
     # via pydantic
-pydantic-settings==2.12.0
+pydantic-settings==2.14.2
     # via mcp
-pyjwt==2.10.1
+pyjwt==2.15.0
     # via mcp
-pynacl==1.6.0
+pynacl==1.6.2
     # via cosmpy
 pyparsing==3.3.1
     # via
@@ -425,12 +425,12 @@ python-dateutil==2.9.0.post0
     #   google-adk
     #   google-cloud-bigquery
     #   matplotlib
-python-dotenv==1.2.1
+python-dotenv==1.2.2
     # via
     #   ai-due-diligence-agent (pyproject.toml)
     #   google-adk
     #   pydantic-settings
-python-multipart==0.0.21
+python-multipart==0.0.31
     # via mcp
 pyyaml==6.0.3
     # via google-adk
@@ -438,7 +438,7 @@ referencing==0.37.0
     # via
     #   jsonschema
     #   jsonschema-specifications
-requests==2.32.5
+requests==2.33.0
     # via
     #   cosmpy
     #   google-adk
@@ -473,11 +473,11 @@ sqlalchemy==2.0.45
     #   sqlalchemy-spanner
 sqlalchemy-spanner==1.17.2
     # via google-adk
-sqlparse==0.5.5
+sqlparse==0.6.0
     # via google-cloud-spanner
 sse-starlette==3.1.2
     # via mcp
-starlette==0.50.0
+starlette==1.3.1
     # via
     #   fastapi
     #   google-adk
@@ -520,14 +520,14 @@ uagents-core==0.4.0
     #   uagents
 uritemplate==4.2.0
     # via google-api-python-client
-urllib3==2.6.2
+urllib3==2.8.0
     # via requests
 uvicorn==0.40.0
     # via
     #   google-adk
     #   mcp
     #   uagents
-virtualenv==20.35.4
+virtualenv==21.14.9
     # via cosmpy
 watchdog==6.0.0
     # via google-adk

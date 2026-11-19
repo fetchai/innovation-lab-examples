@@ -1,0 +1,175 @@
+name: Security auto-fix
+
+# Cron + Dependabot alert + manual: bump vulnerable pins and open a PR
+# tagged for @gautammanak1 review (no AI tokens required).
+
+on:
+  schedule:
+    # Daily 06:30 UTC
+    - cron: "30 6 * * *"
+  dependabot_alert:
+    types: [created, reopened]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Apply fixes locally but do not open a PR"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+concurrency:
+  group: security-auto-fix
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  security-events: read
+  issues: write
+
+jobs:
+  auto-fix:
+    name: Apply Dependabot security bumps
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install packaging helper
+        run: python -m pip install --upgrade pip packaging
+
+      - name: Fetch open Dependabot alerts
+        id: alerts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/security-auto-fix
+          # Paginate all open alerts (GitHub returns max 100 per page).
+          # Flatten pages into one JSON array (raw --paginate concatenates arrays).
+          gh api --paginate \
+            "repos/${GH_REPO}/dependabot/alerts?state=open&per_page=100" \
+            --jq '.[]' \
+            | jq -s '.' > /tmp/security-auto-fix/alerts.json
+          COUNT="$(jq 'length' /tmp/security-auto-fix/alerts.json)"
+          echo "open_alerts=${COUNT}" >> "$GITHUB_OUTPUT"
+          echo "Open Dependabot alerts: ${COUNT}"
+          if [ "${COUNT}" = "0" ]; then
+            echo "No open alerts; nothing to do."
+          fi
+
+      - name: Apply security version bumps
+        id: fix
+        if: steps.alerts.outputs.open_alerts != '0'
+        env:
+          GITHUB_ALERTS_JSON_FILE: /tmp/security-auto-fix/alerts.json
+          SECURITY_FIX_SUMMARY: security-fix-summary.md
+        run: |
+          set -euo pipefail
+          python .github/scripts/security_auto_fix.py
+          if [ -s security-fix-changed.txt ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "No pin bumps could be applied automatically."
+          fi
+
+      - name: Create pull request
+        id: pr
+        if: >-
+          steps.fix.outputs.has_changes == 'true' &&
+          (github.event_name != 'workflow_dispatch' || inputs.dry_run != 'true')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          REVIEWER: gautammanak1
+        run: |
+          set -euo pipefail
+          BRANCH="security/auto-fix-$(date -u +%Y%m%d)"
+          # Reuse same-day branch if it already exists remotely.
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            BRANCH="security/auto-fix-$(date -u +%Y%m%d-%H%M%S)"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+          # Stage only dependency / lock files that the fixer touched.
+          while IFS= read -r path; do
+            [ -n "$path" ] || continue
+            git add -- "$path"
+          done < security-fix-changed.txt
+
+          if git diff --cached --quiet; then
+            echo "Nothing staged after fixes; aborting PR."
+            exit 0
+          fi
+
+          git commit -m "$(cat <<'EOF'
+          fix(security): auto-bump vulnerable dependency pins
+
+          Opened by the Security auto-fix workflow from Dependabot alerts.
+          EOF
+          )"
+
+          git push -u origin HEAD
+
+          BODY_FILE="$(mktemp)"
+          {
+            echo "## Summary"
+            echo
+            echo "Automated security bumps from open Dependabot alerts."
+            echo "Triggered by: \`${{ github.event_name }}\`."
+            echo
+            cat security-fix-summary.md
+            echo
+            echo "## Review"
+            echo
+            echo "cc @${REVIEWER} please review and merge if CI is green."
+          } > "$BODY_FILE"
+
+          PR_URL="$(gh pr create \
+            --title "fix(security): auto-bump vulnerable dependencies" \
+            --body-file "$BODY_FILE" \
+            --base main \
+            --head "$BRANCH" \
+            --label dependencies \
+            --label security \
+            --reviewer "$REVIEWER" \
+            --assignee "$REVIEWER" || true)"
+
+          if [ -z "${PR_URL}" ]; then
+            # PR may already exist for this head; fall back to edit/comment.
+            PR_URL="$(gh pr view --json url -q .url 2>/dev/null || true)"
+          fi
+
+          echo "pr_url=${PR_URL}" >> "$GITHUB_OUTPUT"
+          echo "Opened/found PR: ${PR_URL}"
+
+          if [ -n "${PR_URL}" ]; then
+            gh pr comment "$PR_URL" --body "cc @${REVIEWER} — security auto-fix ready for review." || true
+            gh pr edit "$PR_URL" --add-reviewer "$REVIEWER" --add-assignee "$REVIEWER" || true
+          fi
+
+      - name: Upload summary artifact
+        if: always() && steps.alerts.outputs.open_alerts != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-fix-summary
+          path: |
+            security-fix-summary.md
+            security-fix-changed.txt
+          if-no-files-found: ignore

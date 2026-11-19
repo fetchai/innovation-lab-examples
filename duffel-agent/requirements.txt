@@ -3,17 +3,17 @@ uagents==0.22.10
 uagents-core==0.3.11
 
 # LangGraph + LLM glue (uses openai-duffel-langgraph's installed deps)
-langgraph==0.6.7
+langgraph==1.0.10
 langgraph-checkpoint-sqlite>=1.0.3
-langchain-core==0.3.76
-langchain-openai==0.3.33
+langchain-core==1.2.22
+langchain-openai==1.1.14
 openai==1.107.1
 # HTTP + async
 httpx==0.27.2
-aiohttp==3.10.9
+aiohttp==3.14.4
 
 # Env + crypto/JWT
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 python-jose[cryptography]==3.3.0
 
 # FET chain verification
