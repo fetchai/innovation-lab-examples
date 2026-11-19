@@ -1,4 +1,4 @@
-uagents>=0.22.5
+uagents>=0.26.1
 genai-processors>=1.0.0
 openai>=1.0.0
 httpx>=0.28.1
