@@ -3,4 +3,4 @@ uagents-core>=0.3.0
 python-dotenv>=1.0.0
 google-adk>=1.0.0
 google-genai>=3.3.0
-PyYAML>=6.0
+PyYAML>=6.0.3
