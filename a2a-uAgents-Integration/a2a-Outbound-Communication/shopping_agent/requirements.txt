@@ -12,7 +12,7 @@ uagents-adapter==0.6.2
 
 httpx>=0.28,<0.29
 pydantic>=2.0,<3.0
-typing-extensions>=4.0
+typing-extensions>=4.16.0
 python-dotenv>=1.0,<2.0
 uvicorn>=0.30
 starlette>=0.37
