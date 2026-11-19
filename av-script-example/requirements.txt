@@ -1,4 +1,4 @@
 uagents>=0.20.0
-uagents-core>=0.3.0
+uagents-core>=0.4.12
 python-dotenv>=1.2.4
 requests>=2.28.0
