@@ -8,7 +8,7 @@ requests>=2.31
 # FET on-chain payment verification
 cosmpy>=0.12.2
 # Greenhouse job extraction
-html2text>=2020.1
+html2text>=2025.4.15
 # Answer composition loop
 langgraph>=0.1
 # Live form-fill browser automation
