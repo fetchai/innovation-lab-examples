@@ -1,5 +1,5 @@
 # Fetch.ai agent framework
-uagents==0.22.8
+uagents==0.26.1
 uagents-core==0.4.12
 
 # Google Cloud / BigQuery (from original google-trends-agent ADK sample)
