@@ -1,4 +1,4 @@
-uagents==0.22.7
+uagents==0.26.1
 composio-langchain>=0.3.0
 langchain>=0.1.0
 langchain-openai>=0.1.0
