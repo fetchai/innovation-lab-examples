@@ -1,4 +1,4 @@
-crawl4ai>=0.8.9
+crawl4ai>=0.9.5
 supabase>=2.0.0
 python-dotenv>=1.2.4
 httpx>=0.27.0
