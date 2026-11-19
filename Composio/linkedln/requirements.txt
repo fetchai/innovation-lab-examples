@@ -3,7 +3,7 @@
 uagents>=0.26.1
 uagents-core>=0.1.0
 openai>=1.0.0
-python-dotenv>=1.0.0
+python-dotenv>=1.2.4
 composio>=0.3.0
 
 # Additional utilities
