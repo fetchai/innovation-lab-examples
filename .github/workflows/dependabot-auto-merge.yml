@@ -1,0 +1,159 @@
+name: Dependabot auto-merge
+
+# Auto-merge ONLY pull requests authored by dependabot[bot].
+# - On each Dependabot PR open/sync: enable GitHub auto-merge (merges when checks pass)
+# - Daily cron + manual dispatch: merge any ready Dependabot PRs
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  schedule:
+    # Once per day 08:00 UTC (~13:30 IST)
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List mergeable Dependabot PRs but do not merge"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  statuses: read
+
+concurrency:
+  group: dependabot-auto-merge
+  cancel-in-progress: false
+
+jobs:
+  # When Dependabot opens/updates a PR, queue squash auto-merge.
+  enable-on-pr:
+    name: Enable auto-merge (Dependabot PR)
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - name: Enable squash auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          echo "Enabling auto-merge on Dependabot PR #${PR}"
+          # --auto waits for required checks; squash keeps history tidy.
+          gh pr merge "$PR" --repo "$GH_REPO" --auto --squash --delete-branch || {
+            echo "auto-merge enable failed (may already be enabled or blocked by protection); will retry on cron."
+            exit 0
+          }
+
+  # Daily + manual: merge every open Dependabot PR that is ready.
+  merge-ready:
+    name: Merge ready Dependabot PRs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Merge open Dependabot PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t PRS < <(
+            gh pr list --repo "$GH_REPO" --state open --limit 100 \
+              --json number,author,title,isDraft,mergeable,mergeStateStatus,url \
+              --jq '.[] | select(.author.login == "app/dependabot" or .author.login == "dependabot") | select(.isDraft == false) | .number'
+          )
+
+          # Fallback author filter via REST (login is dependabot[bot] on the user object).
+          if [ "${#PRS[@]}" -eq 0 ]; then
+            mapfile -t PRS < <(
+              gh api "repos/${GH_REPO}/pulls?state=open&per_page=100" \
+                --jq '.[] | select(.user.login == "dependabot[bot]" and .draft == false) | .number'
+            )
+          fi
+
+          if [ "${#PRS[@]}" -eq 0 ]; then
+            echo "No open Dependabot PRs."
+            exit 0
+          fi
+
+          echo "Found Dependabot PR(s): ${PRS[*]}"
+          MERGED=0
+          SKIPPED=0
+
+          for PR in "${PRS[@]}"; do
+            echo "::group::PR #${PR}"
+            META="$(gh pr view "$PR" --repo "$GH_REPO" \
+              --json number,title,author,mergeable,mergeStateStatus,statusCheckRollup,url)"
+            echo "$META" | jq '{number,title,author:.author.login,mergeable,mergeStateStatus,url}'
+
+            AUTHOR="$(echo "$META" | jq -r '.author.login')"
+            if [[ "$AUTHOR" != "dependabot" && "$AUTHOR" != "app/dependabot" && "$AUTHOR" != "dependabot[bot]" ]]; then
+              echo "Skip #${PR}: author is ${AUTHOR} (not Dependabot)"
+              SKIPPED=$((SKIPPED + 1))
+              echo "::endgroup::"
+              continue
+            fi
+
+            # Refuse merge if any required/completed check failed.
+            FAILED="$(echo "$META" | jq '[.statusCheckRollup[]? | select(
+              (.conclusion == "FAILURE" or .conclusion == "CANCELLED" or .conclusion == "TIMED_OUT")
+              or (.state == "FAILURE" or .state == "ERROR")
+            )] | length')"
+            PENDING="$(echo "$META" | jq '[.statusCheckRollup[]? | select(
+              (.status == "IN_PROGRESS" or .status == "QUEUED" or .status == "PENDING")
+              or (.state == "PENDING")
+            )] | length')"
+
+            MERGEABLE="$(echo "$META" | jq -r '.mergeable')"
+            STATE="$(echo "$META" | jq -r '.mergeStateStatus')"
+
+            if [ "$FAILED" != "0" ]; then
+              echo "Skip #${PR}: ${FAILED} failed check(s)"
+              SKIPPED=$((SKIPPED + 1))
+              echo "::endgroup::"
+              continue
+            fi
+
+            if [ "$PENDING" != "0" ] || [ "$MERGEABLE" = "UNKNOWN" ] || [ "$STATE" = "BLOCKED" ] || [ "$STATE" = "UNSTABLE" ]; then
+              echo "PR #${PR} not ready yet (pending=${PENDING}, mergeable=${MERGEABLE}, state=${STATE}) — enabling --auto"
+              if [ "$DRY_RUN" = "true" ]; then
+                echo "dry_run: would enable auto-merge on #${PR}"
+              else
+                gh pr merge "$PR" --repo "$GH_REPO" --auto --squash --delete-branch || true
+              fi
+              SKIPPED=$((SKIPPED + 1))
+              echo "::endgroup::"
+              continue
+            fi
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "dry_run: would merge #${PR}"
+              SKIPPED=$((SKIPPED + 1))
+              echo "::endgroup::"
+              continue
+            fi
+
+            if gh pr merge "$PR" --repo "$GH_REPO" --squash --delete-branch; then
+              echo "Merged #${PR}"
+              MERGED=$((MERGED + 1))
+            else
+              echo "Merge failed for #${PR}; enabling auto-merge as fallback"
+              gh pr merge "$PR" --repo "$GH_REPO" --auto --squash --delete-branch || true
+              SKIPPED=$((SKIPPED + 1))
+            fi
+            echo "::endgroup::"
+          done
+
+          echo "Done. merged=${MERGED} skipped_or_queued=${SKIPPED}"
