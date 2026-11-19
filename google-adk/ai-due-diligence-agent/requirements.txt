@@ -104,7 +104,7 @@ google-genai==2.34.0
     # via google-adk
 google-resumable-media==2.8.0
     # via google-cloud-storage
-googleapis-common-protos==1.72.0
+googleapis-common-protos==1.76.0
     # via
     #   cosmpy
     #   google-api-core
