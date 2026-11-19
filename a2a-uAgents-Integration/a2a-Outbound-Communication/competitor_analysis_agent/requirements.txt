@@ -9,7 +9,7 @@ typing-extensions
 a2a-sdk[sqlite]
 a2a-sdk[http-server]
 sqlalchemy
-packaging==25.0
+packaging==26.3
 starlette
 sse-starlette
 uagents-adapter
