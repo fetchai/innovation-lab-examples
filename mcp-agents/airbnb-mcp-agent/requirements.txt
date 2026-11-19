@@ -1,5 +1,5 @@
 uagents>=0.26.1,<0.27
-uagents-core>=0.4,<0.5
+uagents-core>=0.4.12,<0.5
 
 # MCP client. Pinned below 2.0: the 2.x line reorganised the client modules.
 mcp>=2.3.0,<3.0
