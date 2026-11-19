@@ -264,7 +264,7 @@ typing-inspection==0.4.2
     # via
     #   fastapi
     #   pydantic
-uagents==0.23.4
+uagents==0.26.1
     # via ai-due-diligence-agent (pyproject.toml)
 uagents-core==0.4.0
     # via
