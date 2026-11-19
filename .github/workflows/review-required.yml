@@ -24,9 +24,28 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
+      # Required check: must report success for Dependabot (not "skipped").
+      - name: Pass for dependency bots
+        id: bot
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          ACTOR: ${{ github.actor }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          if [[ "$AUTHOR" == "dependabot[bot]" || "$AUTHOR" == "github-actions[bot]" || \
+                "$ACTOR" == "dependabot[bot]" || "$ACTOR" == "github-actions[bot]" || \
+                "$HEAD_REF" == dependabot/* || "$HEAD_REF" == security/auto-fix* ]]; then
+            echo "is_bot=true" >> "$GITHUB_OUTPUT"
+            echo "review-required: dependency bot PR — passing without human approval gate."
+          else
+            echo "is_bot=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Checkout for maintainer list
+        if: steps.bot.outputs.is_bot != 'true'
         uses: actions/checkout@v4
       - name: Require review (skipped for maintainers)
+        if: steps.bot.outputs.is_bot != 'true'
         uses: actions/github-script@v7
         with:
           script: |
