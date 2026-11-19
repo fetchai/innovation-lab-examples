@@ -3,4 +3,4 @@ requests>=2.34.2
 langchain-core>=1.8.1
 langchain-openai>=1.8.0
 langgraph>=1.2.22
-python-dotenv>=1.0.0
+python-dotenv>=1.2.4
