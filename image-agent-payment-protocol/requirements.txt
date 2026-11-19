@@ -1,5 +1,5 @@
 # Core agent framework
-uagents==0.22.8
+uagents==0.26.1
 uagents-core==0.4.12
 
 # Async HTTP and JWT
