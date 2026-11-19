@@ -6,5 +6,5 @@ python-dotenv
 langchain
 requests
 crewai-tools
-flake8==6.0.0  # For code analysis
+flake8==7.5.0  # For code analysis
 pytest==9.0.3  # For running tests and debugging
