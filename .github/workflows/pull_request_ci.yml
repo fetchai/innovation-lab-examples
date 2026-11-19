@@ -162,7 +162,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install ruff
@@ -188,7 +188,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install ruff
@@ -214,7 +214,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install mypy
@@ -267,7 +267,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Run example test suites
