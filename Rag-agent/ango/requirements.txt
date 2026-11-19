@@ -10,7 +10,7 @@ psycopg[binary]>=3.0.0
 pgvector>=0.2.0
 
 # Environment and utilities
-python-dotenv>=1.0.0
+python-dotenv>=1.2.4
 
 # PDF processing
 pypdf>=3.0.0
