@@ -11,6 +11,6 @@ uagents>=0.14.0
 uagents-core>=0.4.3
 google-api-python-client>=2.150.0
 google-auth-httplib2>=0.2.0
-openpyxl>=3.1.0
+openpyxl>=3.1.5
 pytest>=8.0.0
 pytest-asyncio>=0.24.0
