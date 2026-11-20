@@ -1,6 +1,6 @@
 anthropic>=0.40.0
 uagents>=0.26.1
-homeharvest>=0.3.7
+homeharvest>=0.8.18
 gspread>=6.0.0
 google-auth>=2.28.0
 pandas>=2.0.0
