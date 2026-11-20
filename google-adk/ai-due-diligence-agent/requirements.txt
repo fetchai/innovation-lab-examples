@@ -138,7 +138,7 @@ jsonschema-specifications==2025.9.1
     # via jsonschema
 kiwisolver==1.4.9
     # via matplotlib
-matplotlib==3.10.8
+matplotlib==3.11.2
     # via ai-due-diligence-agent (pyproject.toml)
 multidict==7.2.1
     # via
