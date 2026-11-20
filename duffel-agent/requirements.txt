@@ -1,5 +1,5 @@
 # Core agent + chat protocols
-uagents==0.22.10
+uagents==0.26.1
 uagents-core==0.4.12
 
 # LangGraph + LLM glue (uses openai-duffel-langgraph's installed deps)
