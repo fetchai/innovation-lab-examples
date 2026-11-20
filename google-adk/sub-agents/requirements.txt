@@ -46,7 +46,7 @@ certifi==2026.10.23
     #   httpcore
     #   httpx
     #   requests
-cffi==2.0.0
+cffi==2.1.1
     # via
     #   cryptography
     #   pynacl
