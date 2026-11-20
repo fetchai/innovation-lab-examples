@@ -256,6 +256,7 @@ innovation-lab-examples/
 
 | Example | Description | Tech Stack | Difficulty |
 |---------|-------------|------------|------------|
+| [contributors/nano-xno-payment-agent](contributors/nano-xno-payment-agent/) | Seller agent that collects payment on the fee-less Nano (XNO) layer-1, verifying on-chain | Python, uAgents, Nano RPC | 🟡 Intermediate |
 | [contributors/community_agent](contributors/community_agent/) | AI community growth agent for events and hackathons | Python, uAgents, ASI:One, Tavily | 🟡 Intermediate |
 | [contributors/news-summarizer-agent](contributors/news-summarizer-agent/) | Fetches top headlines for a topic via NewsAPI and summarizes them with ASI:One, via Chat Protocol | Python, uAgents, NewsAPI, ASI:One | 🟡 Intermediate |
 | [contributors/gemini-task-manager-agent](contributors/gemini-task-manager-agent/) | Natural-language task manager backed by Gemini | Python, uAgents, Gemini | 🟡 Intermediate |
