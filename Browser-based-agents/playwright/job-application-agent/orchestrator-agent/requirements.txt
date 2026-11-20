@@ -4,7 +4,7 @@ pydantic>=2.14.3
 python-dotenv>=1.2.4
 certifi>=2024.7.4
 openai>=1.30
-requests>=2.31
+requests>=2.34.2
 # FET on-chain payment verification
 cosmpy>=0.12.2
 # Greenhouse job extraction
