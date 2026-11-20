@@ -1,10 +1,10 @@
 uagents>=0.26.1
 uagents-core>=0.4.12
-pydantic>=2.7
-python-dotenv>=1.0
-certifi>=2024.7.4
+pydantic>=2.14.3
+python-dotenv>=1.2.4
+certifi>=2026.10.23
 openai>=1.30
-requests>=2.31
+requests>=2.34.2
 # FET on-chain payment verification
 cosmpy>=0.12.2
 # Greenhouse job extraction
@@ -14,4 +14,4 @@ langgraph>=1.2.22
 # Live form-fill browser automation
 playwright>=1.40
 # Stripe payment processing
-stripe>=7.0
+stripe>=17.0.0
