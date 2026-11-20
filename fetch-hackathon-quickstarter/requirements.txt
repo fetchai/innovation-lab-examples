@@ -24,7 +24,7 @@ propcache==0.3.2
 protobuf==5.29.6
 pycryptodome==4.5.0
 pydantic==2.11.9
-pydantic_core==2.33.2
+pydantic_core==2.50.4
 python-dateutil==4.0.0
 referencing==0.36.2
 requests==2.33.0
