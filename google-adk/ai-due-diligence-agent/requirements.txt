@@ -166,7 +166,7 @@ packaging==25.0
     #   virtualenv
 pillow==13.0.0
     # via matplotlib
-platformdirs==4.5.1
+platformdirs==4.14.5
     # via virtualenv
 propcache==0.4.1
     # via
