@@ -1,6 +1,6 @@
 uagents>=0.26.1
 uagents-core>=0.4.12
-pydantic>=2.7
+pydantic>=2.14.3
 python-dotenv>=1.0
 certifi>=2024.7.4
 openai>=1.30
