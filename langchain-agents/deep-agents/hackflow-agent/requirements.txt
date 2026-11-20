@@ -18,4 +18,4 @@ httpx>=0.27.0
 stripe>=17.0.0
 
 # Utilities
-python-dotenv>=1.0.0
+python-dotenv>=1.2.4
