@@ -1,4 +1,4 @@
-uagents>=0.22.0
+uagents>=0.26.1
 # Payment protocol (Stripe) requires uagents-core>=0.4.0; agent runs without it on 0.3.x
 uagents-core>=0.4.12
 httpx>=0.28.1
