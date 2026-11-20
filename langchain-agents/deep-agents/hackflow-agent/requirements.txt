@@ -8,14 +8,14 @@ langchain-openai>=1.8.0
 
 # Fetch.ai agent framework, versions from fet-example
 uagents==0.26.1
-uagents-core==0.4.0
+uagents-core==0.4.12
 
 # Tools
 tavily-python>=0.8.5
 httpx>=0.27.0
 
 # Stripe embedded Checkout
-stripe>=8.0.0
+stripe>=17.0.0
 
 # Utilities
-python-dotenv>=1.0.0
+python-dotenv>=1.2.4

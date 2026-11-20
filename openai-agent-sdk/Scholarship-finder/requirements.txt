@@ -1,11 +1,11 @@
-openai>=1.50.0
-uagents==0.22.10
-uagents-core==0.3.10
+openai>=3.52.0
+uagents==0.26.1
+uagents-core==0.4.12
 httpx>=0.28.1
 pydantic>=2.14.3
 python-dotenv==1.2.4
 # OpenAI Agents SDK (installs Python module `agents`)
-openai-agents>=0.0.17
+openai-agents>=0.24.0
 openpyxl==3.1.5
-icalendar==6.0.1
+icalendar==7.3.0
 reportlab==5.1.0
