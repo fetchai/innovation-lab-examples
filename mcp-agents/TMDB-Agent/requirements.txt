@@ -1,4 +1,4 @@
-uagents==0.24.0
+uagents==0.26.1
 uagents-core==0.4.12
 openai==3.52.0
 httpx==0.28.1
