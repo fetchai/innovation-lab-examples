@@ -4,7 +4,7 @@ uagents==0.26.1
 uagents-core==0.4.12
 langgraph==1.2.22
 langchain-core==1.8.1
-pydantic==2.12.5
+pydantic==2.14.3
 httpx==0.28.1
 stripe==17.0.0
 python-dotenv==1.2.4
