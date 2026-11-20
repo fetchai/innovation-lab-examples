@@ -1,4 +1,4 @@
-uagents>=0.25.2
+uagents>=0.26.1
 uagents-core>=0.4.6
 langchain-openai>=1.8.0
 langgraph>=1.2.4
