@@ -12,9 +12,13 @@ Security reports are welcome for:
 
 ## Reporting a Vulnerability
 
-Please do not open public issues for security vulnerabilities.
+**Do not open public issues for security vulnerabilities.**
 
-Report privately with:
+Use GitHub private vulnerability reporting:
+
+→ [Report a vulnerability](https://github.com/fetchai/innovation-lab-examples/security/advisories/new)
+
+Include:
 
 1. A clear summary of the issue
 2. Steps to reproduce
@@ -22,7 +26,17 @@ Report privately with:
 4. Potential impact
 5. Suggested mitigation (if available)
 
-If possible, report through private maintainer channels for the Fetch.ai team.
+## What we run on this repo
+
+| Feature | Status |
+|---|---|
+| Dependabot alerts | Enabled |
+| Dependabot security updates | Enabled |
+| Dependabot version updates | Enabled (`.github/dependabot.yml`) |
+| Secret scanning | Enabled |
+| Push protection (secrets) | Enabled |
+| Code scanning (CodeQL) | Enabled (`.github/workflows/codeql.yml`) |
+| Private vulnerability reporting | Enabled |
 
 ## Disclosure Process
 
@@ -34,5 +48,5 @@ If possible, report through private maintainer channels for the Fetch.ai team.
 
 - Never commit real secrets, API keys, or private keys
 - Use `.env.example` for placeholder values
-- Keep dependencies updated
+- Keep dependencies updated (Dependabot PRs auto-merge when CI is green)
 - Avoid copying sensitive logs into public issues/PRs
