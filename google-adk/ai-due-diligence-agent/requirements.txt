@@ -94,7 +94,7 @@ google-auth==2.62.2
     #   google-genai
 google-cloud-core==2.5.0
     # via google-cloud-storage
-google-cloud-storage==3.7.0
+google-cloud-storage==3.17.1
     # via ai-due-diligence-agent (pyproject.toml)
 google-crc32c==1.8.0
     # via
