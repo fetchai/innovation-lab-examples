@@ -1,10 +1,10 @@
-uagents==0.22.3
-uagents-adapter==0.6.2
+uagents==0.26.1
+uagents-adapter==0.2.1
 crewai
 langchain-openai
 python-dotenv
 langchain
 requests
 crewai-tools
-flake8==6.0.0  # For code analysis
-pytest==9.0.3  # For running tests and debugging
+flake8==7.5.0  # For code analysis
+pytest==9.2.0  # For running tests and debugging

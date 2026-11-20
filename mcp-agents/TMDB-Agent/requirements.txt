@@ -1,7 +1,7 @@
-uagents==0.24.0
-uagents-core==0.4.4
-openai==2.30.0
+uagents==0.26.1
+uagents-core==0.4.12
+openai==3.52.0
 httpx==0.28.1
-pydantic==2.12.5
-python-dotenv==1.2.2
-fastmcp==3.4.10
+pydantic==2.14.3
+python-dotenv==1.2.4
+fastmcp==4.2.0

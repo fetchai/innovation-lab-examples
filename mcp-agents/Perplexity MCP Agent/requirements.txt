@@ -1,7 +1,7 @@
-uagents>=0.14.0
-mcp>=1.0.0
-anthropic>=0.34.0
-python-dotenv>=1.0.0
-httpx>=0.25.0
-cryptography>=41.0.0
-docker>=6.0.0
+uagents>=0.26.1
+mcp>=2.3.0
+anthropic>=2.9.0
+python-dotenv>=1.2.4
+httpx>=0.28.1
+cryptography>=50.0.2
+docker>=7.2.0

@@ -10,7 +10,7 @@ typing-extensions
 a2a-sdk[sqlite]
 sqlalchemy
 google-generativeai
-packaging==25.0
+packaging==26.3
 google-genai
 a2a-sdk[http-server]
 starlette

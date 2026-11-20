@@ -18,7 +18,7 @@ anyio==4.14.2
     #   google-genai
     #   httpx
     #   starlette
-attrs==25.4.0
+attrs==26.1.0
     # via
     #   aiohttp
     #   jsonschema
@@ -42,11 +42,11 @@ cffi==2.0.0
     #   pynacl
 charset-normalizer==3.4.4
     # via requests
-click==8.3.1
+click==8.5.1
     # via
     #   google-adk
     #   uvicorn
-contourpy==1.3.3
+contourpy==1.4.0
     # via matplotlib
 cosmpy==0.11.2
     # via uagents
@@ -94,17 +94,17 @@ google-auth==2.62.2
     #   google-genai
 google-cloud-core==2.5.0
     # via google-cloud-storage
-google-cloud-storage==3.7.0
+google-cloud-storage==3.17.1
     # via ai-due-diligence-agent (pyproject.toml)
 google-crc32c==1.8.0
     # via
     #   google-cloud-storage
     #   google-resumable-media
-google-genai==2.34.0
+google-genai==3.4.0
     # via google-adk
 google-resumable-media==2.8.0
     # via google-cloud-storage
-googleapis-common-protos==1.72.0
+googleapis-common-protos==1.76.0
     # via
     #   cosmpy
     #   google-api-core
@@ -136,9 +136,9 @@ jsonschema==4.25.1
     #   google-adk
 jsonschema-specifications==2025.9.1
     # via jsonschema
-kiwisolver==1.4.9
+kiwisolver==1.5.1
     # via matplotlib
-matplotlib==3.10.8
+matplotlib==3.11.2
     # via ai-due-diligence-agent (pyproject.toml)
 multidict==7.2.1
     # via
@@ -166,7 +166,7 @@ packaging==25.0
     #   virtualenv
 pillow==13.0.0
     # via matplotlib
-platformdirs==4.5.1
+platformdirs==4.14.5
     # via virtualenv
 propcache==0.4.1
     # via
@@ -197,7 +197,7 @@ pydantic==2.12.5
     #   uagents-core
 pydantic-core==2.41.5
     # via pydantic
-pynacl==1.6.0
+pynacl==1.6.2
     # via cosmpy
 pyparsing==3.3.1
     # via matplotlib
@@ -264,7 +264,7 @@ typing-inspection==0.4.2
     # via
     #   fastapi
     #   pydantic
-uagents==0.23.4
+uagents==0.26.1
     # via ai-due-diligence-agent (pyproject.toml)
 uagents-core==0.4.0
     # via
@@ -276,7 +276,7 @@ uvicorn==0.40.0
     # via
     #   google-adk
     #   uagents
-virtualenv==21.14.5
+virtualenv==21.14.13
     # via cosmpy
 watchdog==6.0.0
     # via google-adk
