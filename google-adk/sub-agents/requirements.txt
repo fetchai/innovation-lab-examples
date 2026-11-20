@@ -323,7 +323,7 @@ virtualenv==21.14.5
     # via cosmpy
 watchdog==6.0.0
     # via google-adk
-websockets==15.0.1
+websockets==17.4
     # via
     #   google-adk
     #   google-genai
