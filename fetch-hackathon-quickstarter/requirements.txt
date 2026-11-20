@@ -11,7 +11,7 @@ cosmpy==0.11.1
 distlib==0.4.4
 ecdsa==0.19.2
 filelock==4.2.1
-frozenlist==1.7.0
+frozenlist==1.8.0
 googleapis-common-protos==1.76.0
 grpcio==1.74.0
 h11==0.16.0
