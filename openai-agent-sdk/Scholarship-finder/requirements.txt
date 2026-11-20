@@ -5,7 +5,7 @@ httpx>=0.28.1
 pydantic>=2.14.3
 python-dotenv==1.2.4
 # OpenAI Agents SDK (installs Python module `agents`)
-openai-agents>=0.0.17
+openai-agents>=0.24.0
 openpyxl==3.1.5
 icalendar==7.3.0
 reportlab==5.1.0
