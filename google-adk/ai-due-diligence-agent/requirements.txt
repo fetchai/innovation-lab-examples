@@ -197,7 +197,7 @@ pydantic==2.12.5
     #   uagents-core
 pydantic-core==2.41.5
     # via pydantic
-pynacl==1.6.0
+pynacl==1.6.2
     # via cosmpy
 pyparsing==3.3.1
     # via matplotlib
