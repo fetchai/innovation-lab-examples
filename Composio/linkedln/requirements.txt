@@ -9,4 +9,4 @@ composio>=0.32.0
 # Additional utilities
 requests>=2.34.2
 pydantic>=2.14.3
-typing-extensions>=4.0.0
+typing-extensions>=4.16.0
