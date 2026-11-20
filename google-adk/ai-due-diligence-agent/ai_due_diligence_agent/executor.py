@@ -48,7 +48,9 @@ async def periodic_cleanup(ctx: Context) -> None:
 
     try:
         client = storage.Client()
-        bucket = client.bucket("ai-due-diligence-agent")
+        bucket = client.bucket(
+            os.getenv("ADK_GCS_BUCKET_NAME", "ai-due-diligence-agent")
+        )
 
         cutoff = datetime.now(timezone.utc) - timedelta(days=1)
         deleted_count = 0
