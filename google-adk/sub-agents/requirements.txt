@@ -28,7 +28,7 @@ anyio==4.14.2
     #   starlette
 asyncpg==0.31.0
     # via sqlalchemy
-attrs==25.4.0
+attrs==26.1.0
     # via
     #   aiohttp
     #   jsonschema
