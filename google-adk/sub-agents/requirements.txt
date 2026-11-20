@@ -183,7 +183,7 @@ opentelemetry-sdk==1.45.2
     #   google-adk
 opentelemetry-semantic-conventions==0.66b2
     # via opentelemetry-sdk
-packaging==25.0
+packaging==26.3
     # via
     #   google-adk
     #   virtualenv
