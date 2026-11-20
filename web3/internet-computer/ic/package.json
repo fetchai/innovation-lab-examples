@@ -11,6 +11,6 @@
   "devDependencies": {
     "@types/express": "^4.17.21",
     "jest": "^29.7.0",
-    "ts-jest": "^29.3.2"
+    "ts-jest": "^29.4.15"
   }
 }
