@@ -1,5 +1,5 @@
 uagents>=0.26.1
-uagents-core>=0.4.6
+uagents-core>=0.4.12
 langchain-openai>=1.8.0
 langgraph>=1.2.4
 tavily-python>=0.8.5
