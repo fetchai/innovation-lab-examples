@@ -1,6 +1,6 @@
 uagents>=0.25.2
 uagents-core>=0.4.6
-langchain-openai>=1.2.2
+langchain-openai>=1.8.0
 langgraph>=1.2.4
 tavily-python>=0.7.25
 stripe>=15.2.0
