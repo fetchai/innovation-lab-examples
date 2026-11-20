@@ -1,4 +1,4 @@
-uagents>=0.22
+uagents>=0.26.1
 uagents-core>=0.4.12
 pydantic>=2.7
 python-dotenv>=1.0
