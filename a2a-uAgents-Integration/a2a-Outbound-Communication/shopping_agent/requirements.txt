@@ -1,6 +1,6 @@
 # Agno agent with Gemini + Exa search, exposed over A2A and bridged to uAgents.
 
-agno>=1.0,<3.0
+agno>=3.2.0,<4.0
 google-genai>=1.0,<2.0
 exa-py>=2.28.0,<3.0
 
