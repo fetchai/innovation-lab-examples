@@ -7,5 +7,5 @@ python-dotenv==1.2.4
 # OpenAI Agents SDK (installs Python module `agents`)
 openai-agents>=0.0.17
 openpyxl==3.1.5
-icalendar==6.0.1
+icalendar==7.3.0
 reportlab==5.1.0
