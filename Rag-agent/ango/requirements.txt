@@ -16,5 +16,5 @@ python-dotenv>=1.2.4
 pypdf>=3.0.0
 
 # Optional: For enhanced functionality
-requests>=2.31.0
+requests>=2.34.2
 aiohttp>=3.14.5
