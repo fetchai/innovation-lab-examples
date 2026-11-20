@@ -7,7 +7,7 @@ openai>=1.0.0
 # Database and vector storage
 sqlalchemy>=2.0.0
 psycopg[binary]>=3.3.9
-pgvector>=0.2.0
+pgvector>=0.5.1
 
 # Environment and utilities
 python-dotenv>=1.2.4
