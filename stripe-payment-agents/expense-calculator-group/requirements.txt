@@ -1,6 +1,6 @@
 uagents>=0.22.0
 # Payment protocol (Stripe) requires uagents-core>=0.4.0; agent runs without it on 0.3.x
-uagents-core>=0.3.0
+uagents-core>=0.4.12
 httpx>=0.27.0
 python-dotenv>=1.0.0
 openai>=1.50.0
