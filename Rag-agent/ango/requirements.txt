@@ -5,7 +5,7 @@ uagents
 openai>=1.0.0
 
 # Database and vector storage
-sqlalchemy>=2.0.0
+sqlalchemy>=2.1.9
 psycopg[binary]>=3.3.9
 pgvector>=0.5.1
 
