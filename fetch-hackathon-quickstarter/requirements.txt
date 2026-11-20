@@ -33,7 +33,7 @@ six==1.17.0
 sortedcontainers==2.4.0
 typing-inspection==0.4.1
 typing_extensions==4.16.0
-uagents==0.22.8
+uagents==0.26.1
 uagents-core==0.3.8
 urllib3==2.8.0
 uvicorn==0.35.0
