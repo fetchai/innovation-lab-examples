@@ -10,7 +10,7 @@
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
-    "jest": "^29.7.0",
+    "jest": "^30.5.2",
     "ts-jest": "^29.4.15"
   }
 }
