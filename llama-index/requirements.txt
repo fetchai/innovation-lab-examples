@@ -5,7 +5,7 @@ llama-index-vector-stores-qdrant==0.9.1
 llama-index-readers-file==0.5.6
 qdrant-client==1.20.0
 uagents==0.26.1
-uagents-core==0.4.2
+uagents-core==0.4.12
 python-dotenv==1.2.2
 stripe>=17.0.0
 requests==2.34.2
