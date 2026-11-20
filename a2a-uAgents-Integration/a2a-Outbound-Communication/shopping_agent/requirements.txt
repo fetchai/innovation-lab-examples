@@ -16,4 +16,4 @@ typing-extensions>=4.16.0
 python-dotenv>=1.2.4,<2.0
 uvicorn>=0.30
 starlette>=1.7.0
-sse-starlette>=2.0
+sse-starlette>=3.5.1
