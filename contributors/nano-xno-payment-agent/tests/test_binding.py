@@ -28,7 +28,32 @@ class Store(dict):
 
 def test_commitment_matches_standard_vector():
     rep = nb.commitment_rep_account("order-0001", PAY_TO, 50000000000000000000000000000)
-    assert rep == "nano_iumonewuk48ekbo6h51t3shddqdhrrbe5ns75tu85yo9i6tw8u9igehj4ozj"
+    # Vector from docs/BINDING-STANDARD.md (xno-call-binding), "Option C commitment_rep_account".
+    assert rep == "nano_33q9dassq66es6mcay83n5kypqgpzjikr9bkc9ope9xch1borfphgehj4ozj"
+
+
+def test_account_encoding_matches_the_network():
+    # Genesis account and its public key, as every Nano node and wallet show them.
+    genesis_pub = bytes.fromhex(
+        "E89208DD038FBB269987689621D52292AE9C35941A7484756ECCED92A65093BA"
+    )
+    assert (
+        nb.pubkey_to_account(genesis_pub)
+        == "nano_3t6k35gi95xu6tergt6p69ck76ogmitsa8mnijtpxm9fkcm736xtoncuohr3"
+    )
+    assert nb.pubkey_to_account(bytes(32)) == PAY_TO
+    # 256 bits in 52 characters leave 4 zero bits on top: always 1 or 3.
+    for i in range(64):
+        rep = nb.commitment_rep_account(f"order-{i}", PAY_TO, PRICE)
+        assert rep[5] in "13" and len(rep) == 65
+
+
+def test_verify_accepts_the_representative_as_a_node_prints_it():
+    # block_info returns the representative in the network's own encoding; the
+    # order commitment must compare equal to that string, not only to itself.
+    node_rep = "nano_33q9dassq66es6mcay83n5kypqgpzjikr9bkc9ope9xch1borfphgehj4ozj"
+    rep = nb.commitment_rep_account("order-0001", PAY_TO, 50000000000000000000000000000)
+    assert _verify(_block(node_rep), expected_representative=rep)
 
 
 def test_order_ids_are_opaque_and_commitments_differ():
