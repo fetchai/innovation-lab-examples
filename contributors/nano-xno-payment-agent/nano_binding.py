@@ -22,23 +22,26 @@ ORDER_PREFIX = "nano_order:"
 BLOCK_PREFIX = "nano_block:"
 
 
-def _enc32(data: bytes) -> str:
+def _enc32(data: bytes, chars: int) -> str:
+    """Base32 (Nano alphabet) of ``data`` as exactly ``chars`` characters.
+
+    Nano pads on the HIGH side: the 256-bit key is read as a 260-bit number with
+    four leading zero bits, which is why every account starts with 1 or 3. Padding
+    the low side instead gives a string a node never returns for the same key, so
+    the representative check in verify_nano would refuse every honest payment.
+    """
     n = int.from_bytes(data, "big")
-    pad = (5 - (len(data) * 8) % 5) % 5
-    n <<= pad
-    out = []
-    for _ in range((len(data) * 8 + pad) // 5):
-        out.append(_ALPHA[n & 31])
-        n >>= 5
-    return "".join(reversed(out))
+    if n >> (5 * chars):
+        raise ValueError("data does not fit in the requested width")
+    return "".join(_ALPHA[(n >> (5 * i)) & 31] for i in reversed(range(chars)))
 
 
 def pubkey_to_account(pub: bytes) -> str:
     """32-byte public key -> nano_ address (52 chars key + 8 chars blake2b-5 checksum)."""
     if len(pub) != 32:
         raise ValueError("public key must be 32 bytes")
-    key = _enc32(pub)[-52:]
-    chk = _enc32(hashlib.blake2b(pub, digest_size=5).digest()[::-1])
+    key = _enc32(pub, 52)
+    chk = _enc32(hashlib.blake2b(pub, digest_size=5).digest()[::-1], 8)
     return "nano_" + key + chk
 
 
