@@ -102,7 +102,7 @@ google-crc32c==1.8.0
     #   google-resumable-media
 google-genai==3.4.0
     # via google-adk
-google-resumable-media==2.8.0
+google-resumable-media==2.11.0
     # via google-cloud-storage
 googleapis-common-protos==1.76.0
     # via
