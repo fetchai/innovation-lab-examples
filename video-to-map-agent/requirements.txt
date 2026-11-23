@@ -8,4 +8,4 @@ fpdf2
 openpyxl
 requests
 types-requests
-stripe>=17.0.0
+stripe>=17.1.0
