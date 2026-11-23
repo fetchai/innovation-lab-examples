@@ -5,7 +5,7 @@ uagents-core==0.4.12
 # LangGraph + LLM glue (uses openai-duffel-langgraph's installed deps)
 langgraph==1.2.22
 langgraph-checkpoint-sqlite>=3.1.3
-langchain-core==1.8.1
+langchain-core==1.8.4
 langchain-openai==1.1.14
 openai==3.52.0
 # HTTP + async
