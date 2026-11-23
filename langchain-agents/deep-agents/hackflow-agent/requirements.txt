@@ -4,7 +4,7 @@ deepagents==0.7.39
 
 # LLM providers
 langchain-anthropic>=1.7.10
-langchain-openai>=1.8.0
+langchain-openai>=1.8.5
 
 # Fetch.ai agent framework, versions from fet-example
 uagents==0.26.1
