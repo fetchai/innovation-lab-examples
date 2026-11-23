@@ -1,4 +1,4 @@
 uagents>=0.26.1
-anthropic>=2.9.0
+anthropic>=2.11.0
 python-dotenv>=1.2.4
 requests>=2.34.2
