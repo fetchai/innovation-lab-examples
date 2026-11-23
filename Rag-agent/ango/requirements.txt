@@ -13,7 +13,7 @@ pgvector>=0.5.1
 python-dotenv>=1.2.4
 
 # PDF processing
-pypdf>=7.1.0
+pypdf>=7.1.1
 
 # Optional: For enhanced functionality
 requests>=2.34.2
