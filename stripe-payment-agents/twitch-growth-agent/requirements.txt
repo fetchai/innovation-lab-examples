@@ -8,5 +8,5 @@ requests>=2.34.2
 python-dotenv>=1.2.4
 aiohttp>=3.14.5
 uvicorn>=0.54.0
-websockets>=15.0.1
+websockets>=17.4
 pynacl>=1.6.2
