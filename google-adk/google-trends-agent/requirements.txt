@@ -7,7 +7,7 @@ google-cloud-bigquery>=3.47.0,<4.0.0
 google-auth>=2.62.2
 
 # ASI:One / OpenAI-compatible client
-openai>=3.52.0
+openai>=3.57.0
 
 # Stripe payments
 stripe>=17.0.0
