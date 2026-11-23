@@ -4,5 +4,5 @@ uagents-core==0.4.12
 httpx>=0.28.1
 pydantic>=2.14.3
 # OpenAI Agents SDK (installs Python module `agents`)
-openai-agents>=0.24.0
+openai-agents>=0.25.0
 
