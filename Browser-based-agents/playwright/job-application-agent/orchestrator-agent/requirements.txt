@@ -14,4 +14,4 @@ langgraph>=1.2.22
 # Live form-fill browser automation
 playwright>=1.40
 # Stripe payment processing
-stripe>=17.0.0
+stripe>=17.1.0
