@@ -10,7 +10,7 @@ click==8.2.1
 cosmpy==0.11.1
 distlib==0.4.4
 ecdsa==0.19.2
-filelock==4.2.1
+filelock==4.2.12
 frozenlist==1.8.0
 googleapis-common-protos==1.76.0
 grpcio==1.74.0
