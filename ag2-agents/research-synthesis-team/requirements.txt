@@ -1,7 +1,7 @@
 # ag2 1.0 dropped the `autogen` module this example imports; stay on the 0.x line.
 # a2a-sdk 1.x removed TextPart from a2a.types — keep the 0.3.x line this example uses.
 ag2[openai,mcp,duckduckgo]>=1.3.2,<2.0
-a2a-sdk[http-server]>=1.3.0,<1.4.0
+a2a-sdk[http-server]>=1.3.1,<1.4.0
 mcp>=2.3.0,<3.0
 uagents>=0.26.1
 uagents-adapter==0.6.2
