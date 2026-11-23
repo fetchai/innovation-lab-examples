@@ -123,7 +123,7 @@ graphviz==0.21
     # via google-adk
 greenlet==3.3.0
     # via sqlalchemy
-grpcio==1.76.0
+grpcio==1.85.3
     # via
     #   a2a-sdk
     #   cosmpy
