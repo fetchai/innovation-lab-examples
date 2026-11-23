@@ -1,6 +1,6 @@
 uagents>=0.26.1
 mcp>=2.3.0
-anthropic>=2.9.0
+anthropic>=2.11.0
 python-dotenv>=1.2.4
 httpx>=0.28.1
 cryptography>=50.0.2
