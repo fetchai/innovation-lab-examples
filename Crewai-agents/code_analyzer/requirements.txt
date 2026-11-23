@@ -1,5 +1,5 @@
 uagents==0.26.1
-uagents-adapter==0.2.1
+uagents-adapter==0.6.2
 crewai
 langchain-openai
 python-dotenv
