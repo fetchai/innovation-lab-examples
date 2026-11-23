@@ -2,7 +2,7 @@ uagents>=0.26.1,<0.27
 uagents-core>=0.4.12,<0.5
 
 # MCP server exposing the Calendar tools (server.py)
-fastmcp>=4.2.0,<5.0
+fastmcp>=4.2.3,<5.0
 
 # Google Calendar API and the OAuth installed-app flow
 google-api-python-client>=2.202.0,<3.0
