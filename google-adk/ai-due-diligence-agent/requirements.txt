@@ -72,7 +72,7 @@ filelock==4.2.12
     # via
     #   python-discovery
     #   virtualenv
-fonttools==4.61.1
+fonttools==4.68.0
     # via matplotlib
 frozenlist==1.8.0
     # via
