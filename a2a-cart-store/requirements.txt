@@ -1,6 +1,6 @@
 uagents==0.26.1
 uagents-adapter==0.6.2
-a2a-sdk[http-server]>=1.3.0
+a2a-sdk[http-server]>=1.3.1
 python-dotenv>=1.2.4
 httpx>=0.28.1
 python-jose[cryptography]>=3.5.0
