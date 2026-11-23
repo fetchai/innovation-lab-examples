@@ -3,7 +3,7 @@ uagents-core>=0.4.12
 pydantic>=2.14.3
 python-dotenv>=1.2.4
 certifi>=2026.10.23
-openai>=1.30
+openai>=3.57.0
 requests>=2.34.2
 # FET on-chain payment verification
 cosmpy>=0.12.2
