@@ -1,4 +1,4 @@
-openai>=3.52.0
+openai>=3.57.0
 hyperon>=0.2.10
 uagents>=0.26.1
 uagents-core>=0.4.12
