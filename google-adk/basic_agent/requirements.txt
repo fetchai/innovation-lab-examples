@@ -1,6 +1,6 @@
 uagents>=0.26.1
 uagents-core>=0.4.12
 python-dotenv>=1.0.0
-google-adk>=2.14.1
+google-adk>=2.15.0
 google-genai>=3.4.0
 PyYAML>=6.0.3
