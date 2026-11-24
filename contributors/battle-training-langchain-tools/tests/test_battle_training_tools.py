@@ -81,6 +81,15 @@ class TestForwarding(unittest.TestCase):
         _, params = stub.calls[-1]
         self.assertEqual(params["arguments"], {})
 
+    def test_explicit_null_is_forwarded_for_payout_wallet(self):
+        # set_payout_wallet documents null as "clear the wallet": an
+        # explicitly passed None must reach the server as JSON null,
+        # not be dropped like an unset optional.
+        tools, stub = make_tools(key="secret-key")
+        tools["battle_training_set_payout_wallet"].invoke({"address": None})
+        _, params = stub.calls[-1]
+        self.assertEqual(params["arguments"], {"address": None})
+
     def test_key_is_never_a_tool_argument(self):
         tools, stub = make_tools(key="secret-key")
         tools["battle_training_create_bot"].invoke({"name": "cobalt-vanguard"})

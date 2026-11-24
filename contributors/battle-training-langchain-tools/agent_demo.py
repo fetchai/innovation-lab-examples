@@ -22,6 +22,28 @@ from battle_training_tools import BattleTrainingClient, build_tools
 from battle_training_tools.tools import TOOL_SPECS
 
 
+def _load_dotenv() -> None:
+    """Load ``KEY=VALUE`` pairs from a ``.env`` file next to this script.
+
+    Minimal and dependency-free: blank lines and ``#`` comments are
+    skipped, surrounding quotes are stripped, and variables already
+    present in the environment are never overwritten.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if not os.path.isfile(path):
+        return
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip("'\"")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
 def list_tools() -> None:
     for name, (args_model, needs_key, description) in TOOL_SPECS.items():
         scope = "account key required" if needs_key else "anonymous"
@@ -47,6 +69,7 @@ def ask(question: str) -> None:
 
 
 if __name__ == "__main__":
+    _load_dotenv()
     if len(sys.argv) > 1 and sys.argv[1] == "--list-tools":
         list_tools()
     elif len(sys.argv) > 1:

@@ -139,7 +139,7 @@ Or run one question through a one-agent LangGraph ReAct agent (read
 tools, plus account tools if `BT_ACCOUNT_KEY` is set):
 
 ```bash
-pip install langgraph langchain-openai   # demo extras, not in requirements.txt
+pip install langgraph langchain langchain-openai   # demo extras, not in requirements.txt
 BT_DEMO_MODEL=gpt-4o-mini python agent_demo.py "Who leads the ladder?"
 ```
 
@@ -188,7 +188,7 @@ https://api.battle.training/mcp   (official battle.training MCP server)
   tool, with argument models mirroring the published schemas.
 - `agent_demo.py` — `--list-tools` catalog printer + optional LangGraph
   question mode.
-- `tests/test_battle_training_tools.py` — 18 offline tests (stub
+- `tests/test_battle_training_tools.py` — 19 offline tests (stub
   transport, no network): schema validation, seed/pool rules, payout
   address pattern, key handling, result flattening.
 
@@ -216,7 +216,7 @@ python -m pytest tests/ -q
 ## Troubleshooting
 
 - `ModuleNotFoundError: No module named 'langgraph'` in question mode →
-  install the demo extras: `pip install langgraph langchain-openai` (or
+  install the demo extras: `pip install langgraph langchain langchain-openai` (or
   your provider's LangChain package).
 - Account tool returns a "key required" error → pass your own key:
   `BattleTrainingClient(key=...)`, or set `BT_ACCOUNT_KEY` for the

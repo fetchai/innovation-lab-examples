@@ -122,6 +122,12 @@ class BattleTrainingClient:
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",
+            # The arena's edge blocks Python's default user-agent
+            # (HTTP 403, error code 1010); send a normal browser one.
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+            ),
         }
         if self._key:
             headers["Authorization"] = f"Bearer {self._key}"

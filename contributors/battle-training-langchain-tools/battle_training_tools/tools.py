@@ -336,6 +336,13 @@ def _make_tool(
             )
         args = args_model(**kwargs)
         payload = args.model_dump(exclude_none=True)
+        # A field explicitly passed as None is meaningful, not missing:
+        # set_payout_wallet's address uses null to clear the wallet.
+        # Forward those as JSON null instead of dropping them with the
+        # optionals that were never set.
+        for field in args.model_fields_set:
+            if getattr(args, field) is None:
+                payload[field] = None
         return client.call_tool(name, payload)
 
     return StructuredTool.from_function(
