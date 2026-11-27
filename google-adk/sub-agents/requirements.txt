@@ -228,7 +228,7 @@ pyjwt==2.15.1
     # via a2a-sdk
 pymysql==1.1.2
     # via aiomysql
-pynacl==1.6.0
+pynacl==1.6.2
     # via cosmpy
 python-dateutil==2.9.0.post0
     # via cosmpy
