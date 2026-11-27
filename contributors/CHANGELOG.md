@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `battle-training-langchain-tools/`: LangChain/LangGraph tool package for the battle.training MCP server — all 21 tools as validated StructuredTools (pydantic schemas mirroring the published contract, offline tests), complementing the `battle-training-bot/` example (@pinkfunsolana)
 - `nano-xno-payment-agent/`: uAgents seller example that collects payment on the fee-less Nano (XNO) layer-1 via the payment protocol, with on-chain verification against the public Nano RPC
 - `gemini-research-agent/`: Added Gemini-powered research assistant demonstrating the standard Agent Chat Protocol (@Kavurubuvanesh)
 - `gemini-task-manager-agent/`: Added Gemini-powered task manager agent that breaks down user goals into actionable step-by-step plans using Google Gemini 2.0 Flash and uAgents Chat Protocol (@Bhargav-Devv)

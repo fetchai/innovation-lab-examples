@@ -261,6 +261,7 @@ innovation-lab-examples/
 | [contributors/news-summarizer-agent](contributors/news-summarizer-agent/) | Fetches top headlines for a topic via NewsAPI and summarizes them with ASI:One, via Chat Protocol | Python, uAgents, NewsAPI, ASI:One | 🟡 Intermediate |
 | [contributors/gemini-task-manager-agent](contributors/gemini-task-manager-agent/) | Natural-language task manager backed by Gemini | Python, uAgents, Gemini | 🟡 Intermediate |
 | [battle-training-bot](contributors/battle-training-bot/) | Battle bot agent for battle.training via its official MCP server | Python, MCP, httpx2 | 🟡 Intermediate |
+| [battle-training-langchain-tools](contributors/battle-training-langchain-tools/) | All 21 battle.training MCP tools as validated LangChain StructuredTools for LangGraph/LangChain agents | Python, LangChain, MCP, pydantic | 🟡 Intermediate |
 
 ### 🌐 Web3 & Blockchain
 
