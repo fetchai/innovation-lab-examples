@@ -12,6 +12,6 @@ html2text>=2025.4.15
 # Answer composition loop
 langgraph>=1.2.22
 # Live form-fill browser automation
-playwright>=1.40
+playwright>=1.65.2
 # Stripe payment processing
 stripe>=17.0.0
