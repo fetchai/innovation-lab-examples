@@ -2,7 +2,7 @@
 agno>=3.2.0
 uagents
 # OpenAI integration
-openai>=3.52.0
+openai>=3.57.0
 
 # Database and vector storage
 sqlalchemy>=2.1.9
