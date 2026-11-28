@@ -13,7 +13,7 @@ ecdsa==0.19.2
 filelock==4.2.1
 frozenlist==1.8.0
 googleapis-common-protos==1.76.0
-grpcio==1.74.0
+grpcio==1.85.3
 h11==0.16.0
 idna==3.20
 jsonschema==4.26.0
