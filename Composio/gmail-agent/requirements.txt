@@ -1,5 +1,5 @@
 uagents==0.26.1
 composio-langchain>=0.3.0
-langchain>=1.5.0
+langchain>=1.5.2
 langchain-openai>=1.8.0
 python-dotenv>=1.2.4
