@@ -1,5 +1,5 @@
 requests>=2.34.2
-pydantic>=2.14.3
+pydantic>=2.14.4
 langchain-core>=1.8.1
 langchain-community>=0.4.2
 langchain-classic>=1.0.8
