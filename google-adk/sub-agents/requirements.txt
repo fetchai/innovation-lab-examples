@@ -111,7 +111,7 @@ google-crc32c==1.8.0
     # via
     #   google-cloud-storage
     #   google-resumable-media
-google-genai==2.34.0
+google-genai==3.6.1
     # via google-adk
 google-resumable-media==2.11.0
     # via google-cloud-storage
