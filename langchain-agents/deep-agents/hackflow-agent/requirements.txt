@@ -1,6 +1,6 @@
 # Python >=3.11 required (deepagents hard requirement)
 # LangChain Deep Agents, deepagents owns langchain/langgraph versions
-deepagents==0.7.39
+deepagents==0.7.41
 
 # LLM providers
 langchain-anthropic>=1.7.10
