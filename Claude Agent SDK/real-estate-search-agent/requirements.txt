@@ -1,4 +1,4 @@
-anthropic>=0.40.0
+anthropic>=2.11.0
 uagents>=0.26.1
 homeharvest>=0.8.18
 gspread>=6.2.1
