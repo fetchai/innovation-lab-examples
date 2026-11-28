@@ -188,7 +188,7 @@ pycparser==2.23
     # via cffi
 pycryptodome==3.23.0
     # via cosmpy
-pydantic==2.12.5
+pydantic==2.14.4
     # via
     #   fastapi
     #   google-adk
