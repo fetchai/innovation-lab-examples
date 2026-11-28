@@ -1,5 +1,5 @@
 # Core dependencies for RAG Chat Agent
-agno>=3.2.0
+agno>=3.2.1
 uagents
 # OpenAI integration
 openai>=3.52.0
