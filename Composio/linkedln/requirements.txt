@@ -4,7 +4,7 @@ uagents>=0.26.1
 uagents-core>=0.4.12
 openai>=3.52.0
 python-dotenv>=1.2.4
-composio>=0.32.0
+composio>=0.33.0
 
 # Additional utilities
 requests>=2.34.2
