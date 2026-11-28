@@ -4,4 +4,4 @@ openai==3.52.0
 httpx==0.28.1
 pydantic==2.14.3
 python-dotenv==1.2.4
-fastmcp==4.2.0
+fastmcp==4.2.3
