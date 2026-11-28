@@ -17,4 +17,4 @@ python-dotenv==1.2.4
 python-jose[cryptography]==3.5.0
 
 # FET chain verification
-cosmpy==0.11.1
+cosmpy==0.12.2
