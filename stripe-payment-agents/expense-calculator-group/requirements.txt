@@ -4,4 +4,4 @@ uagents-core>=0.4.12
 httpx>=0.28.1
 python-dotenv>=1.2.4
 openai>=3.52.0
-stripe>=17.0.0
+stripe>=17.1.0
